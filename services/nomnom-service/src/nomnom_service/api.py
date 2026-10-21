@@ -18,6 +18,7 @@ from nomnom_service.models import (
     find_best_matching_product,
 )
 from nomnom_service.schemas import (
+    OrderCancelResponse,
     OrderCreate,
     OrderItemRead,
     OrderRead,
@@ -155,6 +156,21 @@ def update_order_status(
     session.commit()
     session.refresh(order)
     return _to_order_read(session, order)
+
+
+@router.post("/orders/{order_id}/cancel", response_model=OrderCancelResponse)
+def cancel_order(order_id: str, session: Session = Depends(get_session)) -> OrderCancelResponse:
+    order = session.exec(select(Order).where(Order.order_id == order_id)).first()
+    if order is None:
+        raise HTTPException(status_code=404, detail=f"Unknown order: {order_id}")
+    if order.status == OrderStatus.CANCELLED:
+        return OrderCancelResponse(success=False, message=f"Order {order_id} is already cancelled.")
+
+    order.status = OrderStatus.CANCELLED
+    session.add(order)
+    session.commit()
+
+    return OrderCancelResponse(success=True, message=f"Order {order_id} cancelled.")
 
 
 @router.get("/orders-summary", response_model=OrderSummary)

@@ -105,6 +105,4 @@ def order_detail_page(
     if order is None:
         raise HTTPException(status_code=404, detail=f"Unknown order: {order_id}")
     items = session.exec(select(OrderItem).where(OrderItem.order_id == order.id)).all()
-    return templates.TemplateResponse(
-        request, "order_detail.html", {"order": order, "items": items}
-    )
+    return templates.TemplateResponse(request, "order_detail.html", {"order": order, "items": items})

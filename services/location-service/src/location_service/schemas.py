@@ -51,9 +51,16 @@ class BookRoomResponse(BaseModel):
     room_code: str
     success: bool
     message: str
+    booking_id: int | None = None
+
+
+class BookingCancelResponse(BaseModel):
+    success: bool
+    message: str
 
 
 class BookingRead(BaseModel):
+    id: int
     location_id: str
     location_name: str
     room_code: str

@@ -62,3 +62,8 @@ class MeetingResponse(BaseModel):
     booked: bool
     message: str
     meeting: MeetingRead | None = None
+
+
+class MeetingCancelResponse(BaseModel):
+    success: bool
+    message: str

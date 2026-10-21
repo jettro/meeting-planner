@@ -31,6 +31,7 @@ class AgendaItem(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     person_id: int = Field(foreign_key="person.id")
+    meeting_id: int | None = Field(default=None, foreign_key="meeting.id")
     day: date
     start: time
     end: time

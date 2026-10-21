@@ -323,3 +323,11 @@ services/<name>-service/
 - 2026-10-21: Clarified that each MCP server calls its own service's REST API over HTTP (never
   the DB/business logic directly) — new REST endpoints (meeting cancel, room-booking cancel,
   order cancel) are required to back the corresponding MCP tools.
+- 2026-10-21: Implemented the REST API prerequisites from §3.5: `DELETE /api/meetings/{id}`
+  (meeting-service, with `AgendaItem.meeting_id` FK added so agenda items are cleaned up),
+  `DELETE /api/rooms/bookings/{id}` (location-service, with `booking_id`/`id` now returned from
+  booking/list responses so the id is actually available to cancel), and
+  `POST /api/orders/{id}/cancel` (nomnom-service, idempotent — returns `success=false` rather than
+  erroring on a second cancel). Added API-level tests (`tests/test_api.py` + isolated-DB
+  `conftest.py`) per service. Verified end-to-end against the Docker Compose stack. The actual
+  FastMCP servers are not yet implemented — next phase.

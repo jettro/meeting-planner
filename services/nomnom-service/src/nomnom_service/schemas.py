@@ -53,3 +53,8 @@ class OrderSummary(BaseModel):
     total_items_sold: int
     total_revenue: float
     average_order_value: float
+
+
+class OrderCancelResponse(BaseModel):
+    success: bool
+    message: str

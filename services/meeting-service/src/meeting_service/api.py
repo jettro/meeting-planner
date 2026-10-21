@@ -19,6 +19,7 @@ from meeting_service.schemas import (
     AvailabilityCheckRequest,
     AvailabilityCheckResponse,
     DayAvailability,
+    MeetingCancelResponse,
     MeetingRead,
     MeetingRequest,
     MeetingResponse,
@@ -104,17 +105,6 @@ def book_meeting(request: MeetingRequest, session: Session = Depends(get_session
                 meeting=None,
             )
 
-    for person in persons:
-        session.add(
-            AgendaItem(
-                person_id=person.id,  # type: ignore[arg-type]
-                day=request.day,
-                start=request.start,
-                end=request.end,
-                title=request.title,
-            )
-        )
-
     meeting = Meeting(
         title=request.title,
         description=request.description,
@@ -127,6 +117,19 @@ def book_meeting(request: MeetingRequest, session: Session = Depends(get_session
     session.commit()
     session.refresh(meeting)
 
+    for person in persons:
+        session.add(
+            AgendaItem(
+                person_id=person.id,  # type: ignore[arg-type]
+                meeting_id=meeting.id,
+                day=request.day,
+                start=request.start,
+                end=request.end,
+                title=request.title,
+            )
+        )
+    session.commit()
+
     return MeetingResponse(
         booked=True,
         message=f"Meeting '{meeting.title}' booked for {len(persons)} participant(s).",
@@ -138,3 +141,18 @@ def book_meeting(request: MeetingRequest, session: Session = Depends(get_session
 def list_meetings(session: Session = Depends(get_session)) -> list[MeetingRead]:
     meetings = session.exec(select(Meeting)).all()
     return [_to_meeting_read(m) for m in meetings]
+
+
+@router.delete("/meetings/{meeting_id}", response_model=MeetingCancelResponse)
+def cancel_meeting(meeting_id: int, session: Session = Depends(get_session)) -> MeetingCancelResponse:
+    meeting = session.get(Meeting, meeting_id)
+    if meeting is None:
+        raise HTTPException(status_code=404, detail=f"Unknown meeting id: {meeting_id}")
+
+    items = session.exec(select(AgendaItem).where(AgendaItem.meeting_id == meeting_id)).all()
+    for item in items:
+        session.delete(item)
+    session.delete(meeting)
+    session.commit()
+
+    return MeetingCancelResponse(success=True, message=f"Meeting '{meeting.title}' cancelled.")

@@ -10,6 +10,7 @@ from sqlmodel import Session, col, select
 from location_service.db import get_session
 from location_service.models import Location, Room, RoomBooking, check_availability
 from location_service.schemas import (
+    BookingCancelResponse,
     BookingRead,
     BookRoomRequest,
     BookRoomResponse,
@@ -109,23 +110,24 @@ def book_room(request: BookRoomRequest, session: Session = Depends(get_session))
             message="No capacity at the requested time",
         )
 
-    session.add(
-        RoomBooking(
-            room_id=room.id,  # type: ignore[arg-type]
-            day=request.day,
-            start=request.start,
-            end=end_time,
-            reference=request.reference,
-            description=request.description,
-        )
+    booking = RoomBooking(
+        room_id=room.id,  # type: ignore[arg-type]
+        day=request.day,
+        start=request.start,
+        end=end_time,
+        reference=request.reference,
+        description=request.description,
     )
+    session.add(booking)
     session.commit()
+    session.refresh(booking)
 
     return BookRoomResponse(
         location_id=request.location_id,
         room_code=request.room_code,
         success=True,
         message=f"Booking confirmed for {request.reference}",
+        booking_id=booking.id,
     )
 
 
@@ -146,6 +148,7 @@ def list_bookings(
         for booking in bookings:
             results.append(
                 BookingRead(
+                    id=booking.id,  # type: ignore[arg-type]
                     location_id=room.location_id,
                     location_name=location.name if location else room.location_id,
                     room_code=room.room_code,
@@ -158,3 +161,15 @@ def list_bookings(
             )
     results.sort(key=lambda b: (b.day, b.start))
     return results
+
+
+@router.delete("/rooms/bookings/{booking_id}", response_model=BookingCancelResponse)
+def cancel_room_booking(booking_id: int, session: Session = Depends(get_session)) -> BookingCancelResponse:
+    booking = session.get(RoomBooking, booking_id)
+    if booking is None:
+        raise HTTPException(status_code=404, detail=f"Unknown booking id: {booking_id}")
+
+    session.delete(booking)
+    session.commit()
+
+    return BookingCancelResponse(success=True, message=f"Booking {booking_id} cancelled.")
