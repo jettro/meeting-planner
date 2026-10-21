@@ -202,6 +202,9 @@ REST API:
   or act on (retry with different params, pick another slot, etc.).
 - Each service's MCP server is implemented **inside that service's own package** (no shared MCP
   library/package), consistent with the "no shared common package" decision from phase 1.
+- **The MCP server never implements business logic itself — it is an HTTP client of its own
+  service's REST API** (details in §3.2). It reshapes/filters REST responses into the narrower
+  tool contracts above; it does not touch the database or duplicate domain logic.
 
 ### 3.2 Deployment & transport
 - Each service runs its MCP server as a **separate process within the same container**, on its
@@ -221,6 +224,14 @@ REST API:
   approach: a small `entrypoint.sh` (or a process manager like `honcho`/`supervisord`, TBD at
   implementation time) that starts both `uvicorn` processes; `docker-compose.yml` exposes both
   ports per service.
+- **The MCP server is a client of its own service's REST API, not a reimplementation of it.**
+  Each `@mcp.tool()` function is a thin wrapper that makes an HTTP call (via `httpx`) to the
+  service's own REST endpoints (`http://localhost:<rest-port>/api/...`) and translates the
+  response into the agent-facing tool shape from §3.4. The REST API stays the **single source of
+  truth for business logic** (availability checks, overlap detection, order totals, etc.); MCP
+  never talks to the database or duplicates that logic directly. This keeps one code path for
+  all callers (UI, REST clients, agents) and means any new REST endpoint is automatically
+  available to wrap as an MCP tool later.
 
 ### 3.3 Auth
 - Lightweight **per-service API key**, passed as an HTTP header (e.g. `X-MCP-API-Key`) on every
@@ -229,6 +240,9 @@ REST API:
   stop the MCP endpoints being fully open on the network.
 - Keys are dev-only defaults in `docker-compose.yml`/`.env.example`, to be rotated for any
   real deployment.
+- This API key only protects the **MCP endpoint**; the REST API the MCP server calls internally
+  stays unauthenticated on `localhost` within the container (consistent with "no inter-service
+  auth" from phase 1) — the MCP key is the boundary agents actually cross.
 
 ### 3.4 Per-service tool catalogs
 
@@ -265,24 +279,25 @@ decide what to try next, e.g. by calling the relevant availability/search tool a
 revisited later if the agent layer needs richer "try this instead" hints.
 
 ### 3.5 Required model/API changes to support this phase
-A few gaps exist in the current phase-1 models that `cancel_*` tools need to close when this is
-implemented:
-- `meeting-service`: `AgendaItem` currently has no back-reference to the `Meeting` it belongs to.
-  `cancel_meeting(meeting_id)` needs to delete the `Meeting` row **and** every `AgendaItem` it
-  created — requires adding a `meeting_id` foreign key to `AgendaItem` (set when `book_meeting`
-  creates the per-person agenda entries).
-- `location-service`: `RoomBooking.id` already works directly as a `booking_id` — no model change
-  needed for `cancel_room_booking`.
-- `nomnom-service`: `Order.order_id` (uuid string) already works as the external reference;
-  `cancel_order` just needs to set `status = OrderStatus.CANCELLED` (no model change needed).
-- None of the three services currently expose a REST `DELETE`/cancel endpoint either — the MCP
-  cancel tools will need corresponding internal service functions (shared by MCP and, if useful
-  later, a REST endpoint), not just new MCP wrappers around nothing.
+Since MCP tools call the REST API (not the DB/models directly, see §3.2), every gap below must be
+closed as a **new REST endpoint first**; the MCP tool is then just a thin wrapper around it.
+- `meeting-service`: needs a new `DELETE /api/meetings/{meeting_id}` endpoint. `AgendaItem`
+  currently has no back-reference to the `Meeting` it belongs to, so this endpoint can't yet
+  clean up the per-person agenda entries it created — requires adding a `meeting_id` foreign key
+  to `AgendaItem` (set when `POST /api/meetings/book` creates them) so the delete endpoint can
+  remove the `Meeting` row **and** every associated `AgendaItem`.
+- `location-service`: needs a new `DELETE /api/rooms/bookings/{booking_id}` endpoint.
+  `RoomBooking.id` already works directly as the `booking_id` — no model change needed.
+- `nomnom-service`: needs a new `PATCH`/`DELETE /api/orders/{order_id}/cancel` endpoint that sets
+  `status = OrderStatus.CANCELLED` — no model change needed (`Order.order_id` already works as
+  the external reference).
+- None of the three services currently expose any of these endpoints — they're new REST surface,
+  not just new MCP surface, and should get their own tests like the existing endpoints.
 
 ### 3.6 Package layout (per service, once implemented)
 ```
 services/<name>-service/
-├── pyproject.toml           # add `fastmcp` dependency
+├── pyproject.toml           # add `fastmcp` + `httpx` dependencies
 ├── Dockerfile               # updated to start both uvicorn processes
 ├── entrypoint.sh            # starts REST+UI app and MCP app together
 └── src/<name>_service/
@@ -305,3 +320,6 @@ services/<name>-service/
 - 2026-10-21: MCP layer design added (section 3) — FastMCP-based, one server per service, API-key
   auth, streamable HTTP transport, agent-facing tool catalogs for meeting/location/nomnom
   services, and the model changes (`AgendaItem.meeting_id`) needed to support cancellation.
+- 2026-10-21: Clarified that each MCP server calls its own service's REST API over HTTP (never
+  the DB/business logic directly) — new REST endpoints (meeting cancel, room-booking cancel,
+  order cancel) are required to back the corresponding MCP tools.
