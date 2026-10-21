@@ -186,5 +186,122 @@ meeting-planner/
 
 ---
 
-## 3. Changelog
+## 3. MCP Layer Design (Phase 1.5 — agent-facing tools)
+
+### 3.1 Goals & principles
+This phase adds an **MCP (Model Context Protocol) server per service**, built with **FastMCP**.
+The MCP surface is a deliberately **narrow, agent-oriented API** — it is *not* a 1:1 mirror of the
+REST API:
+- Expose only what an agent needs to **reason and act** (menus, availability, rooms/locations,
+  booking actions), never administrative/reporting views (e.g. no "list all orders",
+  no "orders summary", no raw DB dumps).
+- Read tools return just enough detail to decide what to do next (e.g. free slots, not full
+  agenda contents with other people's meeting titles).
+- Write tools (booking/ordering/cancelling) always return a **structured, actionable result**:
+  success + a stable reference id, or failure + a clear human-readable reason the agent can relay
+  or act on (retry with different params, pick another slot, etc.).
+- Each service's MCP server is implemented **inside that service's own package** (no shared MCP
+  library/package), consistent with the "no shared common package" decision from phase 1.
+
+### 3.2 Deployment & transport
+- Each service runs its MCP server as a **separate process within the same container**, on its
+  own port, next to the existing REST+UI `uvicorn` process:
+
+  | Service            | REST+UI port | MCP port |
+  |---------------------|:---:|:---:|
+  | `meeting-service`   | 8001 | **8101** |
+  | `location-service`  | 8002 | **8102** |
+  | `nomnom-service`    | 8003 | **8103** |
+
+- Transport: **streamable HTTP** (`mcp.http_app()` served via its own `uvicorn` instance) — works
+  over the network between containers/agents, supports multiple concurrent agent clients, and
+  fits the existing Docker Compose setup. (Not stdio — that only works for a local single-client
+  process, which doesn't fit a multi-container architecture.)
+- Each Dockerfile/entrypoint will need to start **two processes** (REST+UI app, MCP app). Simplest
+  approach: a small `entrypoint.sh` (or a process manager like `honcho`/`supervisord`, TBD at
+  implementation time) that starts both `uvicorn` processes; `docker-compose.yml` exposes both
+  ports per service.
+
+### 3.3 Auth
+- Lightweight **per-service API key**, passed as an HTTP header (e.g. `X-MCP-API-Key`) on every
+  MCP tool call. One env var per service: `MEETING_MCP_API_KEY`, `LOCATION_MCP_API_KEY`,
+  `NOMNOM_MCP_API_KEY`. No OAuth2 (consistent with the phase 1 decision) — this is just enough to
+  stop the MCP endpoints being fully open on the network.
+- Keys are dev-only defaults in `docker-compose.yml`/`.env.example`, to be rotated for any
+  real deployment.
+
+### 3.4 Per-service tool catalogs
+
+#### `meeting-service` MCP (port 8101)
+| Tool | Input | Output |
+|---|---|---|
+| `list_people` | — | `[{email, name}]` — lets an agent resolve names to the emails other tools need. |
+| `get_person_availability` | `email, day` | `{email, name, free_slots: [{start, end}]}` — only free gaps, **not** other meetings' titles/content. |
+| `check_meeting_feasibility` | `participant_emails, day, start, end` | `{feasible: bool, unavailable_people: [email]}` |
+| `book_meeting` | `participant_emails, day, start, end, title` | Success: `{success: true, meeting_id, day, start, end, participant_emails}`. Failure: `{success: false, reason}` (e.g. `"<name> is not available 10:00-11:00"`). |
+| `cancel_meeting` | `meeting_id` | `{success: bool, message}` — requires the exact id returned by `book_meeting`, no lookup-by-description. |
+
+#### `location-service` MCP (port 8102)
+| Tool | Input | Output |
+|---|---|---|
+| `list_locations` | — | `[{location_id, name, description}]` |
+| `list_rooms` | `location_id` | `[{room_code, capacity}]` |
+| `get_room_availability` | `location_id, room_code, day` | `{free_slots: [{start, end}]}` |
+| `book_room` | `location_id, room_code, day, start, end, title` | Success: `{success: true, booking_id, location_id, room_code, day, start, end}`. Failure: `{success: false, reason}`. |
+| `cancel_room_booking` | `booking_id` | `{success: bool, message}` |
+
+#### `nomnom-service` MCP (port 8103)
+| Tool | Input | Output |
+|---|---|---|
+| `get_menu` | `category` (optional) | `[{item_id, name, description, price, category}]` — the full agent-facing menu. |
+| `search_product` | `query` | `{item_id, name, price, description} \| null` — fuzzy name match, for free-text requests ("a coffee"). |
+| `place_order` | `location, delivery_date, items: [{item_id, quantity}], note` | Success: `{success: true, order_id, total_amount, status}`. Failure: `{success: false, reason}` (e.g. unknown item id). |
+| `get_order_status` | `order_id` | `{order_id, status, delivery_date, total_amount, items: [{name, quantity}]}` — enough to understand/act on the order's state, not a full admin record. |
+| `cancel_order` | `order_id` | `{success: bool, message}` — requires the exact `order_id` from `place_order`. |
+
+All failure responses use the **reason-only** level of detail (a clear human-readable explanation,
+not a list of suggested alternative slots/rooms/items — the agent/orchestrator is expected to
+decide what to try next, e.g. by calling the relevant availability/search tool again). This can be
+revisited later if the agent layer needs richer "try this instead" hints.
+
+### 3.5 Required model/API changes to support this phase
+A few gaps exist in the current phase-1 models that `cancel_*` tools need to close when this is
+implemented:
+- `meeting-service`: `AgendaItem` currently has no back-reference to the `Meeting` it belongs to.
+  `cancel_meeting(meeting_id)` needs to delete the `Meeting` row **and** every `AgendaItem` it
+  created — requires adding a `meeting_id` foreign key to `AgendaItem` (set when `book_meeting`
+  creates the per-person agenda entries).
+- `location-service`: `RoomBooking.id` already works directly as a `booking_id` — no model change
+  needed for `cancel_room_booking`.
+- `nomnom-service`: `Order.order_id` (uuid string) already works as the external reference;
+  `cancel_order` just needs to set `status = OrderStatus.CANCELLED` (no model change needed).
+- None of the three services currently expose a REST `DELETE`/cancel endpoint either — the MCP
+  cancel tools will need corresponding internal service functions (shared by MCP and, if useful
+  later, a REST endpoint), not just new MCP wrappers around nothing.
+
+### 3.6 Package layout (per service, once implemented)
+```
+services/<name>-service/
+├── pyproject.toml           # add `fastmcp` dependency
+├── Dockerfile               # updated to start both uvicorn processes
+├── entrypoint.sh            # starts REST+UI app and MCP app together
+└── src/<name>_service/
+    ├── ... (existing api.py, ui.py, models.py, db.py, seed.py, main.py)
+    └── mcp_server.py        # FastMCP instance + @mcp.tool() definitions for this service
+```
+
+### 3.7 Explicitly deferred / out of scope for this MCP phase
+- No agent/orchestration code yet (Akgents layer) — this phase only stands up the MCP *servers*;
+  nothing calls them as a client yet.
+- No cross-service MCP tool (e.g. "plan an entire meeting with room + food in one call") — each
+  MCP server only exposes its own service's tools for now.
+- No "suggest alternatives" logic in booking failures (see 3.4) — revisit once an agent is driving
+  these tools and real usage shows it's needed.
+
+---
+
+## 4. Changelog
 - 2026-10-21: Initial analysis of the Java source project completed.
+- 2026-10-21: MCP layer design added (section 3) — FastMCP-based, one server per service, API-key
+  auth, streamable HTTP transport, agent-facing tool catalogs for meeting/location/nomnom
+  services, and the model changes (`AgendaItem.meeting_id`) needed to support cancellation.
