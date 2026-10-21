@@ -6,8 +6,8 @@
     <thead><tr><th>Order</th><th>Location</th><th>Delivery date</th><th>Status</th><th>Total</th></tr></thead>
     <tbody>
     {% for order in orders %}
-        <tr>
-            <td>{{ order.order_id[:8] }}</td>
+        <tr class="order-row" onclick="window.location='/orders/{{ order.order_id }}'" style="cursor: pointer;">
+            <td><a href="/orders/{{ order.order_id }}">{{ order.order_id[:8] }}</a></td>
             <td>{{ order.location }}</td>
             <td>{{ order.delivery_date }}</td>
             <td>{{ order.status.value }}</td>
