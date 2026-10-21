@@ -37,19 +37,6 @@ def orders_page(request: Request, session: Session = Depends(get_session)) -> HT
     return templates.TemplateResponse(request, "orders.html", {"orders": orders})
 
 
-@router.get("/orders/{order_id}", response_class=HTMLResponse)
-def order_detail_page(
-    request: Request, order_id: str, session: Session = Depends(get_session)
-) -> HTMLResponse:
-    order = session.exec(select(Order).where(Order.order_id == order_id)).first()
-    if order is None:
-        raise HTTPException(status_code=404, detail=f"Unknown order: {order_id}")
-    items = session.exec(select(OrderItem).where(OrderItem.order_id == order.id)).all()
-    return templates.TemplateResponse(
-        request, "order_detail.html", {"order": order, "items": items}
-    )
-
-
 @router.get("/orders/new", response_class=HTMLResponse)
 def new_order_page(request: Request, session: Session = Depends(get_session)) -> HTMLResponse:
     products = session.exec(select(Product)).all()
@@ -108,3 +95,16 @@ def create_order_submit(
 
     products = session.exec(select(Product)).all()
     return templates.TemplateResponse(request, "order_form.html", {"products": products, "result": result})
+
+
+@router.get("/orders/{order_id}", response_class=HTMLResponse)
+def order_detail_page(
+    request: Request, order_id: str, session: Session = Depends(get_session)
+) -> HTMLResponse:
+    order = session.exec(select(Order).where(Order.order_id == order_id)).first()
+    if order is None:
+        raise HTTPException(status_code=404, detail=f"Unknown order: {order_id}")
+    items = session.exec(select(OrderItem).where(OrderItem.order_id == order.id)).all()
+    return templates.TemplateResponse(
+        request, "order_detail.html", {"order": order, "items": items}
+    )
