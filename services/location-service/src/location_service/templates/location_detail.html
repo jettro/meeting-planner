@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ location.name if location else "Location" }}{% endblock %}
+{% block content %}
+{% if location %}
+<h1>{{ location.name }}</h1>
+<p>{{ location.description }}</p>
+{% for room in rooms %}
+<h5>Room {{ room.room_code }} (capacity {{ room.capacity }})</h5>
+<table class="table table-sm">
+    <thead><tr><th>Day</th><th>Start</th><th>End</th><th>Description</th></tr></thead>
+    <tbody>
+    {% for booking in bookings_by_room[room.room_code] %}
+        <tr>
+            <td>{{ booking.day }}</td>
+            <td>{{ booking.start }}</td>
+            <td>{{ booking.end }}</td>
+            <td>{{ booking.description }}</td>
+        </tr>
+    {% else %}
+        <tr><td colspan="4">No bookings</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endfor %}
+{% else %}
+<p>Unknown location.</p>
+{% endif %}
+{% endblock %}

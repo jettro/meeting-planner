@@ -1,0 +1,35 @@
+services:
+  meeting-service:
+    build:
+      context: ./services/meeting-service
+    ports:
+      - "8001:8001"
+    volumes:
+      - meeting-data:/data
+    environment:
+      MEETING_SERVICE_DB: /data/meeting.db
+
+  location-service:
+    build:
+      context: ./services/location-service
+    ports:
+      - "8002:8002"
+    volumes:
+      - location-data:/data
+    environment:
+      LOCATION_SERVICE_DB: /data/location.db
+
+  nomnom-service:
+    build:
+      context: ./services/nomnom-service
+    ports:
+      - "8003:8003"
+    volumes:
+      - nomnom-data:/data
+    environment:
+      NOMNOM_SERVICE_DB: /data/nomnom.db
+
+volumes:
+  meeting-data:
+  location-data:
+  nomnom-data:

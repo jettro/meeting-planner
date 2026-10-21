@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}New order{% endblock %}
+{% block content %}
+<h1>Place a new order</h1>
+
+{% if result %}
+<div class="alert {{ 'alert-success' if result.success else 'alert-danger' }}">
+    {{ result.message }}
+</div>
+{% endif %}
+
+<form method="post" action="/orders/new" class="row g-3">
+    <div class="col-md-6">
+        <label class="form-label">Location</label>
+        <input type="text" name="location" class="form-control" placeholder="e.g. luminis" required>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">Delivery date</label>
+        <input type="date" name="delivery_date" class="form-control" required>
+    </div>
+    <div class="col-12">
+        <label class="form-label">Note</label>
+        <input type="text" name="note" class="form-control">
+    </div>
+    <div class="col-12">
+        <h5>Items</h5>
+        <table class="table table-sm">
+            <thead><tr><th>Product</th><th>Price</th><th>Quantity</th></tr></thead>
+            <tbody>
+            {% for product in products %}
+                <tr>
+                    <td>
+                        {{ product.name }}
+                        <input type="hidden" name="product_id" value="{{ product.id }}">
+                    </td>
+                    <td>&euro;{{ "%.2f"|format(product.price) }}</td>
+                    <td><input type="number" name="quantity" class="form-control" min="0" value="0"></td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="col-12">
+        <button class="btn btn-primary" type="submit">Place order</button>
+    </div>
+</form>
+{% endblock %}

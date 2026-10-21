@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Persons{% endblock %}
+{% block content %}
+<h1>Persons</h1>
+<table class="table">
+    <thead><tr><th>Name</th><th>Email</th><th></th></tr></thead>
+    <tbody>
+    {% for person in persons %}
+        <tr>
+            <td>{{ person.name }}</td>
+            <td>{{ person.email }}</td>
+            <td><a href="/persons/{{ person.email }}/agenda">View agenda</a></td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

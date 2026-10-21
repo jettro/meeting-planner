@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Locations{% endblock %}
+{% block content %}
+<h1>Locations</h1>
+<div class="row">
+{% for location in locations %}
+    <div class="col-md-4 mb-3">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">{{ location.name }}</h5>
+                <p class="card-text">{{ location.description }}</p>
+                <a href="/locations/{{ location.location_id }}" class="btn btn-sm btn-primary">View rooms</a>
+            </div>
+        </div>
+    </div>
+{% endfor %}
+</div>
+{% endblock %}

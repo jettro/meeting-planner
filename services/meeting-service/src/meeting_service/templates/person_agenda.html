@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Agenda{% endblock %}
+{% block content %}
+{% if person %}
+<h1>{{ person.name }}'s agenda</h1>
+<form method="get" class="row g-2 mb-3">
+    <div class="col-auto">
+        <input type="date" name="day" value="{{ day }}" class="form-control">
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-primary" type="submit">Show</button>
+    </div>
+</form>
+<h5>Free slots on {{ day }}</h5>
+<ul>
+    {% for slot in free_slots %}
+        <li>{{ slot }}</li>
+    {% else %}
+        <li>No free slots</li>
+    {% endfor %}
+</ul>
+{% else %}
+<p>Unknown person.</p>
+{% endif %}
+{% endblock %}

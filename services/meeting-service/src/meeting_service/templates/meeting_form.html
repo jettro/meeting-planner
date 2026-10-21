@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}New meeting{% endblock %}
+{% block content %}
+<h1>Book a new meeting</h1>
+
+{% if result %}
+<div class="alert {{ 'alert-success' if result.booked else 'alert-danger' }}">
+    {{ result.message }}
+</div>
+{% endif %}
+
+<form method="post" action="/meetings/new" class="row g-3">
+    <div class="col-md-6">
+        <label class="form-label">Title</label>
+        <input type="text" name="title" class="form-control" required>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">Description</label>
+        <input type="text" name="description" class="form-control">
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Day</label>
+        <input type="date" name="day" class="form-control" required>
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Start</label>
+        <input type="time" name="start" class="form-control" required>
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">End</label>
+        <input type="time" name="end" class="form-control" required>
+    </div>
+    <div class="col-12">
+        <label class="form-label">Participants</label>
+        <select name="participant_emails" class="form-select" multiple required>
+            {% for person in persons %}
+                <option value="{{ person.email }}">{{ person.name }} ({{ person.email }})</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-12">
+        <button class="btn btn-primary" type="submit">Book meeting</button>
+    </div>
+</form>
+{% endblock %}
