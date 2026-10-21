@@ -37,3 +37,5 @@ exclude = ["tests/"]
 # Each service has its own "tests" package; importlib mode avoids module-name
 # collisions when running the whole workspace's tests together.
 addopts = "--import-mode=importlib"
+# MCP tool tests are async (the tools themselves are async httpx calls).
+asyncio_mode = "auto"

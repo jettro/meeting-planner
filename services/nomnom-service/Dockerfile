@@ -5,12 +5,15 @@ RUN pip install --no-cache-dir uv
 WORKDIR /app
 COPY pyproject.toml ./
 COPY src ./src
+COPY entrypoint.sh ./
 
-RUN uv pip install --system --no-cache .
+RUN uv pip install --system --no-cache . \
+    && chmod +x entrypoint.sh
 
 ENV NOMNOM_SERVICE_DB=/data/nomnom.db
 VOLUME ["/data"]
 
-EXPOSE 8003
+# 8003 = REST + UI, 8103 = MCP (agent-facing tools, see design.md section 3)
+EXPOSE 8003 8103
 
-CMD ["uvicorn", "nomnom_service.main:app", "--host", "0.0.0.0", "--port", "8003"]
+CMD ["./entrypoint.sh"]

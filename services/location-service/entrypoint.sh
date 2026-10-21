@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Starts both uvicorn processes (REST+UI and MCP) in the same container and
+# exits/propagates the signal if either one dies, so Docker can restart the
+# container instead of silently running with only one process alive.
+set -uo pipefail
+
+uvicorn location_service.main:app --host 0.0.0.0 --port 8002 &
+REST_PID=$!
+
+uvicorn location_service.mcp_server:mcp_app --host 0.0.0.0 --port 8102 &
+MCP_PID=$!
+
+terminate() {
+  kill -TERM "$REST_PID" "$MCP_PID" 2>/dev/null
+}
+trap terminate TERM INT
+
+wait -n "$REST_PID" "$MCP_PID"
+EXIT_CODE=$?
+terminate
+exit "$EXIT_CODE"

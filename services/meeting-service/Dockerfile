@@ -5,12 +5,15 @@ RUN pip install --no-cache-dir uv
 WORKDIR /app
 COPY pyproject.toml ./
 COPY src ./src
+COPY entrypoint.sh ./
 
-RUN uv pip install --system --no-cache .
+RUN uv pip install --system --no-cache . \
+    && chmod +x entrypoint.sh
 
 ENV MEETING_SERVICE_DB=/data/meeting.db
 VOLUME ["/data"]
 
-EXPOSE 8001
+# 8001 = REST + UI, 8101 = MCP (agent-facing tools, see design.md section 3)
+EXPOSE 8001 8101
 
-CMD ["uvicorn", "meeting_service.main:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["./entrypoint.sh"]

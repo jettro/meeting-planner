@@ -4,30 +4,36 @@ services:
       context: ./services/meeting-service
     ports:
       - "8001:8001"
+      - "8101:8101"
     volumes:
       - meeting-data:/data
     environment:
       MEETING_SERVICE_DB: /data/meeting.db
+      MEETING_MCP_API_KEY: ${MEETING_MCP_API_KEY:-dev-meeting-mcp-key}
 
   location-service:
     build:
       context: ./services/location-service
     ports:
       - "8002:8002"
+      - "8102:8102"
     volumes:
       - location-data:/data
     environment:
       LOCATION_SERVICE_DB: /data/location.db
+      LOCATION_MCP_API_KEY: ${LOCATION_MCP_API_KEY:-dev-location-mcp-key}
 
   nomnom-service:
     build:
       context: ./services/nomnom-service
     ports:
       - "8003:8003"
+      - "8103:8103"
     volumes:
       - nomnom-data:/data
     environment:
       NOMNOM_SERVICE_DB: /data/nomnom.db
+      NOMNOM_MCP_API_KEY: ${NOMNOM_MCP_API_KEY:-dev-nomnom-mcp-key}
 
 volumes:
   meeting-data:

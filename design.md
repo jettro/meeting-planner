@@ -234,10 +234,12 @@ REST API:
   available to wrap as an MCP tool later.
 
 ### 3.3 Auth
-- Lightweight **per-service API key**, passed as an HTTP header (e.g. `X-MCP-API-Key`) on every
-  MCP tool call. One env var per service: `MEETING_MCP_API_KEY`, `LOCATION_MCP_API_KEY`,
-  `NOMNOM_MCP_API_KEY`. No OAuth2 (consistent with the phase 1 decision) — this is just enough to
-  stop the MCP endpoints being fully open on the network.
+- Lightweight **per-service API key**, implemented with FastMCP's built-in
+  `StaticTokenVerifier` (`fastmcp.server.auth.providers.jwt.StaticTokenVerifier`) — a standard
+  MCP client sends it as a normal `Authorization: Bearer <key>` header, so no custom header or
+  hand-rolled middleware is needed. One env var per service: `MEETING_MCP_API_KEY`,
+  `LOCATION_MCP_API_KEY`, `NOMNOM_MCP_API_KEY`. No OAuth2 (consistent with the phase 1 decision)
+  — this is just enough to stop the MCP endpoints being fully open on the network.
 - Keys are dev-only defaults in `docker-compose.yml`/`.env.example`, to be rotated for any
   real deployment.
 - This API key only protects the **MCP endpoint**; the REST API the MCP server calls internally
@@ -260,7 +262,7 @@ REST API:
 |---|---|---|
 | `list_locations` | — | `[{location_id, name, description}]` |
 | `list_rooms` | `location_id` | `[{room_code, capacity}]` |
-| `get_room_availability` | `location_id, room_code, day` | `{free_slots: [{start, end}]}` |
+| `get_room_availability` | `location_id, day, start, duration_minutes, number_of_people` | `{available: bool, room_code: str \| null, day, start, duration_minutes}` — wraps the existing `POST /api/rooms/check-availability`, which picks the smallest suitable room by capacity; it does not expose a free-slot list for a specific `room_code`. If nothing fits, the agent simply sees `available: false` for that location/time/headcount combination. |
 | `book_room` | `location_id, room_code, day, start, end, title` | Success: `{success: true, booking_id, location_id, room_code, day, start, end}`. Failure: `{success: false, reason}`. |
 | `cancel_room_booking` | `booking_id` | `{success: bool, message}` |
 
@@ -331,3 +333,16 @@ services/<name>-service/
   erroring on a second cancel). Added API-level tests (`tests/test_api.py` + isolated-DB
   `conftest.py`) per service. Verified end-to-end against the Docker Compose stack. The actual
   FastMCP servers are not yet implemented — next phase.
+- 2026-10-21: Implemented the FastMCP servers for all three services (`mcp_server.py` per
+  service), each an `httpx` client of its own REST API as designed in §3.1/§3.2. Auth uses
+  FastMCP's built-in `StaticTokenVerifier` (standard `Authorization: Bearer <key>` header) rather
+  than a hand-rolled header check — §3.3 updated accordingly. `location-service`'s
+  `get_room_availability` tool was aligned to the REST API's actual capability (capacity/time
+  check across rooms, not a per-room free-slot list) — §3.4 updated. Added `entrypoint.sh` per
+  service to run both the REST+UI and MCP `uvicorn` processes in one container, updated each
+  `Dockerfile` to expose both ports and run the new entrypoint, and updated `docker-compose.yml`
+  with the MCP ports and `*_MCP_API_KEY` env vars (dev defaults via new `.env.example`). Added
+  MCP tool tests per service using FastMCP's in-memory `Client` against an in-process
+  `httpx.ASGITransport`-backed REST client (no real network server needed). Verified end-to-end
+  with a real `fastmcp.Client` against the built Docker Compose stack (auth rejection, tool
+  listing, and tool calls all confirmed working for all three services).

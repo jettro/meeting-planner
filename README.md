@@ -7,19 +7,23 @@ the original project and the decisions behind this rewrite.
 ## What this is
 
 Three independent FastAPI services, each with its own SQLite database, REST API, and a small
-server-rendered (Jinja2 + HTMX) UI:
+server-rendered (Jinja2 + HTMX) UI. Each service also runs a second process exposing an
+**MCP server** (via [FastMCP](https://gofastmcp.com)) with a narrower, agent-oriented tool set —
+see `design.md` section 3 for the design and rationale.
 
-| Service            | Purpose                                      | Port   |
-|--------------------|-----------------------------------------------|--------|
-| `meeting-service`   | People, agendas, and meeting scheduling       | `8001` |
-| `location-service`  | Locations, rooms, and room bookings           | `8002` |
-| `nomnom-service`    | Food/drinks catalogue and ordering            | `8003` |
+| Service            | Purpose                                      | REST+UI port | MCP port |
+|--------------------|-----------------------------------------------|:---:|:---:|
+| `meeting-service`   | People, agendas, and meeting scheduling       | `8001` | `8101` |
+| `location-service`  | Locations, rooms, and room bookings           | `8002` | `8102` |
+| `nomnom-service`    | Food/drinks catalogue and ordering            | `8003` | `8103` |
 
-**Current phase scope** (see `design.md` for the roadmap): plain REST APIs and Pydantic/SQLModel
-domain models only. There is **no** authentication/OAuth, no agentic/LLM layer, and no MCP server in
-this phase — those are deliberately deferred to a later phase. Each service is self-contained and
-does not share a common library; a small amount of logic (e.g. the day-availability algorithm) is
-duplicated between `meeting-service` and `location-service` by design.
+**Current phase scope** (see `design.md` for the roadmap): plain REST APIs, Pydantic/SQLModel
+domain models, and agent-facing MCP servers that wrap each service's own REST API. There is
+**no** authentication/OAuth on the REST APIs (the MCP endpoints use a lightweight per-service API
+key instead, see `design.md` section 3.3), and no agentic/LLM orchestration layer yet — that is
+deliberately deferred to a later phase. Each service is self-contained and does not share a
+common library; a small amount of logic (e.g. the day-availability algorithm) is duplicated
+between `meeting-service` and `location-service` by design.
 
 ## Project layout
 
@@ -67,7 +71,12 @@ make run-meeting     # http://localhost:8001
 make run-location    # http://localhost:8002
 make run-nomnom      # http://localhost:8003
 
-# Or run the whole stack in Docker
+# Run that service's MCP server locally too (separate process, same REST API)
+make run-meeting-mcp     # http://localhost:8101/mcp
+make run-location-mcp    # http://localhost:8102/mcp
+make run-nomnom-mcp      # http://localhost:8103/mcp
+
+# Or run the whole stack in Docker (each container runs both processes)
 make build
 make up
 make logs
@@ -78,6 +87,8 @@ Each service exposes:
 - A browsable UI at `/`
 - An OpenAPI/Swagger UI at `/docs`
 - JSON REST endpoints under `/api`
+- An MCP endpoint at `/mcp` on its MCP port, authenticated with a per-service API key
+  (`Authorization: Bearer <key>`, see `.env.example` and `design.md` section 3.3)
 
 ## Common tasks (Makefile)
 
@@ -109,6 +120,12 @@ Run `make help` for the full list. Highlights:
   all services.
 - Tests use `pytest` with `--import-mode=importlib` (required because every service has its own
   `tests/test_models.py`, which would otherwise collide as the same module name when run together).
+- Each service's MCP server (`<service>_service/mcp_server.py`) is an `httpx` client of that same
+  service's own REST API — it never touches the database directly, so any new REST endpoint is
+  automatically available to wrap as an MCP tool. Its tests point that client at the FastAPI app
+  in-process (`httpx.ASGITransport`) and call tools via FastMCP's in-memory `Client`, so no real
+  network server is needed. In Docker, `entrypoint.sh` starts both the REST+UI and MCP `uvicorn`
+  processes in the same container; see `design.md` section 3 for the full design.
 - No `.env`/secrets are required in this phase. If/when a later phase introduces LLM calls, add a
   fresh `.env.example` — never commit real API keys.
 

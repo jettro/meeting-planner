@@ -4,6 +4,7 @@ SERVICES := meeting-service location-service nomnom-service
 
 .PHONY: help sync lint format typecheck test check \
         run-meeting run-location run-nomnom \
+        run-meeting-mcp run-location-mcp run-nomnom-mcp \
         up down build logs ps clean
 
 help: ## Show this help
@@ -39,6 +40,15 @@ run-location: ## Run location-service locally with uv (http://localhost:8002)
 
 run-nomnom: ## Run nomnom-service locally with uv (http://localhost:8003)
 	uv run --package nomnom-service uvicorn nomnom_service.main:app --reload --port 8003
+
+run-meeting-mcp: ## Run meeting-service's MCP server locally with uv (http://localhost:8101/mcp)
+	uv run --package meeting-service uvicorn meeting_service.mcp_server:mcp_app --reload --port 8101
+
+run-location-mcp: ## Run location-service's MCP server locally with uv (http://localhost:8102/mcp)
+	uv run --package location-service uvicorn location_service.mcp_server:mcp_app --reload --port 8102
+
+run-nomnom-mcp: ## Run nomnom-service's MCP server locally with uv (http://localhost:8103/mcp)
+	uv run --package nomnom-service uvicorn nomnom_service.mcp_server:mcp_app --reload --port 8103
 
 ## --- Docker Compose ----------------------------------------------------------
 
