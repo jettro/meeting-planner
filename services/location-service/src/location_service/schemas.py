@@ -6,6 +6,8 @@ from datetime import date, time
 
 from pydantic import BaseModel
 
+from location_service.clock import WallClock
+
 
 class LocationRead(BaseModel):
     location_id: str
@@ -22,7 +24,7 @@ class RoomRead(BaseModel):
 class RoomAvailabilityRequest(BaseModel):
     location_id: str
     day: date
-    start: time
+    start: WallClock
     duration_minutes: int
     number_of_people: int
 
@@ -40,7 +42,7 @@ class BookRoomRequest(BaseModel):
     location_id: str
     room_code: str
     day: date
-    start: time
+    start: WallClock
     duration_minutes: int
     reference: str = ""
     description: str = ""

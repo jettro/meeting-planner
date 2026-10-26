@@ -576,6 +576,64 @@ id alone: only a `CONFIRMED` plan can be the final write. Deriving status rather
 than storing it, decided back in step 2 for a different reason, is what made
 that correlation available.
 
+### 7.4 What the first live run taught us (step 5)
+
+Everything up to this point was verified with stubs. Running the real team
+against the real MCP containers and a real model found six things no test had,
+and each one is now covered by a test so it cannot come back.
+
+**1. A prompt is a format string.** `Prompt.render()` is
+`template.format(**params)`, so a literal `{` in prompt text raises `KeyError`.
+`@Catering`'s prompt contained `{item_id, quantity}` as an illustration. It
+failed inside `on_start`, where the agent still starts — just without its
+backstory. Silent lobotomy. Every prompt in the catalog is now rendered by a
+test.
+
+**2. A free window is not a meeting.** `find_common_slots` answers with windows
+("everyone is free 09:00–17:00") and the prompt rightly tells the model to relay
+them untouched, because arithmetic is where models slip. But nobody then cut the
+window down to the meeting's length, so the team proposed a *seven-hour* slot for
+a one-hour meeting and would have booked it. Slicing is pure arithmetic, so it
+now happens in `meeting_slots()` in Python, capped at three candidates because
+this becomes a question for a human.
+
+**3. Models invent timezones.** Declared as `time`, a tool parameter advertises
+`format: time` in its schema, and the model repeatedly answered `10:00:00+00:00`.
+Nothing in this domain has a timezone — a venue is simply at 09:00 — so the
+offset met a naive time in a comparison and produced a 500 with an unhelpful
+message. Fixed in three layers:
+  - the REST API refuses an offset outright (`WallClock`), because a *system*
+    integrator sending `+02:00` may genuinely mean a conversion and must be told
+    we do not do that;
+  - the agent-facing MCP tools take a plain `HH:MM` **string**, so the schema
+    stops inviting an ISO timestamp, and ignore a trailing offset while saying
+    so in a `note`, because the model never meant a conversion — it meant the
+    clock reading it was given;
+  - the prompts say times are local and carry no offset.
+
+**4. A strict boundary can be worse than a tolerant one.** The first attempt
+rejected offsets at the MCP boundary too. That turned a typo into a *fatal*
+error: a tool-input validation failure ends the agent's turn, whereas a tool
+*result* it can read lets it correct itself. Validate at the edge that owns the
+data; translate, don't adjudicate, at the edge that faces the agent.
+
+**5. `compensated` was a lie.** `PlanFailed` reported the undo steps a failed
+plan *needs* under a field named `compensated`, which reads as "already undone".
+A live failure reported `cancel_meeting` for meeting 1 and the meeting was still
+there afterwards — correctly, since running compensations is iteration 2, but
+nobody reading the message would know. Renamed to `outstanding`.
+
+**6. An approval without a slot was read as a refusal.** A client that got the
+field name wrong had its plan silently cancelled and was told it had not been
+approved. `SlotApprovalDecision` now rejects that at construction. A GUI (§4.2)
+would have hit this.
+
+What worked first time: per-agent MCP isolation, the saga ordering, the approval
+gate, durability-before-notification, and the actor hop to `@Catering` — the
+coordinator never learns that lunch exists. The verified run booked meeting 2,
+room `room-a` (booking 7) and a confirmed lunch order for exactly two people; a
+second run correctly avoided the slot the first had taken.
+
 ### 7.2 Implementation order
 
 1. ✅ `find_common_slots` REST endpoint + MCP tool on meeting-service, with tests (closes G1).
@@ -584,7 +642,8 @@ that correlation available.
    (The team card and the two deterministic agent entries move to step 4, because their
    `agent_class` dotted paths must exist before the YAML referencing them can be loaded.)
 4. ✅ `@Coordinator` + `@PlanRepository` deterministic actors; typed messages; `team/team.yaml`.
-5. `@Scheduler`, `@FacilityManager`, `@Catering` LLM agents.
+5. ✅ `@Scheduler`, `@FacilityManager`, `@Catering` LLM agents — verified live against the
+   running MCP containers and `gpt-6-luna` (see §7.4).
 6. CLI runner + approval gate via `HumanProxy`.
 7. Dockerfile, compose service, Makefile targets, README.
 
@@ -648,3 +707,22 @@ that correlation available.
   racing persistence, and acknowledgements correlated on plan id alone.
   Mechanics confirmed against the installed packages are in §3.7.
   113 tests in the workspace.
+- 2026-10-26: Step 5 — the three LLM specialists are real agents now
+  (`specialists.py`, `outputs.py`), each answering in a typed contract that
+  carries `succeeded` and `reason` so a failure is sayable and an id is never
+  invented. `@FacilityManager` owns the hop to `@Catering`, so the coordinator
+  still knows nothing about lunch. Two framework facts cost time and are worth
+  remembering: a `BaseAgent` subclass must **re-parameterise**
+  (`class X(BaseAgent, Akgent[XConfig, AgentState])`) for its own config type to
+  be picked up by card coercion, and `BaseAgent.on_start` *assigns*
+  `AgentState(backstory=...)`, so replacing state with a subclass instance
+  silently discards the agent's system prompt — use instance attributes for
+  in-flight bookkeeping.
+  Then the team was run for real, against the three MCP containers and
+  `gpt-6-luna`, and found six bugs that stubs could not. They are written up in
+  §7.4; the short version is that prompts are format strings, a free window is
+  not a meeting, models invent timezones, a strict boundary can be worse than a
+  tolerant one, `compensated` was a lie, and an approval without a slot read as
+  a refusal. All six are fixed and covered by tests. 143 tests pass; two
+  consecutive live runs reached `CONFIRMED` with a real meeting, room and lunch
+  order, the second correctly avoiding the slot the first had taken.

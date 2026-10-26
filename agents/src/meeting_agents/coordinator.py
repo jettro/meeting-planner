@@ -113,7 +113,7 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
         if human is not None:
             self.send(
                 human,
-                PlanFailed(plan=plan, reason=reason, compensated=plan.compensations()),
+                PlanFailed(plan=plan, reason=reason, outstanding=plan.compensations()),
             )
 
     # -- human -> coordinator --------------------------------------------

@@ -6,7 +6,7 @@ model_type: akgentic.core.AgentCard
 description: "Finds times when every participant is free, and books the meeting."
 payload:
   description: "Finds times when every participant is free, and books the meeting."
-  agent_class: akgentic.agent.BaseAgent
+  agent_class: meeting_agents.specialists.Scheduler
   skills:
     - scheduling
     - availability

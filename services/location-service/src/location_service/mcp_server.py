@@ -42,6 +42,59 @@ auth = StaticTokenVerifier(tokens={MCP_API_KEY: {"client_id": "agent", "scopes":
 mcp = FastMCP("location-service-mcp", auth=auth)
 
 
+class ClockFormatError(ValueError):
+    """A tool was given something that is not a local clock reading."""
+
+
+def _clock(name: str, value: str) -> time:
+    """Parse a local clock reading such as `14:30`.
+
+    These parameters are plain strings rather than `time` on purpose. Declared
+    as a time, the generated tool schema carries `format: time`, and in live
+    runs models answered that with a full ISO value - `10:00:00+00:00` - which
+    is not a thing this domain has. A venue has no timezone, so an offset
+    cannot be converted, only ignored or refused.
+
+    A trailing offset is therefore ignored and the clock reading taken at face
+    value, which is what the model meant in every observed case; the caller
+    reports that it did so. Anything that is not a clock reading is refused,
+    because guessing an hour is how a meeting ends up in the wrong place.
+    """
+    text = value.strip()
+    for marker in ("+", "-"):
+        head = text.split(marker, 1)[0]
+        if head != text and ":" in head:
+            text = head
+    if text.endswith("Z"):
+        text = text[:-1]
+
+    parts = text.split(":")
+    if len(parts) not in (2, 3) or not all(p.isdigit() for p in parts):
+        raise ClockFormatError(f"{name}={value!r} is not a local time; send it as HH:MM")
+    try:
+        return time(int(parts[0]), int(parts[1]), int(parts[2]) if len(parts) == 3 else 0)
+    except ValueError as exc:
+        raise ClockFormatError(f"{name}={value!r} is not a local time: {exc}") from exc
+
+
+def _clocks(**values: str) -> tuple[dict[str, time], str]:
+    """Parse several clock readings, with a note if any offset was dropped."""
+    parsed = {name: _clock(name, value) for name, value in values.items()}
+    dropped = [name for name, value in values.items() if _has_offset(value)]
+    note = ""
+    if dropped:
+        note = (
+            f"{' and '.join(dropped)} arrived with a timezone offset, which was "
+            "ignored: times here are local to the venue. Send HH:MM next time."
+        )
+    return parsed, note
+
+
+def _has_offset(value: str) -> bool:
+    body = value.strip()
+    return body.endswith("Z") or "+" in body or body.count("-") > 0
+
+
 @mcp.tool
 async def list_locations() -> list[dict[str, str]]:
     """List all known locations an agent can book a room or request a menu for."""
@@ -62,43 +115,69 @@ async def list_rooms(location_id: str) -> list[dict[str, Any]]:
 
 @mcp.tool
 async def get_room_availability(
-    location_id: str, day: date, start: time, duration_minutes: int, number_of_people: int
+    location_id: str,
+    day: date,
+    start: str,
+    duration_minutes: int,
+    number_of_people: int,
 ) -> dict[str, Any]:
     """Check whether a room is available at a location for a given day/time/headcount.
 
     Picks the smallest suitable room by capacity; does not return a free-slot
     list for a specific room — if nothing fits, `available` is simply false.
+
+    `start` is a local clock reading such as `14:30`. The venue has no timezone,
+    so do not add an offset.
     """
+    try:
+        times, note = _clocks(start=start)
+    except ClockFormatError as exc:
+        return {"available": False, "reason": str(exc)}
+
     resp = await get_client().post(
         "/api/rooms/check-availability",
         json={
             "location_id": location_id,
             "day": day.isoformat(),
-            "start": start.isoformat(),
+            "start": times["start"].isoformat(),
             "duration_minutes": duration_minutes,
             "number_of_people": number_of_people,
         },
     )
     resp.raise_for_status()
-    return cast(dict[str, Any], resp.json())
+    result = cast(dict[str, Any], resp.json())
+    if note:
+        result["note"] = note
+    return result
 
 
 @mcp.tool
 async def book_room(
-    location_id: str, room_code: str, day: date, start: time, end: time, title: str
+    location_id: str, room_code: str, day: date, start: str, end: str, title: str
 ) -> dict[str, Any]:
     """Book a specific room for a given day/time range.
 
     On failure, returns a human-readable `reason` the agent can relay or act on.
+
+    `start` and `end` are local clock readings such as `14:30`. The venue has no
+    timezone, so do not add an offset.
     """
-    duration_minutes = (datetime.combine(day, end) - datetime.combine(day, start)).seconds // 60
+    try:
+        times, note = _clocks(start=start, end=end)
+    except ClockFormatError as exc:
+        return {"success": False, "reason": str(exc)}
+
+    begins, finishes = times["start"], times["end"]
+    duration_minutes = (
+        datetime.combine(day, finishes) - datetime.combine(day, begins)
+    ).seconds // 60
     resp = await get_client().post(
         "/api/rooms/book",
         json={
             "location_id": location_id,
             "room_code": room_code,
             "day": day.isoformat(),
-            "start": start.isoformat(),
+            "start": begins.isoformat(),
             "duration_minutes": duration_minutes,
             "reference": title,
             "description": title,
@@ -114,8 +193,9 @@ async def book_room(
         "location_id": data["location_id"],
         "room_code": data["room_code"],
         "day": day.isoformat(),
-        "start": start.isoformat(),
-        "end": end.isoformat(),
+        "start": begins.isoformat(),
+        "end": finishes.isoformat(),
+        **({"note": note} if note else {}),
     }
 
 

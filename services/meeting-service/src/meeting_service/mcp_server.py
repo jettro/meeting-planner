@@ -48,6 +48,59 @@ auth = StaticTokenVerifier(tokens={MCP_API_KEY: {"client_id": "agent", "scopes":
 mcp = FastMCP("meeting-service-mcp", auth=auth)
 
 
+class ClockFormatError(ValueError):
+    """A tool was given something that is not a local clock reading."""
+
+
+def _clock(name: str, value: str) -> time:
+    """Parse a local clock reading such as `14:30`.
+
+    These parameters are plain strings rather than `time` on purpose. Declared
+    as a time, the generated tool schema carries `format: time`, and in live
+    runs models answered that with a full ISO value - `10:00:00+00:00` - which
+    is not a thing this domain has. A venue has no timezone, so an offset
+    cannot be converted, only ignored or refused.
+
+    A trailing offset is therefore ignored and the clock reading taken at face
+    value, which is what the model meant in every observed case; the caller
+    reports that it did so. Anything that is not a clock reading is refused,
+    because guessing an hour is how a meeting ends up in the wrong place.
+    """
+    text = value.strip()
+    for marker in ("+", "-"):
+        head = text.split(marker, 1)[0]
+        if head != text and ":" in head:
+            text = head
+    if text.endswith("Z"):
+        text = text[:-1]
+
+    parts = text.split(":")
+    if len(parts) not in (2, 3) or not all(p.isdigit() for p in parts):
+        raise ClockFormatError(f"{name}={value!r} is not a local time; send it as HH:MM")
+    try:
+        return time(int(parts[0]), int(parts[1]), int(parts[2]) if len(parts) == 3 else 0)
+    except ValueError as exc:
+        raise ClockFormatError(f"{name}={value!r} is not a local time: {exc}") from exc
+
+
+def _clocks(**values: str) -> tuple[dict[str, time], str]:
+    """Parse several clock readings, with a note if any offset was dropped."""
+    parsed = {name: _clock(name, value) for name, value in values.items()}
+    dropped = [name for name, value in values.items() if _has_offset(value)]
+    note = ""
+    if dropped:
+        note = (
+            f"{' and '.join(dropped)} arrived with a timezone offset, which was "
+            "ignored: times here are local to the venue. Send HH:MM next time."
+        )
+    return parsed, note
+
+
+def _has_offset(value: str) -> bool:
+    body = value.strip()
+    return body.endswith("Z") or "+" in body or body.count("-") > 0
+
+
 @mcp.tool
 async def list_people() -> list[dict[str, str]]:
     """List all known people (email + name) so an agent can resolve names to the
@@ -104,42 +157,62 @@ async def find_common_slots(
 
 @mcp.tool
 async def check_meeting_feasibility(
-    participant_emails: list[str], day: date, start: time, end: time
+    participant_emails: list[str], day: date, start: str, end: str
 ) -> dict[str, Any]:
     """Check whether all given participants are free for a proposed meeting slot,
-    without booking anything."""
+    without booking anything.
+
+    `start` and `end` are local clock readings such as `14:30`. Agendas carry no
+    timezone, so do not add an offset.
+    """
+    try:
+        times, note = _clocks(start=start, end=end)
+    except ClockFormatError as exc:
+        return {"feasible": False, "reason": str(exc)}
+
     resp = await get_client().post(
         "/api/meetings/check-availability",
         json={
             "participant_emails": participant_emails,
             "day": day.isoformat(),
-            "start": start.isoformat(),
-            "end": end.isoformat(),
+            "start": times["start"].isoformat(),
+            "end": times["end"].isoformat(),
         },
     )
     resp.raise_for_status()
     data = resp.json()
     unavailable = [r["email"] for r in data["results"] if not r["available"]]
-    return {"feasible": data["all_available"], "unavailable_people": unavailable}
+    result = {"feasible": data["all_available"], "unavailable_people": unavailable}
+    if note:
+        result["note"] = note
+    return result
 
 
 @mcp.tool
 async def book_meeting(
-    participant_emails: list[str], day: date, start: time, end: time, title: str
+    participant_emails: list[str], day: date, start: str, end: str, title: str
 ) -> dict[str, Any]:
     """Book a meeting for the given participants if they are all available.
 
     On failure, returns a human-readable `reason` the agent can relay or act on
     (e.g. try a different slot) instead of a list of alternatives.
+
+    `start` and `end` are local clock readings such as `14:30`. Agendas carry no
+    timezone, so do not add an offset.
     """
+    try:
+        times, note = _clocks(start=start, end=end)
+    except ClockFormatError as exc:
+        return {"success": False, "reason": str(exc)}
+
     resp = await get_client().post(
         "/api/meetings/book",
         json={
             "title": title,
             "participant_emails": participant_emails,
             "day": day.isoformat(),
-            "start": start.isoformat(),
-            "end": end.isoformat(),
+            "start": times["start"].isoformat(),
+            "end": times["end"].isoformat(),
         },
     )
     resp.raise_for_status()
@@ -154,6 +227,7 @@ async def book_meeting(
         "start": meeting["start"],
         "end": meeting["end"],
         "participant_emails": meeting["participant_emails"],
+        **({"note": note} if note else {}),
     }
 
 

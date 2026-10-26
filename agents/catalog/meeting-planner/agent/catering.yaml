@@ -6,7 +6,7 @@ model_type: akgentic.core.AgentCard
 description: "Orders lunch from the NomNom service for a location and date."
 payload:
   description: "Orders lunch from the NomNom service for a location and date."
-  agent_class: akgentic.agent.BaseAgent
+  agent_class: meeting_agents.specialists.Catering
   skills:
     - catering
     - lunch

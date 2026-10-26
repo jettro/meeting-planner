@@ -158,3 +158,45 @@ async def test_find_common_slots_unknown_person_returns_error():
             )
         ).data
         assert "error" in result
+
+
+async def test_an_offset_the_model_invented_is_ignored_and_reported():
+    """Same as the location service: agendas are local wall-clock, so an offset
+    is noise. The booking goes through at the clock reading given, and the
+    answer says the offset was dropped."""
+    async with Client(mcp_server.mcp) as client:
+        result = (
+            await client.call_tool(
+                "book_meeting",
+                {
+                    "participant_emails": ["jettro@rag4j.org"],
+                    "day": "2033-05-10",
+                    "start": "14:00:00+02:00",
+                    "end": "15:00:00+02:00",
+                    "title": "Offset",
+                },
+            )
+        ).data
+
+        assert result["success"] is True
+        assert result["start"] == "14:00:00"
+        assert "local" in result["note"]
+
+
+async def test_a_time_that_is_not_a_clock_reading_is_refused():
+    async with Client(mcp_server.mcp) as client:
+        result = (
+            await client.call_tool(
+                "book_meeting",
+                {
+                    "participant_emails": ["jettro@rag4j.org"],
+                    "day": "2033-05-11",
+                    "start": "after lunch",
+                    "end": "15:00",
+                    "title": "Vague",
+                },
+            )
+        ).data
+
+        assert result["success"] is False
+        assert "HH:MM" in result["reason"]

@@ -6,6 +6,8 @@ from datetime import date, time
 
 from pydantic import BaseModel, EmailStr, Field
 
+from meeting_service.clock import WallClock
+
 
 class PersonRead(BaseModel):
     email: str
@@ -15,8 +17,8 @@ class PersonRead(BaseModel):
 class AvailabilityCheckRequest(BaseModel):
     participant_emails: list[EmailStr]
     day: date
-    start: time
-    end: time
+    start: WallClock
+    end: WallClock
 
 
 class PersonAvailability(BaseModel):
@@ -63,8 +65,8 @@ class MeetingRequest(BaseModel):
     description: str = ""
     participant_emails: list[EmailStr]
     day: date
-    start: time
-    end: time
+    start: WallClock
+    end: WallClock
 
 
 class MeetingRead(BaseModel):

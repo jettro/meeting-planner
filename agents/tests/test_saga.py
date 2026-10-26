@@ -273,7 +273,7 @@ def test_rejection_books_nothing_and_needs_no_compensation(team):
     assert failed.plan.meeting_id is None
     assert failed.plan.booking_id is None
     assert failed.plan.order_id is None
-    assert failed.compensated == []
+    assert failed.outstanding == []
 
 
 def test_the_plan_is_persisted_by_the_repository(team, tmp_path):
@@ -305,3 +305,35 @@ def test_an_unknown_plan_id_is_ignored(team):
     )
     with pytest.raises(queue.Empty):
         Inbox.messages.get(timeout=1.0)
+
+
+def test_a_failure_after_booking_reports_what_is_still_booked(team):
+    """`outstanding` is what the plan left behind, not what was undone.
+
+    A live run booked a meeting, failed on the room, and reported
+    `cancel_meeting` - and the meeting was still in the service afterwards,
+    because running the undo steps is iteration 2. The name has to say that.
+    """
+    Inbox.reset()
+    plan = PlanMeetingRequest(
+        title="Leftovers",
+        participant_emails=["a@example.com"],
+        day=DAY,
+        duration_minutes=60,
+        location_id="AMS",
+        with_lunch=False,
+    ).to_plan()
+    booked = plan.model_copy(
+        update={
+            "proposed_start": SLOT.start,
+            "proposed_end": SLOT.end,
+            "approved": True,
+            "meeting_id": MEETING_ID,
+        }
+    )
+
+    steps = booked.compensations()
+
+    assert [s.step for s in steps] == ["cancel_meeting"]
+    assert steps[0].reference == str(MEETING_ID)
+    assert booked.meeting_id == MEETING_ID, "nothing was undone by asking what to undo"

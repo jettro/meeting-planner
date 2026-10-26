@@ -94,3 +94,23 @@ def test_common_slots_unknown_person_is_404():
             json={"participant_emails": ["nobody@rag4j.org"], "day": "2032-04-07"},
         )
         assert response.status_code == 404
+
+
+def test_booking_with_a_timezone_offset_is_refused_clearly():
+    """Agendas are local wall-clock, so an offset is ambiguous rather than
+    helpful; refusing beats guessing an hour. See location-service for the
+    live failure that found this."""
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/meetings/book",
+            json={
+                "title": "Offset",
+                "participant_emails": ["jettro@rag4j.org"],
+                "day": "2032-04-06",
+                "start": "09:00:00+02:00",
+                "end": "10:00:00+02:00",
+            },
+        )
+
+        assert response.status_code == 422
+        assert "timezone" in response.text

@@ -17,9 +17,11 @@ from meeting_agents.messages import (
     OrderLunchAssignment,
     PlanMeetingRequest,
     ProposedSlot,
+    SlotApprovalDecision,
     SlotApprovalRequest,
 )
 from meeting_agents.plan import PlanStatus
+from pydantic import ValidationError
 
 DAY = date(2031, 9, 15)
 SLOT = ProposedSlot(start=time(10, 0), end=time(11, 0))
@@ -123,3 +125,13 @@ def test_approval_question_lists_every_candidate():
 
 def test_the_declared_vocabulary_has_no_duplicates():
     assert len(MESSAGE_TYPES) == len(set(MESSAGE_TYPES))
+
+
+def test_approval_must_name_its_slot():
+    """Found live: a client sending `approved=True` with the slot under the
+    wrong field name was read as a refusal and the plan was cancelled."""
+    with pytest.raises(ValidationError):
+        SlotApprovalDecision(plan_id="p1", approved=True)
+
+    refusal = SlotApprovalDecision(plan_id="p1", approved=False)
+    assert refusal.slot is None

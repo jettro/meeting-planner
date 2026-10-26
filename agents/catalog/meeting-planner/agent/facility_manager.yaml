@@ -6,13 +6,17 @@ model_type: akgentic.core.AgentCard
 description: "Books the room, and has @Catering arrange the lunch that goes with it."
 payload:
   description: "Books the room, and has @Catering arrange the lunch that goes with it."
-  agent_class: akgentic.agent.BaseAgent
+  agent_class: meeting_agents.specialists.FacilityManager
   skills:
     - rooms
     - facilities
   config:
     name: "@FacilityManager"
     role: FacilityManager
+    # Lunch is this agent's business, not the coordinator's (D2): it asks
+    # @Catering itself and reports the facilities as one result.
+    catering_name: "@Catering"
+    coordinator_name: "@Coordinator"
     prompt:
       template:
         __ref__: facility_manager_prompt

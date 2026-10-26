@@ -26,6 +26,13 @@ EXPECTED_SERVER = {
     "catering": ("catering", "NOMNOM"),
 }
 
+# Each specialist is its own class, because each handles different assignments.
+EXPECTED_CLASS = {
+    "scheduler": "meeting_agents.specialists.Scheduler",
+    "facility_manager": "meeting_agents.specialists.FacilityManager",
+    "catering": "meeting_agents.specialists.Catering",
+}
+
 
 @pytest.fixture
 def catalog() -> Catalog:
@@ -41,7 +48,7 @@ def load_agent(catalog: Catalog, entry_id: str) -> AgentCard:
 @pytest.mark.parametrize("entry_id", sorted(EXPECTED_SERVER))
 def test_agent_entry_resolves(catalog: Catalog, entry_id: str):
     card = load_agent(catalog, entry_id)
-    assert card.agent_class == "akgentic.agent.BaseAgent"
+    assert card.agent_class == EXPECTED_CLASS[entry_id]
     assert card.config.name.startswith("@")
     assert card.role
     # The prompt __ref__ must have been replaced by the real prompt body.
@@ -109,3 +116,14 @@ def test_catalog_env_covers_every_placeholder_in_the_yaml():
 
     assert placeholders, "expected the catalog to reference env vars"
     assert placeholders <= set(Settings.from_env().as_catalog_env()) | set(os.environ)
+
+
+@pytest.mark.parametrize("entry_id", sorted(EXPECTED_SERVER))
+def test_every_prompt_renders(catalog: Catalog, entry_id: str):
+    """`Prompt.render()` is `template.format(**params)`, so a literal `{` in the
+    text is read as a format field and raises. That happens in `on_start`, where
+    the traceback is easy to miss and the agent silently loses its backstory -
+    found exactly that way in a live run. Rendering here keeps it visible."""
+    prompt = load_agent(catalog, entry_id).config.prompt
+    assert prompt is not None
+    assert prompt.render().strip()

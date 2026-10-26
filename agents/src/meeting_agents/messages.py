@@ -22,7 +22,7 @@ from __future__ import annotations
 from datetime import date, time
 
 from akgentic.core.messages import Message
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from meeting_agents.plan import Compensation, MeetingPlan
 
@@ -77,6 +77,19 @@ class SlotApprovalDecision(Message):
     approved: bool
     slot: ProposedSlot | None = None
 
+    @model_validator(mode="after")
+    def _approval_names_its_slot(self) -> SlotApprovalDecision:
+        """An approval without a slot is rejected here rather than downstream.
+
+        The coordinator reads a missing slot as a refusal, so such a message
+        would quietly cancel the plan and tell the human it was not approved -
+        a confusing lie. A client that gets the field name wrong should hear
+        about it at the point of the mistake.
+        """
+        if self.approved and self.slot is None:
+            raise ValueError("an approved decision must carry the slot it approved")
+        return self
+
 
 # --------------------------------------------------------------------------
 # @Coordinator -> human
@@ -107,11 +120,15 @@ class PlanCompleted(Message):
 
 
 class PlanFailed(Message):
-    """The plan could not be completed; `compensations` were run to undo it."""
+    """The plan could not be completed, and what it left behind."""
 
     plan: MeetingPlan
     reason: str
-    compensated: list[Compensation] = Field(default_factory=list)
+    #: What is still booked and needs undoing - *not* what has been undone.
+    #: Running these is iteration 2 (§7.1); until then a failure at least says
+    #: plainly what it left behind. A live run read the old name, `compensated`,
+    #: as "already cancelled" and trusted a meeting to be gone when it was not.
+    outstanding: list[Compensation] = Field(default_factory=list)
 
 
 # --------------------------------------------------------------------------

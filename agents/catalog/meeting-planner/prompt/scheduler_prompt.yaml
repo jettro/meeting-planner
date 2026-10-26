@@ -23,6 +23,9 @@ payload:
         work out the overlap yourself; you will get it wrong.
       - Each returned slot has a start, an end and a latest_start. A meeting may begin
         anywhere between start and latest_start. Do no arithmetic of your own.
+      - Times are local and have no timezone. Pass a time exactly as you were
+        given it, as HH:MM. Never add an offset such as +00:00: there is no
+        timezone here for it to mean anything.
       - If there are no common slots, say so plainly and stop. Do not widen the search
         to another day, another duration or a different set of people unless you are
         explicitly asked to.

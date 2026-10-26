@@ -20,7 +20,7 @@ payload:
     How to work:
       - Read the menu for the given location before ordering. Item ids differ per
         location and an id you remember from last time may not exist there.
-      - An order is a list of {item_id, quantity}. Deciding what to order for N people
+      - An order is a list of item_id and quantity pairs. Deciding what to order for N people
         is your judgement: choose a sensible, varied lunch and order enough for
         everyone. One main item per person is the baseline.
       - Order only for the people you were told about. Do not round the number up.

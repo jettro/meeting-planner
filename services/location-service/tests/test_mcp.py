@@ -133,3 +133,50 @@ async def test_cancel_unknown_booking_returns_failure_not_error():
             await client.call_tool("cancel_room_booking", {"booking_id": 999999})
         ).data
         assert result["success"] is False
+
+
+async def test_an_offset_the_model_invented_is_ignored_and_reported():
+    """Live runs showed models answering a `format: time` schema with
+    `11:00:00+00:00`. A venue has no timezone, so the offset is meaningless
+    rather than a conversion request - the clock reading is taken at face value
+    and the agent is told, instead of the plan dying over punctuation."""
+    async with Client(mcp_server.mcp) as client:
+        result = (
+            await client.call_tool(
+                "book_room",
+                {
+                    "location_id": "luminis",
+                    "room_code": "room-a",
+                    "day": "2031-01-02",
+                    "start": "11:00:00+00:00",
+                    "end": "12:00:00+00:00",
+                    "title": "Offset",
+                },
+            )
+        ).data
+
+        assert result["success"] is True
+        assert result["start"] == "11:00:00"
+        assert result["end"] == "12:00:00"
+        assert "local" in result["note"]
+
+
+async def test_a_time_that_is_not_a_clock_reading_is_refused():
+    """Ignoring an offset is safe; guessing at nonsense is not."""
+    async with Client(mcp_server.mcp) as client:
+        result = (
+            await client.call_tool(
+                "book_room",
+                {
+                    "location_id": "luminis",
+                    "room_code": "room-a",
+                    "day": "2031-01-02",
+                    "start": "elevenish",
+                    "end": "12:00",
+                    "title": "Vague",
+                },
+            )
+        ).data
+
+        assert result["success"] is False
+        assert "HH:MM" in result["reason"]
