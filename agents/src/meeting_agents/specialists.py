@@ -68,7 +68,13 @@ class SpecialistAgent(BaseAgent):
         try:
             return self.act(message, output_type)
         except Exception as exc:  # noqa: BLE001 - deliberately broad; see docstring
-            logger.exception("[%s] assignment failed", self.config.name)
+            # The traceback is a debug detail, not news for the person at the
+            # terminal: a provider timeout used to bury the one line that
+            # mattered under two hundred lines of frames. The reason travels to
+            # the coordinator and is reported there; `--verbose` still has the
+            # full stack for when the cause is not obvious.
+            logger.error("[%s] assignment failed: %s", self.config.name, exc)
+            logger.debug("[%s] assignment failed", self.config.name, exc_info=True)
             self.fail(plan_id, f"{type(exc).__name__}: {exc}", sender)
             return None
 

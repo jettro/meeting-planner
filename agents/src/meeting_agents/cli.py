@@ -32,9 +32,11 @@ from meeting_agents.messages import (
 )
 from meeting_agents.settings import Settings
 
-#: Long enough for a specialist's model call and its MCP round trips; short
-#: enough that a wedged run ends by itself rather than hanging a terminal.
-REPLY_TIMEOUT_SECONDS = 300.0
+#: The safety net for a wedged run, not a performance target. A specialist may
+#: spend up to its 240s HTTP timeout on one call, and three run back to back
+#: between approval and a booked meeting, so anything near that sum turns a slow
+#: provider into a spurious failure. Fifteen minutes is far past any healthy run.
+REPLY_TIMEOUT_SECONDS = 900.0
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -93,6 +95,11 @@ def report_completed(message: PlanCompleted) -> None:
 
 def report_failed(message: PlanFailed) -> None:
     print(f"\nThe meeting was not booked: {message.reason}", file=sys.stderr)
+    if "Timeout" in message.reason:
+        print(
+            "The model did not answer in time. Nothing was booked - run it again.",
+            file=sys.stderr,
+        )
     if message.outstanding:
         print("Still booked, and not yet undone:", file=sys.stderr)
         for step in message.outstanding:
@@ -124,7 +131,7 @@ def converse(runtime: TeamRuntime, channel: QueueChannel) -> int:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     logging.basicConfig(
-        level=logging.INFO if args.verbose else logging.WARNING,
+        level=logging.DEBUG if args.verbose else logging.WARNING,
         format="%(levelname)s %(name)s %(message)s",
     )
 

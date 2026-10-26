@@ -661,6 +661,45 @@ workshop"*, which is what the person reading the room calendar needs.
 Also confirmed: shell variables win over `uv run --env-file`, so the Makefile can
 point a host run at `localhost:810x` without touching the committed `.env`.
 
+### 7.6 A timeout is a design decision, not an accident
+
+The first run by someone other than me failed, and it failed in the least
+useful way imaginable: two hundred lines of traceback ending in
+`ModelTimeoutError`. Three things were wrong, and only one of them was the
+timeout.
+
+**akgentic's defaults are deliberate, and they are not ours.** A model request
+times out after 120s, and the retry policy explicitly *does not* retry a
+timeout — it retries 429s and 5xx, which are unambiguous, and fast-fails
+everything else. That is a sound default: a timed-out request may still be
+executing on the server, so retrying one that books a room could double-book
+it. But a reasoning model with nine tools exceeds 120s often enough to matter,
+and because a specialist's failure fails the whole plan, one slow call ends
+everything. The specialists now allow 240s via
+`runtime_cfg.http_client_config.timeout`. We raise the ceiling rather than add
+retries, precisely because the framework is right about the risk.
+
+**A timeout budget is a chain, not a number.** The CLI gave up after 300s —
+longer than one call at the old 120s, shorter than one call at the new 240s,
+and far shorter than the three back-to-back calls between approval and a booked
+meeting. Raising one timeout without the other would have converted a provider
+failure into a *client* failure. It is now 900s, and a test pins it above three
+slow calls, because the next person to tune one of these numbers needs to be
+told about the other.
+
+**A traceback is not an error message.** `logger.exception` put the full stack
+in front of a person who only needed to know that nothing was booked and they
+could try again. The reason already travels to the coordinator as a typed
+`AssignmentFailed` and is reported there; the stack is a debug detail and now
+appears only under `--verbose`. Verified by forcing a timeout: five readable
+lines instead of two hundred.
+
+What this did *not* turn out to be is worth recording too. The obvious suspect
+was the approval gate — a human taking minutes to answer while sessions sit
+idle. A run with a four-minute pause before answering completed normally, so
+the actor, its MCP session and its connection pool all survive an idle human.
+The gate is not the fragile part.
+
 ### 7.2 Implementation order
 
 1. ✅ `find_common_slots` REST endpoint + MCP tool on meeting-service, with tests (closes G1).
@@ -777,3 +816,13 @@ point a host run at `localhost:810x` without touching the committed `.env`.
   Verified live: a containerised run booked meeting 6, room-a (booking 11,
   correctly titled) and a CONFIRMED lunch order, with the plan record persisted
   on its own volume. 167 tests pass.
+- 2026-10-26: A run by someone other than me died on `ModelTimeoutError` with a
+  two-hundred-line traceback. Three fixes, written up in §7.6: the specialists
+  now allow 240s per model call (akgentic defaults to 120s and deliberately does
+  *not* retry a timeout, since a timed-out booking may still have happened —
+  so we raise the ceiling rather than retry); the CLI's reply budget went to
+  900s, because three slow calls run back to back between approval and a booked
+  meeting and a client timeout below that sum invents failures; and the stack
+  trace is now a `--verbose` detail rather than the first thing a person sees.
+  Also ruled out, by experiment: a human taking four minutes to answer the
+  approval prompt breaks nothing. 172 tests pass.

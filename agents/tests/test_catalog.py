@@ -127,3 +127,12 @@ def test_every_prompt_renders(catalog: Catalog, entry_id: str):
     prompt = load_agent(catalog, entry_id).config.prompt
     assert prompt is not None
     assert prompt.render().strip()
+
+
+@pytest.mark.parametrize("entry_id", sorted(EXPECTED_SERVER))
+def test_specialists_allow_a_slow_model_call(catalog: Catalog, entry_id: str):
+    """akgentic's default is 120s and its retry policy deliberately does not
+    retry a timeout, so one slow reasoning call ends the whole plan. It happened
+    in a real run; see design_akgents.md section 7.6."""
+    card = load_agent(catalog, entry_id)
+    assert card.config.runtime_cfg.http_client_config.timeout >= 240.0

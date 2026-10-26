@@ -17,6 +17,12 @@ payload:
       template:
         __ref__: scheduler_prompt
       params: {}
+    # A reasoning model with nine tools can take well over the 120s default,
+    # and akgentic's retry policy deliberately does not retry a timeout - so a
+    # single slow call would end the whole plan. See design_akgents.md 7.6.
+    runtime_cfg:
+      http_client_config:
+        timeout: 240.0
     model_cfg:
       __ref__: default_model
     tools:

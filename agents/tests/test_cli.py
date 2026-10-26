@@ -18,6 +18,7 @@ import pytest
 from akgentic.core import ActorSystem, AgentCard, Akgent, BaseConfig, BaseState
 from akgentic.team import TeamCard, TeamCardMember, TeamFactory
 from meeting_agents.cli import (
+    REPLY_TIMEOUT_SECONDS,
     ask_for_approval,
     converse,
     main,
@@ -395,3 +396,21 @@ def test_missing_api_key_says_so_instead_of_failing_at_the_provider(monkeypatch,
 
     assert exit_code == 2
     assert "OPENAI_API_KEY" in capsys.readouterr().err
+
+
+def test_a_timeout_is_explained_rather_than_just_named(capsys):
+    """A provider timeout is the one failure a user can simply retry, and the
+    exception name alone does not say that nothing was booked."""
+    report_failed(PlanFailed(plan=a_plan(), reason="ModelTimeoutError: Request timed out."))
+
+    shown = capsys.readouterr().err
+    assert "did not answer in time" in shown
+    assert "Nothing was booked" in shown
+
+
+def test_the_reply_timeout_outlasts_three_slow_specialists():
+    """Between approval and a booked meeting the scheduler, facility manager and
+    catering each run once, and each may spend its full HTTP timeout. A reply
+    budget below that sum reports a failure for a plan that is merely slow."""
+    slowest_agent_call = 240.0
+    assert REPLY_TIMEOUT_SECONDS > 3 * slowest_agent_call
