@@ -129,6 +129,13 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     settings = Settings.from_env()
+    if not settings.openai_api_key:
+        print(
+            "No OPENAI_API_KEY set. The team cannot think without one: put it in .env "
+            "and start this through `make plan-meeting` or `make plan-meeting-docker`.",
+            file=sys.stderr,
+        )
+        return 2
     card = load_team_card(settings)
 
     channel = QueueChannel()

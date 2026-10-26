@@ -672,7 +672,7 @@ point a host run at `localhost:810x` without touching the committed `.env`.
 5. ✅ `@Scheduler`, `@FacilityManager`, `@Catering` LLM agents — verified live against the
    running MCP containers and `gpt-6-luna` (see §7.4).
 6. ✅ CLI runner + approval gate via `HumanProxy` — verified live end to end (see §7.5).
-7. Dockerfile, compose service, Makefile targets, README.
+7. ✅ Dockerfile, compose service, Makefile targets, README.
 
 ---
 
@@ -764,3 +764,16 @@ point a host run at `localhost:810x` without touching the committed `.env`.
   lunch order persisted. The run also exposed a room booked as "Meeting" — the
   facility manager was never given the title, so the model invented one;
   `BookFacilitiesAssignment` now carries it. See §7.5. 166 tests pass.
+- 2026-10-26: Step 7 — the team ships as a container (D7). Unlike the three
+  services it is **not a server**: one run plans one meeting and exits, so it
+  sits behind a compose `profiles: ["agents"]` (left alone by `make up`), keeps
+  `stdin_open`/`tty` for the approval prompt, and takes its arguments straight
+  from `docker compose run` via an `ENTRYPOINT`. Inside the network each agent
+  still reaches exactly one MCP server, by compose service name. The catalog
+  travels in the image; URLs and secrets stay `${VAR}` placeholders in the
+  environment, so nothing secret is baked in. `make plan-meeting` (host) and
+  `make plan-meeting-docker` (container) are the two ways in, and a missing
+  `OPENAI_API_KEY` now fails by name rather than inside a provider call.
+  Verified live: a containerised run booked meeting 6, room-a (booking 11,
+  correctly titled) and a CONFIRMED lunch order, with the plan record persisted
+  on its own volume. 167 tests pass.

@@ -5,7 +5,7 @@ SERVICES := meeting-service location-service nomnom-service
 .PHONY: help sync lint format typecheck test check \
         run-meeting run-location run-nomnom \
         run-meeting-mcp run-location-mcp run-nomnom-mcp \
-        plan-meeting \
+        plan-meeting plan-meeting-docker \
         up down build logs ps clean
 
 help: ## Show this help
@@ -67,10 +67,13 @@ AGENT_HOST_ENV := CATALOG_PATH=agents/catalog \
 plan-meeting: ## Plan a meeting from the terminal; needs `make up`. Pass ARGS="--title ..."
 	@$(AGENT_HOST_ENV) uv run --env-file .env --package meeting-agents plan-meeting $(ARGS)
 
+plan-meeting-docker: ## Same, but inside the agents container. Pass ARGS="--title ..."
+	docker compose run --rm agents $(ARGS)
+
 ## --- Docker Compose ----------------------------------------------------------
 
-build: ## Build all Docker images
-	docker compose build
+build: ## Build all Docker images (including the agents runner)
+	docker compose --profile agents build
 
 up: ## Start all services in the background (detached)
 	docker compose up -d

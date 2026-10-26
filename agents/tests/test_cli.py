@@ -20,6 +20,7 @@ from akgentic.team import TeamCard, TeamCardMember, TeamFactory
 from meeting_agents.cli import (
     ask_for_approval,
     converse,
+    main,
     parse_args,
     report_completed,
     report_failed,
@@ -371,3 +372,26 @@ def test_declining_at_the_terminal_leaves_nothing_booked(live_team, monkeypatch)
     )
 
     assert converse(runtime, channel) == 1
+
+
+def test_missing_api_key_says_so_instead_of_failing_at_the_provider(monkeypatch, capsys):
+    """Easy to hit in a container with no .env. Failing here, by name, beats
+    failing later inside a provider call with a less obvious message."""
+    for name in ("OPENAI_API_KEY", "CATALOG_PATH"):
+        monkeypatch.delenv(name, raising=False)
+
+    exit_code = main(
+        [
+            "--title",
+            "Jettro and Daniel",
+            "--with",
+            "jettro@example.com",
+            "--day",
+            DAY.isoformat(),
+            "--at",
+            "luminis",
+        ]
+    )
+
+    assert exit_code == 2
+    assert "OPENAI_API_KEY" in capsys.readouterr().err

@@ -35,7 +35,35 @@ services:
       NOMNOM_SERVICE_DB: /data/nomnom.db
       NOMNOM_MCP_API_KEY: ${NOMNOM_MCP_API_KEY:-dev-nomnom-mcp-key}
 
+  # The agent team (design_akgents.md, D7). Not a server: one run plans one
+  # meeting and exits, so it sits behind a profile and `make up` ignores it.
+  # Start it with `make plan-meeting-docker ARGS="..."`.
+  agents:
+    build:
+      context: ./agents
+    profiles: ["agents"]
+    # The team asks the human to approve a time slot; that needs a terminal.
+    stdin_open: true
+    tty: true
+    depends_on:
+      - meeting-service
+      - location-service
+      - nomnom-service
+    volumes:
+      - agents-data:/data
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-gpt-6-luna}
+      # Inside the network each agent reaches exactly one service's MCP server.
+      MEETING_MCP_URL: http://meeting-service:8101/mcp
+      LOCATION_MCP_URL: http://location-service:8102/mcp
+      NOMNOM_MCP_URL: http://nomnom-service:8103/mcp
+      MEETING_MCP_API_KEY: ${MEETING_MCP_API_KEY:-dev-meeting-mcp-key}
+      LOCATION_MCP_API_KEY: ${LOCATION_MCP_API_KEY:-dev-location-mcp-key}
+      NOMNOM_MCP_API_KEY: ${NOMNOM_MCP_API_KEY:-dev-nomnom-mcp-key}
+
 volumes:
   meeting-data:
   location-data:
   nomnom-data:
+  agents-data:

@@ -53,6 +53,17 @@ make plan-meeting ARGS='--title "Design review" \
 The team proposes candidate time slots, waits for you to approve one — nothing is booked before
 you do — and then books the meeting, the room and the lunch.
 
+It also runs as a container, reaching the MCP servers over the compose network instead of
+`localhost`:
+
+```bash
+make build                                     # includes the agents image
+make plan-meeting-docker ARGS='--title "Design review" ...'
+```
+
+It is not a server: one run plans one meeting and exits, so it sits behind a compose profile and
+`make up` leaves it alone.
+
 ## Project layout
 
 ```
@@ -63,6 +74,7 @@ meeting-planner/
 ├── docker-compose.yml         # Runs all three services together
 ├── Makefile                   # Shortcuts for common dev tasks (see `make help`)
 ├── agents/                    # The Akgents team + CLI runner
+│   ├── Dockerfile
 │   ├── catalog/               # Team, agent, tool, model and prompt YAML
 │   ├── src/meeting_agents/    # Coordinator, specialists, messages, plan store, CLI
 │   └── tests/
@@ -137,6 +149,7 @@ Run `make help` for the full list. Highlights:
 | `make check`        | lint + typecheck + test (what CI should run)                 |
 | `make run-<name>`   | run a single service locally with `uvicorn --reload`         |
 | `make plan-meeting` | ask the agent team to plan a meeting (needs `make up`)       |
+| `make plan-meeting-docker` | the same, in the agents container                     |
 | `make build`        | `docker compose build`                                       |
 | `make up` / `down`  | start/stop the full stack (containers only; volumes kept)    |
 | `make clean`        | stop the stack **and delete** the SQLite data volumes         |
