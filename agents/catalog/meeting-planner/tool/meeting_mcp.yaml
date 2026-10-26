@@ -1,0 +1,12 @@
+id: meeting_mcp
+kind: tool
+namespace: meeting-planner
+user_id: anonymous
+model_type: akgentic.tool.mcp.MCPTool
+description: "Meeting service: people, agendas, common free slots, meeting booking and cancellation."
+payload:
+  connection:
+    url: ${MEETING_MCP_URL}
+    transport: streamable-http
+    bearer_token: ${MEETING_MCP_API_KEY}
+    tool_prefix: meeting

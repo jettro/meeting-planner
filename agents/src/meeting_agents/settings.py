@@ -36,7 +36,7 @@ class Settings(BaseModel):
     nomnom_mcp: McpEndpoint
 
     openai_api_key: str = ""
-    model: str = "gpt-4o-mini"
+    model: str = "gpt-6-luna"
 
     plan_store_path: Path = Field(default=Path("data/plans.json"))
     catalog_path: Path = Field(default=Path("catalog"))
@@ -63,7 +63,7 @@ class Settings(BaseModel):
                 api_key=_env("NOMNOM_MCP_API_KEY", "dev-nomnom-mcp-key"),
             ),
             openai_api_key=_env("OPENAI_API_KEY", ""),
-            model=_env("AGENT_MODEL", "gpt-4o-mini"),
+            model=_env("AGENT_MODEL", "gpt-6-luna"),
             plan_store_path=Path(_env("PLAN_STORE_PATH", "data/plans.json")),
             catalog_path=Path(_env("CATALOG_PATH", "catalog")),
         )

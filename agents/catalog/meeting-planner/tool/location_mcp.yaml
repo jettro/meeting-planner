@@ -1,0 +1,12 @@
+id: location_mcp
+kind: tool
+namespace: meeting-planner
+user_id: anonymous
+model_type: akgentic.tool.mcp.MCPTool
+description: "Location service: locations, rooms, room availability, room booking and cancellation."
+payload:
+  connection:
+    url: ${LOCATION_MCP_URL}
+    transport: streamable-http
+    bearer_token: ${LOCATION_MCP_API_KEY}
+    tool_prefix: facility

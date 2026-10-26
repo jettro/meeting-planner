@@ -1,0 +1,12 @@
+id: nomnom_mcp
+kind: tool
+namespace: meeting-planner
+user_id: anonymous
+model_type: akgentic.tool.mcp.MCPTool
+description: "NomNom service: lunch menu, product search, order placement and cancellation."
+payload:
+  connection:
+    url: ${NOMNOM_MCP_URL}
+    transport: streamable-http
+    bearer_token: ${NOMNOM_MCP_API_KEY}
+    tool_prefix: catering

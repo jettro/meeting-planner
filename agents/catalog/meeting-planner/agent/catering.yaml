@@ -1,0 +1,23 @@
+id: catering
+kind: agent
+namespace: meeting-planner
+user_id: anonymous
+model_type: akgentic.core.AgentCard
+description: "Orders lunch from the NomNom service for a location and date."
+payload:
+  description: "Orders lunch from the NomNom service for a location and date."
+  agent_class: akgentic.agent.BaseAgent
+  skills:
+    - catering
+    - lunch
+  config:
+    name: "@Catering"
+    role: Catering
+    prompt:
+      template:
+        __ref__: catering_prompt
+      params: {}
+    model_cfg:
+      __ref__: default_model
+    tools:
+      - __ref__: nomnom_mcp

@@ -1,0 +1,9 @@
+id: default_model
+kind: model
+namespace: meeting-planner
+user_id: anonymous
+model_type: akgentic.llm.ModelConfig
+description: "Default model for the specialist agents (small/fast tier)."
+payload:
+  provider: openai
+  model: gpt-6-luna

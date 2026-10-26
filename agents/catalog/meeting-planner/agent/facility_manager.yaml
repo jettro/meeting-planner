@@ -1,0 +1,23 @@
+id: facility_manager
+kind: agent
+namespace: meeting-planner
+user_id: anonymous
+model_type: akgentic.core.AgentCard
+description: "Books the room, and has @Catering arrange the lunch that goes with it."
+payload:
+  description: "Books the room, and has @Catering arrange the lunch that goes with it."
+  agent_class: akgentic.agent.BaseAgent
+  skills:
+    - rooms
+    - facilities
+  config:
+    name: "@FacilityManager"
+    role: FacilityManager
+    prompt:
+      template:
+        __ref__: facility_manager_prompt
+      params: {}
+    model_cfg:
+      __ref__: default_model
+    tools:
+      - __ref__: location_mcp

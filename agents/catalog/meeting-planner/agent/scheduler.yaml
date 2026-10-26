@@ -1,0 +1,23 @@
+id: scheduler
+kind: agent
+namespace: meeting-planner
+user_id: anonymous
+model_type: akgentic.core.AgentCard
+description: "Finds times when every participant is free, and books the meeting."
+payload:
+  description: "Finds times when every participant is free, and books the meeting."
+  agent_class: akgentic.agent.BaseAgent
+  skills:
+    - scheduling
+    - availability
+  config:
+    name: "@Scheduler"
+    role: Scheduler
+    prompt:
+      template:
+        __ref__: scheduler_prompt
+      params: {}
+    model_cfg:
+      __ref__: default_model
+    tools:
+      - __ref__: meeting_mcp

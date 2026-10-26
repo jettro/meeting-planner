@@ -373,8 +373,9 @@ MCP servers by compose service name — `http://meeting-service:8101/mcp` etc. �
 Keys come from the same `*_MCP_API_KEY` env vars already wired in `.env.example`, injected into the
 catalog YAML as `${MEETING_MCP_API_KEY}` and resolved at team-build time (never committed).
 
-LLM provider: **OpenAI**, via `OPENAI_API_KEY`. A cheaper model for the three specialists and a
-stronger one as the shared fallback/roster, following the framework's own sample.
+LLM provider: **OpenAI**, model **`gpt-6-luna`** (the small/fast tier, as used for members in the
+framework's own sample), via `OPENAI_API_KEY` and overridable with `AGENT_MODEL`. The coordinator
+is deterministic (D1) so it needs no model of its own; only the three specialists call one.
 
 ### 4.2 Keeping the GUI and free-text doors open
 
@@ -503,7 +504,7 @@ Found while walking the scenario. None are blockers, but they shape the work.
 | D3 | **`@PlanRepository` actor** owns the MeetingPlan store | Single-owner actor needs no lock; keeps business data separate from team event history |
 | D4 | **Approve the proposed time slot only** | One gate, before anything is written; room and lunch then proceed automatically |
 | D5 | **Only a *location* change rebooks lunch** | A nomnom order is tied to a location, not a room code |
-| D6 | **OpenAI** provider | Cheap model for specialists, stronger one in the roster |
+| D6 | **OpenAI**, default model `gpt-6-luna` | Small/fast tier is enough for the three specialists; the coordinator uses no model at all |
 | D7 | **CLI runner in a 4th container**, MCP via compose service names | Consistent with the rest of the project; `akgentic-infra` deferred but **not** foreclosed — see §4.2 |
 | D8 | **Add `find_common_slots` first**, then the happy path | Turns fallible LLM arithmetic into one deterministic call (G1) |
 
@@ -529,7 +530,9 @@ rewrite. Any change that would break one of those rules needs discussing first.
 
 1. ✅ `find_common_slots` REST endpoint + MCP tool on meeting-service, with tests (closes G1).
 2. ✅ New `agents/` workspace package: dependencies, `MeetingPlan` model, plan store.
-3. Catalog YAML: namespace, team, 5 agent entries, 3 `MCPTool` entries, prompts, model config.
+3. ✅ Catalog YAML: 3 `MCPTool` entries, model config, prompts, the 3 specialist agent entries.
+   (The team card and the two deterministic agent entries move to step 4, because their
+   `agent_class` dotted paths must exist before the YAML referencing them can be loaded.)
 4. `@Coordinator` + `@PlanRepository` deterministic actors; typed messages.
 5. `@Scheduler`, `@FacilityManager`, `@Catering` LLM agents.
 6. CLI runner + approval gate via `HumanProxy`.
@@ -568,3 +571,15 @@ rewrite. Any change that would break one of those rules needs discussing first.
   `compensations()` and `relocation_compensations()` return the undo steps as ordered plain data,
   keeping the saga out of a model's hands and testable without any actor or LLM. 23 tests.
   Verified the framework assumptions against the installed packages — see §2.3.
+- 2026-10-26: Step 3 — the three specialist agents are now defined in **catalog YAML**, not Python:
+  one `MCPTool` entry per service, a shared model entry (`gpt-6-luna`), a prompt per agent, and
+  three agent entries that each `__ref__` exactly one tool. Secrets and URLs are `${VAR}`
+  placeholders resolved from `Settings.as_catalog_env()`, so the catalog is safe to commit.
+  **The isolation guarantee is now asserted by tests rather than by review**: `test_catalog.py`
+  checks that each agent has exactly one MCP tool, that no two agents share a URL, and that no
+  real key is present. Verified live end to end — catalog YAML → `resolve_by_id` → env resolution
+  → `ToolFactory` → the three running MCP containers, each agent listing only its own prefixed
+  tools (`meeting_*`, `facility_*`, `catering_*`). 15 tests; 79 in the workspace.
+  Two findings worth remembering: an unquoted YAML scalar cannot contain `": "`, and
+  `Catalog.resolve()` takes an `Entry` object — `resolve_by_id(namespace, id)` is the call that
+  returns a hydrated model.
