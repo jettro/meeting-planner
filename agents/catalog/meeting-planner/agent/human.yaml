@@ -1,0 +1,17 @@
+id: human
+kind: agent
+namespace: meeting-planner
+user_id: anonymous
+model_type: akgentic.core.AgentCard
+description: "The human's seat at the table, and the team's entry point."
+payload:
+  description: "The human's seat at the table, and the team's entry point."
+  # The swap point for a GUI (§4.2 rule 3). A websocket or REST proxy is a
+  # UserProxy subclass named here instead; no other file changes.
+  agent_class: akgentic.agent.HumanProxy
+  can_be_hired: false
+  skills:
+    - approval
+  config:
+    name: "@Human"
+    role: Human

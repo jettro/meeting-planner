@@ -77,4 +77,5 @@ class Settings(BaseModel):
             "LOCATION_MCP_API_KEY": self.location_mcp.api_key,
             "NOMNOM_MCP_URL": self.nomnom_mcp.url,
             "NOMNOM_MCP_API_KEY": self.nomnom_mcp.api_key,
+            "PLAN_STORE_PATH": str(self.plan_store_path),
         }

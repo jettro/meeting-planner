@@ -1,0 +1,20 @@
+id: coordinator
+kind: agent
+namespace: meeting-planner
+user_id: anonymous
+model_type: akgentic.core.AgentCard
+description: "Sequences the booking saga. Deterministic: no model, no MCP tool."
+payload:
+  description: "Sequences the booking saga. Deterministic: no model, no MCP tool."
+  agent_class: meeting_agents.coordinator.Coordinator
+  can_be_hired: false
+  skills:
+    - coordination
+    - planning
+  config:
+    name: "@Coordinator"
+    role: Coordinator
+    human_name: "@Human"
+    scheduler_name: "@Scheduler"
+    facility_name: "@FacilityManager"
+    repository_name: "@PlanRepository"

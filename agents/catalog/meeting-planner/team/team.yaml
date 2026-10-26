@@ -1,0 +1,66 @@
+id: team
+kind: team
+namespace: meeting-planner
+user_id: anonymous
+model_type: akgentic.team.TeamCard
+description: "The meeting-planner team: a deterministic coordinator and three specialists."
+payload:
+  name: meeting-planner
+  description: >-
+    Arranges a meeting end to end: a time every participant is free, a room at
+    the chosen location, and lunch. Each specialist reaches exactly one service.
+  welcome_message: "Tell me who should meet, on which day, and where."
+
+  # Who creates whom. The human proxy is the entry point and spawns the
+  # coordinator; the coordinator spawns the agents it gives assignments to;
+  # @Catering sits under @FacilityManager because lunch is the facility
+  # manager's business, not the coordinator's (D2).
+  entry_point:
+    card:
+      __ref__: human
+    headcount: 1
+    members:
+      - card:
+          __ref__: coordinator
+        headcount: 1
+        members:
+          - card:
+              __ref__: plan_repository
+            headcount: 1
+            members: []
+          - card:
+              __ref__: scheduler
+            headcount: 1
+            members: []
+          - card:
+              __ref__: facility_manager
+            headcount: 1
+            members:
+              - card:
+                  __ref__: catering
+                headcount: 1
+                members: []
+  members: []
+
+  # A list, deliberately: free-format human input arrives as an extra entry
+  # here rather than as a change to any of these (§4.2 rule 5).
+  message_types:
+    - __type__: meeting_agents.messages.PlanMeetingRequest
+    - __type__: meeting_agents.messages.SlotApprovalDecision
+    - __type__: meeting_agents.messages.SlotApprovalRequest
+    - __type__: meeting_agents.messages.PlanCompleted
+    - __type__: meeting_agents.messages.PlanFailed
+    - __type__: meeting_agents.messages.FindSlotsAssignment
+    - __type__: meeting_agents.messages.SlotsFound
+    - __type__: meeting_agents.messages.BookMeetingAssignment
+    - __type__: meeting_agents.messages.MeetingBooked
+    - __type__: meeting_agents.messages.BookFacilitiesAssignment
+    - __type__: meeting_agents.messages.FacilitiesBooked
+    - __type__: meeting_agents.messages.OrderLunchAssignment
+    - __type__: meeting_agents.messages.LunchOrdered
+    - __type__: meeting_agents.messages.AssignmentFailed
+    - __type__: meeting_agents.messages.SavePlan
+    - __type__: meeting_agents.messages.LoadPlan
+    - __type__: meeting_agents.messages.PlanSnapshot
+
+  agent_profiles: []

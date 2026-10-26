@@ -526,6 +526,56 @@ rewrite. Any change that would break one of those rules needs discussing first.
 
 **Deferred indefinitely:** gap G2's dedicated move/reschedule endpoints.
 
+### 3.7 Mechanics confirmed while building the team (step 4)
+
+Each of these was checked against the installed packages, not assumed:
+
+* **Nothing in the framework resolves `${VAR}`.** `resolve_env_vars` says so in
+  its own docstring ("called by runtime consumers, not by catalog services") and
+  no caller exists anywhere in the installed code. `meeting_agents.bootstrap`
+  therefore owns resolution, and does it after hydration so it reaches a value
+  wherever it ended up. It raises on a missing variable rather than leaving a
+  placeholder to surface later as a connection error to a host named
+  `${MEETING_MCP_URL}`.
+* **Dispatch is by method name**: `receiveMsg_<MessageType>`, Thespian-style.
+  An unhandled type is logged as `Unknown message ...` and dropped — which is
+  how the dropped `PlanSnapshot` acknowledgement was first spotted.
+* **`list[type]` fields take `{__type__: dotted.path}`** in YAML. A bare string
+  fails validation (`Input should be a type`). This is how `message_types` is
+  written.
+* **A YAML file's name must equal its `id`** — `team.yaml` must declare
+  `id: team`. `load_team` then finds it by `kind: team`, not by id.
+* **The model-type allowlist governs `Entry.model_type` only, not
+  `agent_class`.** `_resolve_agent_class` calls `import_class` with no allowlist
+  check, so `meeting_agents.coordinator.Coordinator` loads without
+  `set_allowed_prefixes` — our `model_type` stays `akgentic.core.AgentCard`.
+* **`AgentCard.config` is coerced to the `ConfigType` of its `agent_class`.**
+  This is what lets `CoordinatorConfig` and `PlanRepositoryConfig` be written as
+  plain YAML, and it produces the isolation guarantee in its strongest form: the
+  deterministic agents have **no `tools` field at all**, so no configuration
+  mistake could give either of them an MCP server.
+* `TeamRuntime.send_from_to(sender_name, recipient_name, message)` is the
+  outside-in entry point, and `TeamFactory.build(card, actor_system, ...)` is a
+  static method.
+
+### 7.3 Durability before notification (decided while implementing)
+
+The first version of the coordinator told the human a plan was complete and
+asked the repository to store it in the same breath. Those are two mailboxes, so
+"completed" could reach the human before the plan was written — and a test
+reading the store immediately after the notification caught it.
+
+`PlanCompleted` is now sent only when `@PlanRepository` acknowledges the write.
+That makes the claim honest: if the human was told, it is stored.
+
+This introduced a second, subtler problem worth recording. Acknowledgements of
+the *earlier* saves are still in flight when the final one is sent, and a plan
+id matches all of them, so the first ack to arrive was mistaken for the last.
+The fix is to correlate on the snapshot's **derived status** rather than on the
+id alone: only a `CONFIRMED` plan can be the final write. Deriving status rather
+than storing it, decided back in step 2 for a different reason, is what made
+that correlation available.
+
 ### 7.2 Implementation order
 
 1. ✅ `find_common_slots` REST endpoint + MCP tool on meeting-service, with tests (closes G1).
@@ -533,7 +583,7 @@ rewrite. Any change that would break one of those rules needs discussing first.
 3. ✅ Catalog YAML: 3 `MCPTool` entries, model config, prompts, the 3 specialist agent entries.
    (The team card and the two deterministic agent entries move to step 4, because their
    `agent_class` dotted paths must exist before the YAML referencing them can be loaded.)
-4. `@Coordinator` + `@PlanRepository` deterministic actors; typed messages.
+4. ✅ `@Coordinator` + `@PlanRepository` deterministic actors; typed messages; `team/team.yaml`.
 5. `@Scheduler`, `@FacilityManager`, `@Catering` LLM agents.
 6. CLI runner + approval gate via `HumanProxy`.
 7. Dockerfile, compose service, Makefile targets, README.
@@ -583,3 +633,18 @@ rewrite. Any change that would break one of those rules needs discussing first.
   Two findings worth remembering: an unquoted YAML scalar cannot contain `": "`, and
   `Catalog.resolve()` takes an `Entry` object — `resolve_by_id(namespace, id)` is the call that
   returns a hydrated model.
+- 2026-10-26: Step 4 — the team now assembles. Added the typed message vocabulary
+  (`messages.py`), the deterministic `@Coordinator` and `@PlanRepository`
+  (`coordinator.py`, `plan_repository.py`), a `bootstrap.py` that owns `${VAR}`
+  resolution, and the YAML for the coordinator, the repository, the human entry
+  point and the team card itself. `catalog.load_team("meeting-planner")` now
+  returns the full hierarchy: `@Human -> @Coordinator -> {@PlanRepository,
+  @Scheduler, @FacilityManager -> @Catering}`.
+  The saga is proven end to end **without a model or a network call** — stub
+  specialists in a real actor system drive slots, approval, meeting, room and
+  lunch (`test_saga.py`). That is the test that keeps D1 honest: if it ever
+  needs an LLM, something deterministic has stopped being deterministic.
+  Two bugs found and fixed by that test, both recorded in §7.3: notification
+  racing persistence, and acknowledgements correlated on plan id alone.
+  Mechanics confirmed against the installed packages are in §3.7.
+  113 tests in the workspace.
