@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
@@ -14,10 +14,14 @@ from meeting_service.models import (
     Person,
     availability_for_day,
     check_availability,
+    common_free_windows,
 )
 from meeting_service.schemas import (
     AvailabilityCheckRequest,
     AvailabilityCheckResponse,
+    CommonSlot,
+    CommonSlotsRequest,
+    CommonSlotsResponse,
     DayAvailability,
     MeetingCancelResponse,
     MeetingRead,
@@ -89,6 +93,36 @@ def check_meeting_availability(
         end=request.end,
         results=results,
         all_available=all(r.available for r in results),
+    )
+
+
+@router.post("/meetings/common-slots", response_model=CommonSlotsResponse)
+def find_common_slots(
+    request: CommonSlotsRequest, session: Session = Depends(get_session)
+) -> CommonSlotsResponse:
+    """Find the windows on a day in which every participant is free."""
+    agendas: list[list[AgendaItem]] = []
+    for email in request.participant_emails:
+        person = _get_person_or_404(session, email)
+        agendas.append(
+            list(session.exec(select(AgendaItem).where(AgendaItem.person_id == person.id)).all())
+        )
+
+    windows = common_free_windows(agendas, request.day, request.duration_minutes)
+    delta = timedelta(minutes=request.duration_minutes)
+
+    return CommonSlotsResponse(
+        day=request.day,
+        duration_minutes=request.duration_minutes,
+        participant_emails=[str(e) for e in request.participant_emails],
+        slots=[
+            CommonSlot(
+                start=start,
+                end=end,
+                latest_start=(datetime.combine(request.day, end) - delta).time(),
+            )
+            for start, end in windows
+        ],
     )
 
 

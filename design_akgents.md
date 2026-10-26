@@ -1,0 +1,517 @@
+# Design — Akgents Agent Layer
+
+Companion to [`design.md`](./design.md). That document covers the three Python microservices
+(REST + UI + MCP). **This** document covers the next phase: an **Akgents multi-agent team** that
+drives those services through their MCP endpoints on behalf of a human.
+
+## Status
+
+**Design agreed; implementation started.** §7 records the decisions, §7.2 the implementation
+order — step 1 (`find_common_slots`) is done. Also agreed: v1's human entry point is a typed
+`PlanMeetingRequest`, not free text.
+
+---
+
+## 1. What Akgents is (notes to remember)
+
+[Akgents / akgentic](https://github.com/b12consulting/akgentic-framework) is a Python 3.12+
+multi-agent framework built on the **actor model** ([Pykka](https://pykka.readthedocs.io/)).
+
+The rules that actually shape a design:
+
+- An **actor owns its state** and communicates only by messages. It never shares mutable data.
+- **One actor processes one message at a time.** This makes an actor the natural single owner of
+  mutable data — no locks needed inside a handler.
+- An actor **never blocks its thread to wait**. It records "what I am waiting for" in its state,
+  returns, and continues when the reply message arrives. This is the same mechanism used for
+  waiting on an LLM *and* for waiting on a human.
+- The **Orchestrator is itself an Akgent**, created explicitly. Agents must be created *through*
+  the hierarchy (orchestrator → coordinator → members), because that propagates the orchestrator
+  address, team id and parent. Creating an agent directly on the `ActorSystem` leaves it without
+  telemetry, team lookup or state snapshots.
+
+### 1.1 Anatomy of an Akgent
+
+Four things make an agent:
+
+1. **Config** — facts fixed for the agent's lifetime (identity). `BaseConfig` / `AgentConfig`.
+2. **State** — everything that changes while handling messages. `BaseState` / `AgentState`.
+3. **Messages** — Pydantic models derived from `Message`.
+4. **Handlers** — methods named `receiveMsg_<MessageType>`.
+
+> **Rule of thumb:** *config is identity, state is progress.* An invariant (e.g. a meeting id that
+> the whole team works on) belongs in config, not repeated in every state snapshot.
+
+Both config and state are **serialised** into the event/telemetry stream →
+**never put secrets in either**. Live objects (repositories, clients, actor addresses) cannot go
+in config/state either; they are set on the instance via a setter after creation.
+
+`on_start()` runs in the actor's own thread: create concrete state, init live instance fields,
+attach the state observer. **Do not look up team members in `on_start`** — children are not on the
+roster yet. Use lazy lookup (`cached_property` + `get_team_member(name)`).
+
+### 1.2 Package map
+
+| Package | Responsibility | Depends on |
+|---|---|---|
+| `akgentic-core` | Actors, typed messages, orchestrator, `AgentCard` | — |
+| `akgentic-llm` | Multi-provider LLM, ReAct loop, capabilities, budgets | — |
+| `akgentic-tool` | `ToolCard` abstractions, **MCP**, workspace, planning | core |
+| `akgentic-team` | Team lifecycle, `TeamCard`, event sourcing, persistence | core |
+| `akgentic-agent` | `BaseAgent` = actor + LLM + tools; typed message routing | core, llm, tool |
+| `akgentic-catalog` | **YAML/config registry** for teams, agents, tools, prompts | core, llm, tool, team |
+| `akgentic-infra` | FastAPI + WebSocket server, "teams as a service" | all |
+| `akgentic-frontend` | Angular web UI | — |
+
+Install as `akgentic-framework[...]` (meta-distribution pinning a tested set) or à la carte.
+
+### 1.3 Deterministic actor vs LLM agent — the most important choice
+
+`akgentic-agent`'s `BaseAgent` composes actor + LLM + tools. But the framework's own guidance
+(and the blog series) is explicit:
+
+> **Only the work that requires judgement should reach a model.**
+
+In the reference case-handling team, routing and fact-storage stay **deterministic** (`Akgent`
+subclasses); only judgement calls (assess urgency, draft a plan) are `BaseAgent` (LLM) subclasses.
+
+Related rules worth repeating, because they bear directly on *our* booking/cancelling domain:
+
+- **"A message is an assignment; a tool is freedom."** A message is a decision the team already
+  made. A tool is a capability the model may choose to use.
+- **Giving a model a mutation tool is not an authorization policy.** In the blog's own experiment,
+  a prompt asking to update *one* case updated *two*. The fix is structural, not prompt wording:
+  narrow the tool surface, validate a proposed command, require human approval, or enforce the
+  invariant in deterministic code.
+- **"The model proposes; the human decides; the handler writes."**
+
+---
+
+## 2. MCP integration (the critical requirement)
+
+**Hard requirement: each agent may only reach its own service's MCP server.**
+
+### 2.1 How tools bind to an agent — verified
+
+`AgentConfig.tools` is a plain **per-agent** list:
+
+```python
+tools: list[ToolCard] = Field(default_factory=list, ...)
+```
+
+Each `AgentCard` carries its own `config`, and `AgentCard.get_config_copy()` returns a **deep copy**
+per spawned agent. There is **no team-level shared tool registry** that would leak one agent's
+tools to another. Verified in the framework's own shipped catalog data, where `manager.yaml` and
+`expert.yaml` deliberately carry *different* tool lists.
+
+**Conclusion: strict per-agent MCP isolation is directly supported.** We give each specialist a
+single `MCPTool` pointing at its own service, and nothing merges them.
+
+> **Caveat to be honest about:** `BaseAgent` *auto-adds* `TeamTool` and `MailboxTool`. So an agent
+> has its own MCP server **plus** the framework's own team/mailbox tooling (which is what lets it
+> message colleagues). "Only its own MCP server" is true of *domain* capability, not of the
+> framework's built-in collaboration surface.
+
+### 2.2 `MCPTool` and its connection config — verified field lists
+
+`akgentic.tool.mcp.MCPTool` subclasses `ToolCard` and has exactly one field: `connection`.
+It contributes **only** via `get_toolsets()` (never `get_tools()`), because MCP tool schemas live
+on the server and are discovered at runtime.
+
+`MCPHTTPConnectionConfig`:
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `url` | `str` | required | MCP endpoint URL |
+| `transport` | `"streamable-http" \| "sse"` | `"streamable-http"` | **never inferred from the URL** |
+| `bearer_token` | `str \| None` | `None` | sent as `Authorization` header |
+| `timeout` | `float` | `10.0` | init timeout |
+| `read_timeout` | `float` | `300.0` | transport read timeout |
+| `tool_prefix` | `str \| None` | `None` | prefixes every tool name from this server |
+
+`MCPStdioConnectionConfig` also exists (`stdio_command`, `stdio_args`, `stdio_env`, `stdio_cwd`,
+`stdio_token_env_var`, …) for local subprocess servers — **not what we need**, ours are HTTP.
+
+### 2.3 How well this matches what we already built — very well
+
+| What we built (design.md §3) | What `MCPTool` expects | Verdict |
+|---|---|---|
+| Streamable HTTP transport | `transport="streamable-http"` (the default) | ✅ exact match |
+| `Authorization: Bearer <key>` via `StaticTokenVerifier` | `bearer_token` field | ✅ exact match |
+| Deliberately **narrow**, agent-shaped tool catalogs | *(see constraint below)* | ✅ fortunate |
+| One MCP server per service, own port | one `MCPTool` card per agent | ✅ exact match |
+
+**Constraint found:** `MCPTool` has **no tool allowlist/denylist**. An agent sees *every* tool the
+server exposes. Grepped the source for `allow`/`deny`/`filter`/`include_tools`/`exclude` — zero
+hits. This would have been a problem if our MCP servers mirrored the full REST API — but we
+deliberately designed them as narrow, agent-facing surfaces (no "list all orders", no admin
+views). **The phase-1 MCP design decision pays off exactly here.** It also means the MCP server
+*is* the security boundary: whatever we expose there, the agent can call.
+
+`tool_prefix` is still worth using (e.g. `meeting`, `facility`, `catering`) for unambiguous
+telemetry and to avoid any future name collision across servers.
+
+### 2.4 Secrets
+
+`MCPTool` itself has **no `${VAR}` interpolation**. The catalog has one
+(`akgentic.catalog.env.resolve_env_vars`, pattern `${VAR}`, raises `OSError` if unset), but it is a
+**runtime utility applied by the consumer**, not by the catalog on write — the catalog stores
+`${VAR}` literally. Needs confirming at implementation time that the create-team path we use
+actually calls it. Fallback is trivial: resolve env vars in our own bootstrap before building the
+team.
+
+This matters because config is serialised into telemetry — the API key must not be baked into a
+committed YAML file.
+
+---
+
+## 3. Defining the team in YAML (the catalog)
+
+`akgentic-catalog` is *"the validated configuration boundary in front of the runtime"* — not a new
+runtime. `catalog.load_team(namespace)` returns the same `TeamCard` a Python constructor would.
+
+### 3.1 The `Entry` envelope
+
+Everything (team, agent, tool, prompt, model, meta) is one shape:
+
+- **catalog envelope** — `id`, `kind`, `namespace`, `user_id`, `description`
+- **model selector** — `model_type`, a dotted Pydantic class path
+- **model data** — `payload`, validated against that class
+
+`kind` is a closed set: `team | agent | tool | prompt | model | meta`.
+`model_type` is an allowlisted import (`akgentic.*` always; our own classes need an explicit
+`set_allowed_prefixes([...])` call once at process start).
+
+**Unknown keys are hard errors** (a `skils` typo is refused). But **omitted** keys silently take
+their defaults — e.g. forgetting `tools` quietly yields an agent with no tools. Treat every field
+as a checklist item.
+
+### 3.2 `TeamCard` / `AgentCard`
+
+```python
+class TeamCardMember(SerializableBaseModel):
+    card: AgentCard
+    headcount: int = 1
+    members: list[TeamCardMember] = []      # subordinates — the hierarchy IS this nesting
+
+class TeamCard(SerializableBaseModel):
+    name: str | None
+    description: str | None
+    entry_point: TeamCardMember             # the team's external interface; headcount MUST be 1
+    members: list[TeamCardMember] = []      # top-level members, excluding entry_point
+    message_types: list[type] = []          # first is the default
+    metadata_type: type[SerializableBaseModel] | None
+    agent_profiles: list[AgentCard] = []    # hireable at runtime, NOT spawned at startup
+    welcome_message: str | None
+```
+
+```python
+class AgentCard(SerializableBaseModel):
+    agent_class: str | type                 # dotted path, e.g. "akgentic.agent.BaseAgent"
+    skills: list[str] = []                  # used for dynamic discovery / hiring
+    description: str                        # required
+    config: BaseConfig                      # name, role, prompt, model_cfg, tools live HERE
+    can_be_hired: bool = False
+    metadata: dict = {}
+```
+
+Notes: `role` is a **derived property** from `config.role` (not a field) and must be non-empty —
+it is the orchestrator's registry key. `name` is `@`-prefixed by convention (`"@Manager"`).
+Nesting in `members` is what determines **who creates whom** at spawn time.
+
+### 3.3 References (`__ref__`)
+
+A payload embeds `{"__ref__": "<entry-id>"}` wherever it wants another entry's content. The whole
+vocabulary is three keys — `__ref__`, `__type__`, `__namespace__` — and **any other key next to
+`__ref__` is a validation error** (a ref is a pure pointer; you cannot patch alongside it).
+
+- same namespace: `{ __ref__: manager }`
+- cross namespace: `{ __ref__: global.id_gpt_6_luna }` (split on first dot), gated on the target
+  namespace being `shareable: true`
+- a pure *type* tag (no ref): `{ __type__: akgentic.agent.messages.AgentMessage }`
+- a specific polymorphic subclass: `{ __model__: "...CliUserProxyConfig", ... }`
+
+Editing a shared entry changes every referrer on next resolve. Delete protection blocks removing a
+referenced entry.
+
+### 3.4 Shape of a team YAML (abridged from the framework's own seed data)
+
+```yaml
+namespace: agent-team
+user_id: anonymous
+name: Agent Team V1
+description: ...
+shareable: false
+public: true
+entries:
+  team:
+    kind: team
+    model_type: akgentic.team.TeamCard
+    payload:
+      entry_point:
+        card: { __ref__: human_proxy }
+      members:
+      - card: { __ref__: manager }
+        members:
+        - card: { __ref__: expert }
+        - card: { __ref__: assistant }
+      message_types:
+      - __type__: akgentic.agent.messages.AgentMessage
+  manager:
+    kind: agent
+    model_type: akgentic.core.AgentCard
+    payload:
+      description: Helpful manager coordinating team work
+      agent_class: akgentic.agent.BaseAgent
+      skills: [coordination, delegation]
+      config:
+        name: '@Manager'
+        role: Manager
+        prompt:
+          template: { __ref__: id_team_template }
+          params: { role: manager, instructions: Coordinate the team. }
+        model_cfg: { __ref__: global.id_gpt_6_luna }
+        tools:
+        - __ref__: global.id_web_search
+  id_team_template:
+    kind: prompt
+    model_type: akgentic.catalog.NativeValue
+    payload:
+      value: "You are a helpful {role}. \n{instructions}"
+```
+
+Note the real example makes **`entry_point` the human proxy**, with the manager as a member
+beneath it — the human is the team's external interface.
+
+A namespace bundle is one YAML document with a closed root key set
+(`namespace, user_id, name, description, properties, shareable, public, entries`); `entries` is a
+**mapping keyed by id**. Import is **atomic replace, not merge** — entries absent from the bundle
+are deleted. `validate_namespace_yaml()` gives a dry-run report.
+
+> ⚠️ Found a **documentation discrepancy**: `docs/cli-usage-guide.md` shows an older shape with a
+> separate top-level `team:` key and `entries` as a *list*. The mapping form above matches the real
+> shipped seed data, so we follow that — but verify against the installed version at implementation
+> time.
+
+### 3.5 From YAML to running actors
+
+```
+YAML  →  Catalog(repository=YamlEntryRepository(root)).load_team(ns)  →  TeamCard
+      →  TeamManager(actor_system, event_store).create_team(card, ...)
+      →  TeamFactory.build(...)                                       →  TeamRuntime
+```
+
+`TeamRuntime` exposes the live `orchestrator_addr`, `entry_addr`, `supervisor_addrs`, `addrs`.
+`TeamManager` also gives us lifecycle: `create_team` / `stop_team` / `resume_team` / delete, with
+`STOPPED` preserving the card, metadata, event stream and agent snapshots.
+
+### 3.6 How agents address each other
+
+**Not wired in code and not wired in YAML.** It is a **runtime lookup by name**:
+
+- The LLM emits a `StructuredOutput` containing `Request(message, recipient)` objects.
+- `resolve_recipient()` then: `@Name` → `get_team_member("@Name")` against the live roster;
+  a bare role name → `hire_member(role)`, spawning a new agent from a `can_be_hired` profile.
+- A `RecipientCheckCapability` validates recipients *during* the run and raises `ModelRetry` with a
+  corrective prompt if the model names someone unreachable, so it can retry before the turn ends.
+
+So YAML only decides **what `@name`s exist** and **which profiles are hireable**.
+
+---
+
+## 4. Team topology (agreed)
+
+```
+entry_point: @Human              akgentic.agent.HumanProxy          no MCP
+└── @Coordinator                 deterministic Akgent               no MCP
+    ├── @PlanRepository          deterministic Akgent               no MCP — owns the MeetingPlan store
+    ├── @Scheduler               BaseAgent (LLM)   meeting  MCP :8101  prefix "meeting"
+    └── @FacilityManager         BaseAgent (LLM)   location MCP :8102  prefix "facility"
+        └── @Catering            BaseAgent (LLM)   nomnom   MCP :8103  prefix "catering"
+```
+
+`@Catering` is nested under `@FacilityManager` so that the facility manager owns the whole
+"room + lunch" bundle — the coordinator asks once, and the human never learns where lunch comes
+from. That nesting also means the facility manager is the actor that *creates* the catering agent,
+and gives us a genuine agent-to-agent hop rather than a flat star.
+
+`@PlanRepository` and `@Coordinator` are **deterministic** `Akgent` subclasses — they route and
+store, they do not reason. Only the three service specialists call a model.
+
+Tool assignment, which is the isolation guarantee:
+
+| Agent | `config.tools` | Can reach |
+|---|---|---|
+| `@Human` | — | nothing |
+| `@Coordinator` | — | nothing (delegates only) |
+| `@PlanRepository` | — | nothing (owns local store via instance field, not config) |
+| `@Scheduler` | `[MCPTool(url=…:8101/mcp, bearer=${MEETING_MCP_API_KEY}, tool_prefix="meeting")]` | meeting-service only |
+| `@FacilityManager` | `[MCPTool(url=…:8102/mcp, bearer=${LOCATION_MCP_API_KEY}, tool_prefix="facility")]` | location-service only |
+| `@Catering` | `[MCPTool(url=…:8103/mcp, bearer=${NOMNOM_MCP_API_KEY}, tool_prefix="catering")]` | nomnom-service only |
+
+### 4.1 Runtime shape
+
+A **fourth container** (`agent-team`) in `docker-compose.yml`, running a CLI runner. It reaches the
+MCP servers by compose service name — `http://meeting-service:8101/mcp` etc. — not `localhost`.
+Keys come from the same `*_MCP_API_KEY` env vars already wired in `.env.example`, injected into the
+catalog YAML as `${MEETING_MCP_API_KEY}` and resolved at team-build time (never committed).
+
+LLM provider: **OpenAI**, via `OPENAI_API_KEY`. A cheaper model for the three specialists and a
+stronger one as the shared fallback/roster, following the framework's own sample.
+
+---
+
+## 5. The scenario, walked through
+
+> *"The human requests a meeting between Jettro and Daniel. First the Scheduling agent finds a
+> suitable moment when both are available. Next a room and lunch are requested… If a meeting is
+> cancelled, the room and the lunch must be cancelled as well. But if a room is changed, the lunch
+> must be rebooked."*
+
+Happy path, with the agreed single approval gate on the time slot:
+
+1. Human → `@Coordinator`: a typed `PlanMeetingRequest` (participants, day, duration, location).
+2. `@Coordinator` → `@PlanRepository`: create plan → `plan_id`.
+3. `@Coordinator` → `@Scheduler`: find a slot for these participants.
+   `@Scheduler` calls `meeting_find_common_slots` (new — see G1) and proposes one slot.
+4. **Approval gate.** `@Coordinator` → `@Human`: "Tuesday 10:00–11:00 — ok?" The coordinator
+   records `awaiting_approval` in its state and *returns*; it does not block. On approval it
+   continues. **Nothing has been written to any service yet.**
+5. `@Coordinator` → `@Scheduler`: book it. `meeting_book_meeting` → `meeting_id` → stored in the
+   plan.
+6. `@Coordinator` → `@FacilityManager`: room + lunch for *N* people, this slot, this location.
+7. `@FacilityManager`: `facility_get_room_availability` → `facility_book_room` → `booking_id`.
+8. `@FacilityManager` → `@Catering`: lunch for *N*, this location, this date.
+   `@Catering`: `catering_get_menu` / `catering_search_product` → `catering_place_order`
+   → `order_id`. Replies upward.
+9. `@Coordinator` → `@PlanRepository`: store `booking_id` + `order_id`.
+10. `@Coordinator` → Human: confirmed, with all three references.
+
+Note which steps are judgement and which are not. Steps 1, 2, 4, 9, 10 are deterministic routing
+and storage. Only 3, 7 and 8 reach a model — and of those, only *choosing a slot among candidates*,
+*choosing a room* and *choosing lunch items and quantities* are genuinely judgement.
+
+### 5.1 This is a distributed saga — and that is the hard part
+
+Three independent services, three independent writes, no shared transaction. The requirement
+*"if a meeting is cancelled, the room and the lunch must be cancelled as well"* is a textbook
+**compensation** requirement.
+
+**(a) The saga is deterministic, not LLM judgement.** Per §1.3, an LLM holding `cancel_*` tools is
+not an authorization policy. If the coordinator merely *asks* an LLM to "also cancel the room and
+lunch", a bad turn silently leaves a room booked and lunch being delivered for a meeting that no
+longer exists. The cancellation fan-out is therefore a **deterministic handler on
+`@Coordinator`** that runs the compensations in a fixed order and reports partial failures
+explicitly. The specialists still own the MCP calls (isolation is preserved) — but *which* calls
+happen, and in what order, is decided in code, not in a prompt.
+
+**(b) `@PlanRepository` remembers the links.** Nothing in our services records that
+*meeting 12 ↔ room booking 8 ↔ order abc-123*; each only knows its own id. One actor owns that
+store, every read/write goes through it as a message, so it needs no lock and every access is
+observable — the blog's `CaseRepositoryAgent` pattern. Business data stays separate from the team
+event history, which is the separation the framework recommends.
+
+The **MeetingPlan** aggregate:
+
+| Field | Source |
+|---|---|
+| `plan_id` | ours |
+| `meeting_id` | meeting-service |
+| `participants`, `day`, `start`, `end` | meeting-service |
+| `location_id`, `room_code`, `booking_id` | location-service |
+| `order_id`, `delivery_date` | nomnom-service |
+| `status` | **derived, not stored** (blog: *status derived, not stored* — avoids drift) |
+
+**Cancel meeting** → compensate in reverse order: `cancel_order` → `cancel_room_booking` →
+`cancel_meeting`. Each is already roughly idempotent (nomnom returns `success:false` on double
+cancel; the other two 404). Partial failure must surface to the human, not be swallowed.
+
+**Change location** → rebook lunch. Agreed rule: a nomnom order is tied to a **location**
+(e.g. `luminis`), not a room code, so swapping `room-a → room-b` *within* one location leaves the
+lunch order valid and must **not** trigger a rebook. Only a change of *location* cancels and
+re-places the order.
+
+Both flows are **deferred to iteration 2** (see §7.1) — but the plan store is designed now so that
+iteration 1 already records everything they will need.
+
+---
+
+## 6. Gaps in our current REST/MCP surface
+
+Found while walking the scenario. None are blockers, but they shape the work.
+
+- **G1 — no multi-person slot finder.** ✅ **Closed.** `POST /api/meetings/common-slots` +
+  `find_common_slots` MCP tool now return every window where all participants are free, with
+  `latest_start` so no arithmetic is needed. Previously an agent had to call
+  `get_person_availability` per person and intersect the results itself — pure computation that
+  §1.3 says to keep out of the model.
+- **G2 — no "move/reschedule" operations.** There is no change-room or change-time endpoint;
+  "changing a room" means cancel + rebook, leaving a window where nothing is booked. Accepted for
+  this project; deferred.
+- **G3 — no plan/correlation store.** → closed by `@PlanRepository` (D3).
+- **G4 — nomnom `place_order` has no headcount concept.** It takes explicit
+  `items: [{item_id, quantity}]`. So "lunch for 4" is the agent's judgement about quantities. That
+  is genuinely a judgement call, so it stays with `@Catering`'s LLM — noted, not closed.
+- **G5 — location/room capacity vs participant count.** `get_room_availability` takes
+  `number_of_people` and picks the smallest suitable room; the coordinator must thread the
+  participant count through. Easy, just needs wiring.
+
+---
+
+## 7. Decisions
+
+| # | Decision | Rationale |
+|---|---|---|
+| D1 | **Deterministic `Akgent` coordinator**, LLM `BaseAgent` specialists | Keeps routing and irreversible writes out of a model's hands (§1.3) |
+| D2 | **`@Catering` nested under `@FacilityManager`** | The facility manager owns the room+lunch bundle; the human never sees where lunch comes from |
+| D3 | **`@PlanRepository` actor** owns the MeetingPlan store | Single-owner actor needs no lock; keeps business data separate from team event history |
+| D4 | **Approve the proposed time slot only** | One gate, before anything is written; room and lunch then proceed automatically |
+| D5 | **Only a *location* change rebooks lunch** | A nomnom order is tied to a location, not a room code |
+| D6 | **OpenAI** provider | Cheap model for specialists, stronger one in the roster |
+| D7 | **CLI runner in a 4th container**, MCP via compose service names | Consistent with the rest of the project; `akgentic-infra` deferred |
+| D8 | **Add `find_common_slots` first**, then the happy path | Turns fallible LLM arithmetic into one deterministic call (G1) |
+
+### 7.1 Still to settle, and what is deferred
+
+**One open item — how the human's request reaches a deterministic coordinator.** D1 means the
+coordinator does not reason, so it cannot parse *"book a meeting between Jettro and Daniel next
+Tuesday with lunch"*. **Agreed:** iteration 1's CLI takes a **typed `PlanMeetingRequest`**
+(participants, day, duration, location) — the blog's `HandleCaseRequest` pattern, and consistent
+with *"a message is an assignment"*. Free-text intake becomes an optional later addition (either a
+small intake LLM step or an LLM coordinator), without disturbing the saga design.
+
+**Deferred to iteration 2:** the cancellation and location-change sagas (§5.1). The plan store is
+designed for them now; the handlers come later.
+
+**Deferred indefinitely:** `akgentic-infra` as a service + Angular frontend (D7); gap G2's
+dedicated move/reschedule endpoints.
+
+### 7.2 Implementation order
+
+1. ✅ `find_common_slots` REST endpoint + MCP tool on meeting-service, with tests (closes G1).
+2. New `agents/` workspace package: dependencies, `MeetingPlan` model, plan store.
+3. Catalog YAML: namespace, team, 5 agent entries, 3 `MCPTool` entries, prompts, model config.
+4. `@Coordinator` + `@PlanRepository` deterministic actors; typed messages.
+5. `@Scheduler`, `@FacilityManager`, `@Catering` LLM agents.
+6. CLI runner + approval gate via `HumanProxy`.
+7. Dockerfile, compose service, Makefile targets, README.
+
+---
+
+## 8. Changelog
+
+- 2026-10-26: Initial Akgents design. Researched `akgentic-core/-llm/-tool/-team/-agent/-catalog`
+  plus the full 8-part blog series. Verified that **per-agent MCP isolation is supported**
+  (`AgentConfig.tools` is per-agent, deep-copied per spawn, no shared registry) and that `MCPTool`'s
+  `streamable-http` + `bearer_token` configuration is an exact match for the MCP servers built in
+  phase 3. Recorded the framework constraint that **`MCPTool` has no tool allowlist** — which our
+  deliberately-narrow MCP surfaces already compensate for. Proposed a topology
+  (`@Human` → `@Coordinator` → `@Scheduler`, `@FacilityManager` → `@Catering`), identified the
+  booking flow as a **distributed saga** needing deterministic compensation plus an id-correlation
+  store, logged five gaps in the current REST/MCP surface, and raised ten open questions.
+- 2026-10-26: Decisions D1–D8 agreed (§7): deterministic coordinator + LLM specialists;
+  `@Catering` under `@FacilityManager`; a `@PlanRepository` actor for id correlation; a single
+  approval gate on the proposed time slot; only a *location* change rebooks lunch; OpenAI;
+  CLI runner in a 4th container; `find_common_slots` added first. Cancellation/compensation sagas
+  and `akgentic-infra` deferred. One item left open: confirming a typed `PlanMeetingRequest` as
+  the v1 human entry point (§7.1).

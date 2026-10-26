@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date, time
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class PersonRead(BaseModel):
@@ -37,6 +37,25 @@ class DayAvailability(BaseModel):
     email: str
     name: str
     free_slots: list[str]
+
+
+class CommonSlotsRequest(BaseModel):
+    participant_emails: list[EmailStr]
+    day: date
+    duration_minutes: int = Field(default=60, gt=0, le=480)
+
+
+class CommonSlot(BaseModel):
+    start: time
+    end: time
+    latest_start: time
+
+
+class CommonSlotsResponse(BaseModel):
+    day: date
+    duration_minutes: int
+    participant_emails: list[str]
+    slots: list[CommonSlot]
 
 
 class MeetingRequest(BaseModel):

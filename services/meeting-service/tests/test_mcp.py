@@ -129,3 +129,32 @@ async def test_cancel_unknown_meeting_returns_failure_not_error():
     async with Client(mcp_server.mcp) as client:
         result = (await client.call_tool("cancel_meeting", {"meeting_id": 999999})).data
         assert result["success"] is False
+
+
+async def test_find_common_slots():
+    async with Client(mcp_server.mcp) as client:
+        result = (
+            await client.call_tool(
+                "find_common_slots",
+                {
+                    "participant_emails": ["jettro@rag4j.org", "daniel@rag4j.org"],
+                    "day": "2033-05-10",
+                    "duration_minutes": 60,
+                },
+            )
+        ).data
+        assert result["duration_minutes"] == 60
+        assert result["slots"] == [
+            {"start": "09:00:00", "end": "17:00:00", "latest_start": "16:00:00"}
+        ]
+
+
+async def test_find_common_slots_unknown_person_returns_error():
+    async with Client(mcp_server.mcp) as client:
+        result = (
+            await client.call_tool(
+                "find_common_slots",
+                {"participant_emails": ["nobody@rag4j.org"], "day": "2033-05-11"},
+            )
+        ).data
+        assert "error" in result

@@ -253,6 +253,7 @@ REST API:
 |---|---|---|
 | `list_people` | — | `[{email, name}]` — lets an agent resolve names to the emails other tools need. |
 | `get_person_availability` | `email, day` | `{email, name, free_slots: [{start, end}]}` — only free gaps, **not** other meetings' titles/content. |
+| `find_common_slots` | `participant_emails, day, duration_minutes=60` | `{day, duration_minutes, slots: [{start, end, latest_start}]}` — windows where **all** participants are free. `latest_start` is the last moment a meeting of this duration can begin, so the agent needs no arithmetic. Empty `slots` means no common window. |
 | `check_meeting_feasibility` | `participant_emails, day, start, end` | `{feasible: bool, unavailable_people: [email]}` |
 | `book_meeting` | `participant_emails, day, start, end, title` | Success: `{success: true, meeting_id, day, start, end, participant_emails}`. Failure: `{success: false, reason}` (e.g. `"<name> is not available 10:00-11:00"`). |
 | `cancel_meeting` | `meeting_id` | `{success: bool, message}` — requires the exact id returned by `book_meeting`, no lookup-by-description. |
@@ -346,3 +347,11 @@ services/<name>-service/
   `httpx.ASGITransport`-backed REST client (no real network server needed). Verified end-to-end
   with a real `fastmcp.Client` against the built Docker Compose stack (auth rejection, tool
   listing, and tool calls all confirmed working for all three services).
+- 2026-10-26: Added `POST /api/meetings/common-slots` and the `find_common_slots` MCP tool to
+  `meeting-service`, closing gap G1 in [`design_akgents.md`](./design_akgents.md). Backed by a new
+  pure `common_free_windows()` function that clamps every participant's busy intervals to the
+  09:00-17:00 working day, merges them and returns the remaining gaps of at least the requested
+  duration. Each slot also carries `latest_start` so an agent never has to do time arithmetic.
+  This is deliberately deterministic computation kept *out* of the model: previously an agent had
+  to call `get_person_availability` once per person and intersect the results itself. Covered by
+  6 unit tests, 2 API tests and 2 MCP tests, and verified live against the container.

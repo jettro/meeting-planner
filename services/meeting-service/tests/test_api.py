@@ -39,3 +39,58 @@ def test_book_meeting_then_cancel_frees_the_slot():
         # Slot is free again after cancellation.
         rebooked = client.post("/api/meetings/book", json=payload)
         assert rebooked.json()["booked"] is True
+
+
+def test_common_slots_reflects_both_agendas():
+    with TestClient(app) as client:
+        persons = client.get("/api/persons").json()
+        jettro, daniel = persons[0]["email"], persons[1]["email"]
+        day = "2032-04-06"
+
+        # Nobody is busy yet: the whole working day is one window.
+        body = client.post(
+            "/api/meetings/common-slots",
+            json={"participant_emails": [jettro, daniel], "day": day, "duration_minutes": 60},
+        ).json()
+        assert body["slots"] == [
+            {"start": "09:00:00", "end": "17:00:00", "latest_start": "16:00:00"}
+        ]
+
+        # Book each of them separately; the common windows shrink accordingly.
+        for email, start, end in ((jettro, "09:00:00", "11:00:00"), (daniel, "13:00:00", "14:00:00")):
+            booked = client.post(
+                "/api/meetings/book",
+                json={
+                    "title": "Busy",
+                    "participant_emails": [email],
+                    "day": day,
+                    "start": start,
+                    "end": end,
+                },
+            )
+            assert booked.json()["booked"] is True
+
+        slots = client.post(
+            "/api/meetings/common-slots",
+            json={"participant_emails": [jettro, daniel], "day": day, "duration_minutes": 60},
+        ).json()["slots"]
+        assert [(s["start"], s["end"]) for s in slots] == [
+            ("11:00:00", "13:00:00"),
+            ("14:00:00", "17:00:00"),
+        ]
+
+        # A 150-minute meeting no longer fits in the first window.
+        long_slots = client.post(
+            "/api/meetings/common-slots",
+            json={"participant_emails": [jettro, daniel], "day": day, "duration_minutes": 150},
+        ).json()["slots"]
+        assert [s["start"] for s in long_slots] == ["14:00:00"]
+
+
+def test_common_slots_unknown_person_is_404():
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/meetings/common-slots",
+            json={"participant_emails": ["nobody@rag4j.org"], "day": "2032-04-07"},
+        )
+        assert response.status_code == 404

@@ -92,3 +92,49 @@ def availability_for_day(items: Sequence[AgendaItem], day: date) -> list[str]:
         slots.append(f"{current_start.strftime('%H:%M')}-{DAY_END.strftime('%H:%M')}")
 
     return slots
+
+
+def _to_minutes(value: time) -> int:
+    return value.hour * 60 + value.minute
+
+
+def _to_time(minutes: int) -> time:
+    return time(minutes // 60, minutes % 60)
+
+
+def common_free_windows(
+    agendas: Sequence[Sequence[AgendaItem]], day: date, duration_minutes: int
+) -> list[tuple[time, time]]:
+    """Windows on `day` in which *every* agenda is free for at least `duration_minutes`.
+
+    Busy intervals from all participants are clamped to the 09:00-17:00 working day,
+    merged, and the remaining gaps returned. A meeting of `duration_minutes` fits
+    anywhere between a window's start and its end minus the duration.
+    """
+    if duration_minutes <= 0:
+        raise ValueError("duration_minutes must be positive")
+
+    day_start = _to_minutes(DAY_START)
+    day_end = _to_minutes(DAY_END)
+
+    busy: list[tuple[int, int]] = []
+    for items in agendas:
+        for item in items:
+            if item.day != day:
+                continue
+            start = max(_to_minutes(item.start), day_start)
+            end = min(_to_minutes(item.end), day_end)
+            if end > start:
+                busy.append((start, end))
+    busy.sort()
+
+    windows: list[tuple[time, time]] = []
+    cursor = day_start
+    for start, end in busy:
+        if start - cursor >= duration_minutes:
+            windows.append((_to_time(cursor), _to_time(start)))
+        cursor = max(cursor, end)
+    if day_end - cursor >= duration_minutes:
+        windows.append((_to_time(cursor), _to_time(day_end)))
+
+    return windows

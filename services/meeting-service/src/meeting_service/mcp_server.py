@@ -76,6 +76,33 @@ async def get_person_availability(email: str, day: date) -> dict[str, Any]:
 
 
 @mcp.tool
+async def find_common_slots(
+    participant_emails: list[str], day: date, duration_minutes: int = 60
+) -> dict[str, Any]:
+    """Find every window on `day` in which ALL participants are free for at least
+    `duration_minutes`.
+
+    Prefer this over calling `get_person_availability` per person and intersecting
+    the results yourself. Each returned slot gives the window `start` and `end` plus
+    `latest_start`, the last moment a meeting of this duration can begin - so no
+    arithmetic is needed. An empty `slots` list means there is no common window.
+    """
+    resp = await get_client().post(
+        "/api/meetings/common-slots",
+        json={
+            "participant_emails": participant_emails,
+            "day": day.isoformat(),
+            "duration_minutes": duration_minutes,
+        },
+    )
+    if resp.status_code == 404:
+        return {"error": resp.json().get("detail", "Unknown person")}
+    resp.raise_for_status()
+    data = resp.json()
+    return {"day": data["day"], "duration_minutes": data["duration_minutes"], "slots": data["slots"]}
+
+
+@mcp.tool
 async def check_meeting_feasibility(
     participant_emails: list[str], day: date, start: time, end: time
 ) -> dict[str, Any]:
