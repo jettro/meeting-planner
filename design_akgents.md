@@ -151,6 +151,23 @@ views). **The phase-1 MCP design decision pays off exactly here.** It also means
 `tool_prefix` is still worth using (e.g. `meeting`, `facility`, `catering`) for unambiguous
 telemetry and to avoid any future name collision across servers.
 
+**Verified against the installed packages** (`akgentic-framework` 2.18.1 → `akgentic-tool` 1.12.0),
+not just the source on GitHub:
+
+- `MCPTool.model_fields` is exactly `['connection']`; `MCPHTTPConnectionConfig` carries exactly the
+  fields and defaults in the table above.
+- `AgentConfig.tools` is `list[ToolCard]` and two configs genuinely get **separate** lists —
+  appending a tool to one leaves the other empty. Isolation is real, not assumed.
+- `ToolFactory(tool_cards=[MCPTool(...)]).get_toolsets()` yields a
+  `PrefixedToolset(MCPToolset)` which, against our running meeting-service container, discovered
+  all six tools (`book_meeting`, `cancel_meeting`, `check_meeting_feasibility`,
+  `find_common_slots`, `get_person_availability`, `list_people`) with `prefix="meeting"` applied.
+- **`bearer_token` authenticates against our `StaticTokenVerifier`**: the dev key connected, a
+  wrong key was rejected with `MCPError`. This was the riskiest assumption in the design and it
+  holds.
+
+`AgentCard` and `TeamCard` field lists also match §3.2 exactly.
+
 ### 2.4 Secrets
 
 `MCPTool` itself has **no `${VAR}` interpolation**. The catalog has one
@@ -359,6 +376,25 @@ catalog YAML as `${MEETING_MCP_API_KEY}` and resolved at team-build time (never 
 LLM provider: **OpenAI**, via `OPENAI_API_KEY`. A cheaper model for the three specialists and a
 stronger one as the shared fallback/roster, following the framework's own sample.
 
+### 4.2 Keeping the GUI and free-text doors open
+
+D7 (CLI first) and §7.1 (typed input first) are **sequencing decisions, not architectural ones**.
+Neither may foreclose `akgentic-infra` + the Angular frontend, or free-format input, later. The
+blog's infra chapter is blunt about where that goes wrong — *"the server owns execution; the
+client observes it and sends requests"* — and it documents that the original blocking stdin proxy
+had to be **thrown away** for the server. We avoid paying that cost twice. Binding rules:
+
+| Rule | Why it protects the GUI / free text |
+|---|---|
+| **The CLI runner is a thin client.** It builds the team, sends one message, renders events, exits. No orchestration, no saga logic, no booking rules. | A GUI replaces the runner only. If logic leaks into the runner, it cannot be reused by a server. |
+| **`@Coordinator` never blocks on the human.** It records `awaiting_approval` in its state and returns; the answer arrives later as a message. | This is exactly the CLI→HTTP difference. A blocking `input()` inside a handler would deadlock a web request. |
+| **The human bridge is a swappable agent class**, named in YAML (`agent_class`), not hard-wired. | Swapping the CLI proxy for `ServerUserProxyAgent` becomes a one-line YAML change. |
+| **Questions to the human carry an explicit `recipient`**, and answers correlate on the **inner** message id. | Documented infra gotcha: without it the server cannot route an answer back to the right proxy. |
+| **`message_types` is a list; `PlanMeetingRequest` is simply the first.** | Free-text intake is added as a *second* message type plus an intake step — purely additive, no rewrite. |
+| **Team lives in catalog YAML, not Python.** | The infra server creates teams by `catalog_namespace`. A Python-constructed team would have to be ported. |
+| **Plan store sits behind a repository protocol**, its implementation named by **dotted path in config**, its location by env var. | Lets a server swap the file store for a shared/db one, and lets a resumed agent rebuild it in `on_start` (framework rule: no live objects in config). |
+| **No secrets or live objects in config/state.** | Config and state are serialised into telemetry, which the GUI renders. |
+
 ---
 
 ## 5. The scenario, walked through
@@ -468,7 +504,7 @@ Found while walking the scenario. None are blockers, but they shape the work.
 | D4 | **Approve the proposed time slot only** | One gate, before anything is written; room and lunch then proceed automatically |
 | D5 | **Only a *location* change rebooks lunch** | A nomnom order is tied to a location, not a room code |
 | D6 | **OpenAI** provider | Cheap model for specialists, stronger one in the roster |
-| D7 | **CLI runner in a 4th container**, MCP via compose service names | Consistent with the rest of the project; `akgentic-infra` deferred |
+| D7 | **CLI runner in a 4th container**, MCP via compose service names | Consistent with the rest of the project; `akgentic-infra` deferred but **not** foreclosed — see §4.2 |
 | D8 | **Add `find_common_slots` first**, then the happy path | Turns fallible LLM arithmetic into one deterministic call (G1) |
 
 ### 7.1 Still to settle, and what is deferred
@@ -483,13 +519,16 @@ small intake LLM step or an LLM coordinator), without disturbing the saga design
 **Deferred to iteration 2:** the cancellation and location-change sagas (§5.1). The plan store is
 designed for them now; the handlers come later.
 
-**Deferred indefinitely:** `akgentic-infra` as a service + Angular frontend (D7); gap G2's
-dedicated move/reschedule endpoints.
+**Deferred but explicitly planned** (not "maybe"): `akgentic-infra` as a service + the Angular
+frontend, and free-format human input. §4.2 lists the rules that keep both reachable without a
+rewrite. Any change that would break one of those rules needs discussing first.
+
+**Deferred indefinitely:** gap G2's dedicated move/reschedule endpoints.
 
 ### 7.2 Implementation order
 
 1. ✅ `find_common_slots` REST endpoint + MCP tool on meeting-service, with tests (closes G1).
-2. New `agents/` workspace package: dependencies, `MeetingPlan` model, plan store.
+2. ✅ New `agents/` workspace package: dependencies, `MeetingPlan` model, plan store.
 3. Catalog YAML: namespace, team, 5 agent entries, 3 `MCPTool` entries, prompts, model config.
 4. `@Coordinator` + `@PlanRepository` deterministic actors; typed messages.
 5. `@Scheduler`, `@FacilityManager`, `@Catering` LLM agents.
@@ -515,3 +554,17 @@ dedicated move/reschedule endpoints.
   CLI runner in a 4th container; `find_common_slots` added first. Cancellation/compensation sagas
   and `akgentic-infra` deferred. One item left open: confirming a typed `PlanMeetingRequest` as
   the v1 human entry point (§7.1).
+
+## 9. Changelog
+
+- 2026-10-26: Step 1 — `find_common_slots` added to meeting-service (closes G1); see `design.md`.
+- 2026-10-26: Added §4.2 after a steer that a **GUI and free-format input are wanted in time**.
+  CLI-first and typed-input-first are now explicitly recorded as *sequencing*, not architecture,
+  with eight binding rules that keep `akgentic-infra` + frontend and free text reachable without a
+  rewrite. Note `akgentic-framework[agent,catalog]` leaves `infra` one extra away.
+- 2026-10-26: Step 2 — created the `agents/` workspace package (`meeting_agents`) with the
+  `MeetingPlan` aggregate, a `PlanStore` protocol with in-memory and atomic-JSON implementations,
+  and env-driven `Settings`. Status is **derived** from which ids are present, so it cannot drift;
+  `compensations()` and `relocation_compensations()` return the undo steps as ordered plain data,
+  keeping the saga out of a model's hands and testable without any actor or LLM. 23 tests.
+  Verified the framework assumptions against the installed packages — see §2.3.

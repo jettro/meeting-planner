@@ -18,17 +18,17 @@ sync: ## Install/sync all workspace packages into the shared .venv
 	uv sync --all-packages
 
 lint: ## Run ruff checks across all services
-	uv run ruff check services
+	uv run ruff check services agents
 
 format: ## Auto-format and auto-fix code with ruff
-	uv run ruff format services
-	uv run ruff check --fix services
+	uv run ruff format services agents
+	uv run ruff check --fix services agents
 
 typecheck: ## Run mypy across all services
-	uv run mypy services
+	uv run mypy services agents
 
 test: ## Run the full pytest suite
-	uv run pytest services
+	uv run pytest services agents
 
 check: lint typecheck test ## Run lint + typecheck + test (CI-equivalent)
 
