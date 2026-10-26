@@ -249,6 +249,7 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
             facility,
             BookFacilitiesAssignment(
                 plan_id=plan.plan_id,
+                title=plan.title,
                 location_id=plan.location_id,
                 day=plan.day,
                 slot=ProposedSlot(start=plan.proposed_start, end=plan.proposed_end),

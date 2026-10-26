@@ -5,6 +5,7 @@ SERVICES := meeting-service location-service nomnom-service
 .PHONY: help sync lint format typecheck test check \
         run-meeting run-location run-nomnom \
         run-meeting-mcp run-location-mcp run-nomnom-mcp \
+        plan-meeting \
         up down build logs ps clean
 
 help: ## Show this help
@@ -49,6 +50,22 @@ run-location-mcp: ## Run location-service's MCP server locally with uv (http://l
 
 run-nomnom-mcp: ## Run nomnom-service's MCP server locally with uv (http://localhost:8103/mcp)
 	uv run --package nomnom-service uvicorn nomnom_service.mcp_server:mcp_app --reload --port 8103
+
+## --- Agent team (akgents) ----------------------------------------------------
+
+# A run on the host reaches the MCP servers on their published ports, while the
+# defaults in settings.py name the compose services. Shell variables win over
+# `uv run --env-file`, so these override .env without editing it. The API key
+# comes from .env and is never echoed here.
+AGENT_HOST_ENV := CATALOG_PATH=agents/catalog \
+                  PLAN_STORE_PATH=data/plans.json \
+                  PYDANTIC_AI_NO_BANNER=1 \
+                  MEETING_MCP_URL=http://localhost:8101/mcp \
+                  LOCATION_MCP_URL=http://localhost:8102/mcp \
+                  NOMNOM_MCP_URL=http://localhost:8103/mcp
+
+plan-meeting: ## Plan a meeting from the terminal; needs `make up`. Pass ARGS="--title ..."
+	@$(AGENT_HOST_ENV) uv run --env-file .env --package meeting-agents plan-meeting $(ARGS)
 
 ## --- Docker Compose ----------------------------------------------------------
 

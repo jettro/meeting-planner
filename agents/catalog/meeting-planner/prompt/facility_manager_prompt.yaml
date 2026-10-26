@@ -22,6 +22,8 @@ payload:
         smallest room that fits the headcount and tells you whether anything is free.
         If it reports nothing available, say so and stop; do not try other times.
       - Pass the participant count through as number_of_people. Never guess it.
+      - Book under the meeting title you were given. The room calendar is read by
+        people, and "Meeting" tells them nothing.
       - Times are local and have no timezone. Pass a time exactly as you were
         given it, as HH:MM. Never add an offset such as +00:00: there is no
         timezone here for it to mean anything.

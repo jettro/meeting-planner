@@ -17,22 +17,55 @@ see `design.md` section 3 for the design and rationale.
 | `location-service`  | Locations, rooms, and room bookings           | `8002` | `8102` |
 | `nomnom-service`    | Food/drinks catalogue and ordering            | `8003` | `8103` |
 
-**Current phase scope** (see `design.md` for the roadmap): plain REST APIs, Pydantic/SQLModel
-domain models, and agent-facing MCP servers that wrap each service's own REST API. There is
-**no** authentication/OAuth on the REST APIs (the MCP endpoints use a lightweight per-service API
-key instead, see `design.md` section 3.3), and no agentic/LLM orchestration layer yet — that is
-deliberately deferred to a later phase. Each service is self-contained and does not share a
-common library; a small amount of logic (e.g. the day-availability algorithm) is duplicated
-between `meeting-service` and `location-service` by design.
+**Current phase scope** (see `design.md` and [`design_akgents.md`](./design_akgents.md) for the
+roadmap): plain REST APIs, Pydantic/SQLModel domain models, agent-facing MCP servers that wrap
+each service's own REST API, and an **agent team** built on the in-house "Akgents" framework that
+plans a meeting end to end from the command line. There is **no** authentication/OAuth on the REST
+APIs (the MCP endpoints use a lightweight per-service API key instead, see `design.md` section
+3.3). Each service is self-contained and does not share a common library; a small amount of logic
+(e.g. the day-availability algorithm) is duplicated between `meeting-service` and
+`location-service` by design.
+
+## The agent team
+
+`agents/` holds a team of [Akgents](https://github.com/b12consulting/akgentic-framework) actors,
+defined in catalog YAML under `agents/catalog/`:
+
+- `@Coordinator` — deterministic; drives the booking saga and is the only agent the human talks to.
+- `@Scheduler` — finds slots both people are free, and books the meeting.
+- `@FacilityManager` — books the room, and delegates lunch to `@Catering`.
+- `@Catering` — orders the food.
+
+**Each specialist can reach exactly one MCP server** — its own service's, and nothing else. That
+isolation is asserted by tests, not by review (`agents/tests/test_catalog.py`). Specialists never
+talk to each other directly; they exchange typed messages through the coordinator, except for the
+one hop from `@FacilityManager` to `@Catering`, which is why the coordinator never learns that
+lunch exists.
+
+To run it, start the stack, put an `OPENAI_API_KEY` in `.env` (never commit it), and ask:
+
+```bash
+make up
+make plan-meeting ARGS='--title "Design review" \
+  --with jettro@rag4j.org daniel@rag4j.org --day 2034-06-20 --at luminis'
+```
+
+The team proposes candidate time slots, waits for you to approve one — nothing is booked before
+you do — and then books the meeting, the room and the lunch.
 
 ## Project layout
 
 ```
 meeting-planner/
 ├── design.md                 # Analysis of the old project + rewrite decisions
+├── design_akgents.md          # Design of the agent team (Akgents)
 ├── pyproject.toml             # uv workspace root (shared dev tooling config)
 ├── docker-compose.yml         # Runs all three services together
 ├── Makefile                   # Shortcuts for common dev tasks (see `make help`)
+├── agents/                    # The Akgents team + CLI runner
+│   ├── catalog/               # Team, agent, tool, model and prompt YAML
+│   ├── src/meeting_agents/    # Coordinator, specialists, messages, plan store, CLI
+│   └── tests/
 └── services/
     ├── meeting-service/
     │   ├── pyproject.toml
@@ -103,6 +136,7 @@ Run `make help` for the full list. Highlights:
 | `make test`         | `pytest` across all services                                 |
 | `make check`        | lint + typecheck + test (what CI should run)                 |
 | `make run-<name>`   | run a single service locally with `uvicorn --reload`         |
+| `make plan-meeting` | ask the agent team to plan a meeting (needs `make up`)       |
 | `make build`        | `docker compose build`                                       |
 | `make up` / `down`  | start/stop the full stack (containers only; volumes kept)    |
 | `make clean`        | stop the stack **and delete** the SQLite data volumes         |
@@ -126,10 +160,14 @@ Run `make help` for the full list. Highlights:
   in-process (`httpx.ASGITransport`) and call tools via FastMCP's in-memory `Client`, so no real
   network server is needed. In Docker, `entrypoint.sh` starts both the REST+UI and MCP `uvicorn`
   processes in the same container; see `design.md` section 3 for the full design.
-- No `.env`/secrets are required in this phase. If/when a later phase introduces LLM calls, add a
-  fresh `.env.example` — never commit real API keys.
+- The agent team needs an `OPENAI_API_KEY` in `.env` (see `.env.example`); **never commit real
+  keys**. Run it through `make plan-meeting`, which passes `.env` to `uv` and points the team at
+  the MCP servers on `localhost:810x` — shell variables win over `uv run --env-file`, so the
+  committed defaults (which name the compose services) are overridden without editing `.env`.
 
 ## Roadmap
 
-See `design.md` for the full rewrite plan. Deferred to a later phase: an agent/orchestration layer
-(built on the in-house "Akgents" framework), MCP servers, a chat interface, and OAuth2/auth-server.
+See `design.md` for the full rewrite plan and `design_akgents.md` for the agent team. Still to
+come: running the agent team in its own container, compensating sagas for cancelling or moving a
+meeting, a web frontend (`akgentic-infra` + Angular) alongside the CLI, free-format input instead
+of typed arguments, and OAuth2/auth-server.

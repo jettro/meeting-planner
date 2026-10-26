@@ -634,6 +634,33 @@ coordinator never learns that lunch exists. The verified run booked meeting 2,
 room `room-a` (booking 7) and a confirmed lunch order for exactly two people; a
 second run correctly avoided the slot the first had taken.
 
+### 7.5 What the first live CLI run taught us
+
+Step 6 put a real terminal in front of the team: `make plan-meeting` built the
+card, sent one `PlanMeetingRequest`, printed three candidate slots, read an
+answer from stdin and reported a booked meeting, room and lunch. Two things came
+out of running it for real rather than against stubs.
+
+**The actor must not hold the client.** `HumanProxy` only handles the framework's
+free-text `AgentMessage`; our typed messages would be logged and dropped. Rather
+than teach the actor about a terminal, `ChannelHuman` relays them to a
+`HumanChannel` — a Protocol, defaulting to a `QueueChannel`. The actor never
+blocks and knows nothing about who is listening, and replies go back through
+`runtime.send_from_to("@Human", "@Coordinator", …)`. That is the §4.2 rule-3 swap
+point: an HTTP handler or websocket implements the same Protocol, and the
+blocking `input()` stays in `cli.py` where it belongs.
+
+**A booking nobody can read is half a booking.** The run produced a perfectly
+correct room booking referenced as *"Meeting"* — the facility manager was never
+told the title, so the model filled the gap with a plausible noun. The MCP tool
+had accepted a `title` all along. The lesson is not about prompting: a field the
+agent is not given is a field it will invent. `BookFacilitiesAssignment` now
+carries the title, and a test pins it. The next run booked *"Architecture
+workshop"*, which is what the person reading the room calendar needs.
+
+Also confirmed: shell variables win over `uv run --env-file`, so the Makefile can
+point a host run at `localhost:810x` without touching the committed `.env`.
+
 ### 7.2 Implementation order
 
 1. ✅ `find_common_slots` REST endpoint + MCP tool on meeting-service, with tests (closes G1).
@@ -644,7 +671,7 @@ second run correctly avoided the slot the first had taken.
 4. ✅ `@Coordinator` + `@PlanRepository` deterministic actors; typed messages; `team/team.yaml`.
 5. ✅ `@Scheduler`, `@FacilityManager`, `@Catering` LLM agents — verified live against the
    running MCP containers and `gpt-6-luna` (see §7.4).
-6. CLI runner + approval gate via `HumanProxy`.
+6. ✅ CLI runner + approval gate via `HumanProxy` — verified live end to end (see §7.5).
 7. Dockerfile, compose service, Makefile targets, README.
 
 ---
@@ -726,3 +753,14 @@ second run correctly avoided the slot the first had taken.
   a refusal. All six are fixed and covered by tests. 143 tests pass; two
   consecutive live runs reached `CONFIRMED` with a real meeting, room and lunch
   order, the second correctly avoiding the slot the first had taken.
+- 2026-10-26: Step 6 — the CLI runner and the approval gate. `human.py` adds a
+  `HumanChannel` Protocol with a `QueueChannel` default and `ChannelHuman`, a
+  `HumanProxy` subclass that relays our typed messages to whoever is listening;
+  `cli.py` is a thin client over it that decides nothing about meetings. Replies
+  travel back via `runtime.send_from_to`, which works identically for a terminal,
+  an HTTP handler or a websocket (§4.2 rule 3), and `make plan-meeting` runs it on
+  the host. Verified live twice against the real services and `gpt-6-luna`: three
+  candidate slots offered, the chosen one honoured, meeting + room + confirmed
+  lunch order persisted. The run also exposed a room booked as "Meeting" — the
+  facility manager was never given the title, so the model invented one;
+  `BookFacilitiesAssignment` now carries it. See §7.5. 166 tests pass.

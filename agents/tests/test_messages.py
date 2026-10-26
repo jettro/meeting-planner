@@ -93,6 +93,7 @@ def test_facilities_assignment_never_mentions_lunch():
     """
     rendered = BookFacilitiesAssignment(
         plan_id="p1",
+        title="Design review",
         location_id="AMS",
         day=DAY,
         slot=SLOT,
@@ -102,6 +103,22 @@ def test_facilities_assignment_never_mentions_lunch():
     assert "lunch" not in rendered.lower()
     assert "AMS" in rendered
     assert "2 people" in rendered
+
+
+def test_facilities_assignment_carries_the_title():
+    """A room booked as "Meeting" tells the people reading the room calendar
+    nothing. The title is the coordinator's to pass on; a live run booked a
+    generic reference because this field did not exist."""
+    rendered = BookFacilitiesAssignment(
+        plan_id="p1",
+        title="Design review",
+        location_id="AMS",
+        day=DAY,
+        slot=SLOT,
+        headcount=2,
+        with_lunch=False,
+    ).rendering()
+    assert "Design review" in rendered
 
 
 def test_lunch_assignment_carries_location_and_headcount():

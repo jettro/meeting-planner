@@ -9,6 +9,9 @@ __pycache__/
 *.db
 *.db-journal
 .env
+
+# Runtime state: the agent team's MeetingPlan records
+data/
 .DS_Store
 dist/
 build/

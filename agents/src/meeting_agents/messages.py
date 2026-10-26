@@ -193,6 +193,7 @@ class BookFacilitiesAssignment(Message):
     """
 
     plan_id: str
+    title: str
     location_id: str
     day: date
     slot: ProposedSlot
@@ -204,6 +205,8 @@ class BookFacilitiesAssignment(Message):
             f"Book a room for {self.headcount} people at location "
             f"{self.location_id} on {self.day.isoformat()} from "
             f"{self.slot.start.strftime('%H:%M')} to {self.slot.end.strftime('%H:%M')}. "
+            f"The meeting is called '{self.title}'; book it under that title so the "
+            "room calendar says what the room is for. "
             "Report the room code and booking id you get back."
         )
 

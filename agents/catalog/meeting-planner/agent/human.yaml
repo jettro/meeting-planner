@@ -8,7 +8,10 @@ payload:
   description: "The human's seat at the table, and the team's entry point."
   # The swap point for a GUI (§4.2 rule 3). A websocket or REST proxy is a
   # UserProxy subclass named here instead; no other file changes.
-  agent_class: akgentic.agent.HumanProxy
+  #
+  # `ChannelHuman` itself holds no client: it relays to whatever channel is
+  # registered, so even the CLI is swapped without touching this file.
+  agent_class: meeting_agents.human.ChannelHuman
   can_be_hired: false
   skills:
     - approval

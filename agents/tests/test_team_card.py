@@ -55,8 +55,12 @@ def test_every_member_is_present(card: TeamCard):
 
 
 def test_entry_point_is_the_human_and_is_singular(card: TeamCard):
-    """The human is the way in, and there is exactly one seat."""
-    assert card.entry_point.card.agent_class == "akgentic.agent.HumanProxy"
+    """The human is the way in, and there is exactly one seat.
+
+    The class is asserted because it is the GUI swap point (§4.2 rule 3): a
+    websocket proxy is named here instead, and nothing else changes.
+    """
+    assert card.entry_point.card.agent_class == "meeting_agents.human.ChannelHuman"
     assert card.entry_point.headcount == 1
 
 
