@@ -20,7 +20,9 @@ from akgentic.team import TeamCard, TeamCardMember, TeamFactory
 from meeting_agents.cli import (
     REPLY_TIMEOUT_SECONDS,
     ask_for_approval,
+    ask_for_lunch,
     converse,
+    lunch_wish_from,
     main,
     parse_args,
     report_completed,
@@ -32,6 +34,7 @@ from meeting_agents.messages import (
     MESSAGE_TYPES,
     Compensation,
     FacilitiesBooked,
+    LunchApprovalRequest,
     MeetingBooked,
     PlanCompleted,
     PlanFailed,
@@ -103,6 +106,16 @@ def test_lunch_is_on_unless_it_is_turned_off():
 def test_a_missing_day_is_refused_rather_than_guessed():
     with pytest.raises(SystemExit):
         parse_args(["--title", "T", "--with", "a@b.c", "--at", "luminis"])
+
+
+def test_lunch_is_only_asked_about_when_it_is_left_open():
+    """`None` is the one value that stops the team to ask, so a scripted run
+    that says either `--lunch` or `--no-lunch` never blocks on a prompt."""
+    base = ["--title", "T", "--with", "a@b.c", "--day", "2034-06-14", "--at", "luminis"]
+
+    assert lunch_wish_from(parse_args(base)) is None
+    assert lunch_wish_from(parse_args([*base, "--lunch", "vegetarian"])) == "vegetarian"
+    assert lunch_wish_from(parse_args([*base, "--no-lunch"])) == ""
 
 
 # -- the approval gate ------------------------------------------------------
@@ -345,6 +358,7 @@ def test_the_client_plans_a_whole_meeting_through_the_real_saga(live_team, monke
             day=DAY,
             duration_minutes=60,
             location_id="luminis",
+            lunch_wish="sandwiches",
         ),
     )
 
@@ -369,6 +383,7 @@ def test_declining_at_the_terminal_leaves_nothing_booked(live_team, monkeypatch)
             day=DAY,
             duration_minutes=60,
             location_id="luminis",
+            lunch_wish="sandwiches",
         ),
     )
 
@@ -414,3 +429,98 @@ def test_the_reply_timeout_outlasts_three_slow_specialists():
     budget below that sum reports a failure for a plan that is merely slow."""
     slowest_agent_call = 240.0
     assert REPLY_TIMEOUT_SECONDS > 3 * slowest_agent_call
+
+
+# -- the lunch gate (D9) ----------------------------------------------------
+
+
+def a_lunch_question() -> LunchApprovalRequest:
+    return LunchApprovalRequest(plan_id="p1", title="Jettro and Daniel", day=DAY, headcount=2)
+
+
+def test_a_described_lunch_is_passed_on_untouched(monkeypatch):
+    """The terminal must not interpret the wish. Reading "something warm" is
+    @Catering's job - it is the agent holding the menu."""
+    monkeypatch.setattr("builtins.input", lambda _: "something warm and vegetarian")
+
+    decision = ask_for_lunch(a_lunch_question())
+
+    assert decision.wants_lunch is True
+    assert decision.wish == "something warm and vegetarian"
+    assert decision.plan_id == "p1"
+
+
+def test_saying_no_to_lunch_carries_no_wish(monkeypatch):
+    monkeypatch.setattr("builtins.input", lambda _: "no")
+
+    decision = ask_for_lunch(a_lunch_question())
+
+    assert decision.wants_lunch is False
+    assert decision.wish == ""
+
+
+def test_silence_leaves_the_lunch_to_the_kitchen(monkeypatch):
+    """Unlike the slot gate, an empty answer here means yes.
+
+    The two gates read silence differently on purpose: an unapproved slot
+    fails the plan, so silence has to be taken as no - while lunch was already
+    asked for on the command line, and the only open question is what kind."""
+    monkeypatch.setattr("builtins.input", lambda _: "")
+
+    decision = ask_for_lunch(a_lunch_question())
+
+    assert decision.wants_lunch is True
+    assert decision.wish == ""
+
+
+def test_a_shrug_is_not_mistaken_for_an_order(monkeypatch):
+    monkeypatch.setattr("builtins.input", lambda _: "surprise me")
+
+    assert ask_for_lunch(a_lunch_question()).wish == ""
+
+
+def test_the_confirmation_says_what_lunch_arrived(capsys):
+    """The human asked for lunch in words and should be answered in words."""
+    report_completed(
+        PlanCompleted(
+            plan=a_plan(
+                meeting_id=1,
+                room_code="room-a",
+                booking_id=7,
+                order_id="order-abc",
+                lunch_summary="2x vegetarian sandwich platter",
+            )
+        )
+    )
+
+    shown = capsys.readouterr().out
+    assert "2x vegetarian sandwich platter" in shown
+    assert "order-abc" in shown
+
+
+def test_the_client_asks_about_lunch_before_anything_is_booked(live_team, monkeypatch, capsys):
+    """Both gates, over the real saga: pick a slot, then describe a lunch."""
+    runtime, channel = live_team
+    answers = iter(["1", "something vegetarian"])
+    monkeypatch.setattr("builtins.input", lambda _: next(answers))
+
+    runtime.send_from_to(
+        "@Human",
+        "@Coordinator",
+        PlanMeetingRequest(
+            title="Jettro and Daniel",
+            participant_emails=["jettro@example.com", "daniel@example.com"],
+            day=DAY,
+            duration_minutes=60,
+            location_id="luminis",
+        ),
+    )
+
+    assert converse(runtime, channel) == 0
+
+    with pytest.raises(StopIteration):
+        next(answers)  # both questions really were asked
+
+    shown = capsys.readouterr().out
+    assert "lunch" in shown.lower()
+    assert "order-abc" in shown

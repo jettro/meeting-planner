@@ -24,6 +24,8 @@ from akgentic.team import TeamFactory, TeamRuntime
 from meeting_agents.bootstrap import load_team_card
 from meeting_agents.human import QueueChannel, set_channel
 from meeting_agents.messages import (
+    LunchApprovalDecision,
+    LunchApprovalRequest,
     PlanCompleted,
     PlanFailed,
     PlanMeetingRequest,
@@ -53,13 +55,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         metavar="EMAIL",
         help="Email address of every participant.",
     )
-    parser.add_argument(
-        "--day", required=True, type=date.fromisoformat, help="The day, as YYYY-MM-DD."
-    )
+    parser.add_argument("--day", required=True, type=date.fromisoformat, help="The day, as YYYY-MM-DD.")
     parser.add_argument("--minutes", type=int, default=60, help="Length in minutes.")
     parser.add_argument("--at", dest="location_id", required=True, help="Location id.")
+    parser.add_argument("--no-lunch", dest="with_lunch", action="store_false", help="Skip the lunch order.")
     parser.add_argument(
-        "--no-lunch", dest="with_lunch", action="store_false", help="Skip the lunch order."
+        "--lunch",
+        dest="lunch_wish",
+        metavar="WISH",
+        help=(
+            "What kind of lunch, in your own words. Given here, the team does not "
+            "stop to ask - which is what a scripted run needs."
+        ),
     )
     parser.add_argument("--verbose", action="store_true", help="Show framework logging.")
     return parser.parse_args(argv)
@@ -82,6 +89,46 @@ def ask_for_approval(request: SlotApprovalRequest) -> SlotApprovalDecision:
         print(f"Please answer 1-{len(request.candidates)}, or n.")
 
 
+#: Answers that mean "no lunch". Anything else is taken as a description of
+#: one, because the whole point is that a person may type what they feel like.
+REFUSALS = {"n", "no", "none", "nothing", "skip"}
+#: Answers that mean "yes, but you choose". An empty wish is a real answer:
+#: composing the lunch is @Catering's judgement, with a menu we never show.
+DEFERRALS = {"", "y", "yes", "please", "anything", "surprise me", "you choose"}
+
+
+def lunch_wish_from(args: argparse.Namespace) -> str | None:
+    """Decide whether this run has to stop and ask about lunch.
+
+    ``None`` is the only answer that opens the gate. Both ``--no-lunch`` and
+    ``--lunch "..."`` settle the question up front, so a scripted run never
+    blocks on a prompt nobody is there to answer.
+    """
+    if not args.with_lunch:
+        return ""
+    wish: str | None = args.lunch_wish
+    return wish
+
+
+def ask_for_lunch(request: LunchApprovalRequest) -> LunchApprovalDecision:
+    """The second question (D9). Free text, because a menu is not shown.
+
+    This client interprets only the two answers that are *not* descriptions -
+    a refusal and a shrug. Everything else is passed through untouched for
+    @Catering to make sense of, because reading "something vegetarian" is the
+    job of the agent with the menu, not of a terminal.
+    """
+    print(f"\n{request.question()}")
+    answer = input("Lunch (or 'no'): ").strip()
+    folded = answer.lower()
+
+    if folded in REFUSALS:
+        return LunchApprovalDecision(plan_id=request.plan_id, wants_lunch=False)
+    if folded in DEFERRALS:
+        return LunchApprovalDecision(plan_id=request.plan_id, wants_lunch=True)
+    return LunchApprovalDecision(plan_id=request.plan_id, wants_lunch=True, wish=answer)
+
+
 def report_completed(message: PlanCompleted) -> None:
     plan = message.plan
     print(f"\nBooked '{plan.title}' on {plan.day}.")
@@ -90,7 +137,9 @@ def report_completed(message: PlanCompleted) -> None:
     print(f"  room    {plan.room_code} at {plan.location_id} (booking {plan.booking_id})")
     print(f"  meeting {plan.meeting_id}")
     if plan.order_id:
-        print(f"  lunch   ordered ({plan.order_id})")
+        detail = plan.lunch_summary or "ordered"
+        print(f"  lunch   {detail}")
+        print(f"          order {plan.order_id}")
 
 
 def report_failed(message: PlanFailed) -> None:
@@ -120,6 +169,8 @@ def converse(runtime: TeamRuntime, channel: QueueChannel) -> int:
 
         if isinstance(message, SlotApprovalRequest):
             runtime.send_from_to("@Human", "@Coordinator", ask_for_approval(message))
+        elif isinstance(message, LunchApprovalRequest):
+            runtime.send_from_to("@Human", "@Coordinator", ask_for_lunch(message))
         elif isinstance(message, PlanCompleted):
             report_completed(message)
             return 0
@@ -161,6 +212,7 @@ def main(argv: list[str] | None = None) -> int:
                 duration_minutes=args.minutes,
                 location_id=args.location_id,
                 with_lunch=args.with_lunch,
+                lunch_wish=lunch_wish_from(args),
             ),
         )
         return converse(runtime, channel)

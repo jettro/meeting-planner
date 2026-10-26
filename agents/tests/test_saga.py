@@ -34,6 +34,8 @@ from meeting_agents.messages import (
     BookMeetingAssignment,
     FacilitiesBooked,
     FindSlotsAssignment,
+    LunchApprovalDecision,
+    LunchApprovalRequest,
     MeetingBooked,
     PlanCompleted,
     PlanFailed,
@@ -80,6 +82,11 @@ class RecordingHuman(UserProxy):
     ) -> None:
         Inbox.messages.put(message)
 
+    def receiveMsg_LunchApprovalRequest(  # noqa: N802
+        self, message: LunchApprovalRequest, sender: ActorAddress
+    ) -> None:
+        Inbox.messages.put(message)
+
     def receiveMsg_PlanCompleted(  # noqa: N802
         self, message: PlanCompleted, sender: ActorAddress
     ) -> None:
@@ -119,6 +126,7 @@ class StubFacilityManager(Akgent[BaseConfig, BaseState]):
                 room_code=ROOM_CODE,
                 booking_id=BOOKING_ID,
                 order_id=ORDER_ID if message.with_lunch else None,
+                lunch_summary=f"ordered: {message.lunch_wish}" if message.with_lunch else "",
             ),
         )
 
@@ -184,7 +192,11 @@ def team(tmp_path):
     system.shutdown()
 
 
-def request_meeting(runtime, with_lunch: bool = True) -> None:
+def request_meeting(
+    runtime, with_lunch: bool = True, lunch_wish: str | None = ""
+) -> None:
+    """By default the lunch question is already settled, because most of these
+    tests are about the saga and not about the gate in front of it."""
     runtime.send_from_to(
         "@Human",
         "@Coordinator",
@@ -195,6 +207,7 @@ def request_meeting(runtime, with_lunch: bool = True) -> None:
             duration_minutes=60,
             location_id="AMS",
             with_lunch=with_lunch,
+            lunch_wish=lunch_wish,
         ),
     )
 
@@ -337,3 +350,100 @@ def test_a_failure_after_booking_reports_what_is_still_booked(team):
     assert [s.step for s in steps] == ["cancel_meeting"]
     assert steps[0].reference == str(MEETING_ID)
     assert booked.meeting_id == MEETING_ID, "nothing was undone by asking what to undo"
+
+
+# -- the lunch gate (D9) ----------------------------------------------------
+
+
+def approve_slot(team, request) -> None:
+    team.send_from_to(
+        "@Human",
+        "@Coordinator",
+        SlotApprovalDecision(plan_id=request.plan_id, approved=True, slot=SLOT),
+    )
+
+
+def test_an_undecided_lunch_is_asked_about_after_the_slot(team):
+    """Two questions, in order - and the second one only once the first is
+    answered, so the human is never asked about lunch for a meeting that
+    may not happen."""
+    request_meeting(team, lunch_wish=None)
+    approval = Inbox.expect(SlotApprovalRequest)
+    approve_slot(team, approval)
+
+    question = Inbox.expect(LunchApprovalRequest)
+    assert question.plan_id == approval.plan_id
+    assert question.headcount == 2
+
+
+def test_a_settled_lunch_is_never_asked_about(team):
+    """`--lunch` and `--no-lunch` exist so a scripted run does not block."""
+    request_meeting(team, lunch_wish="something vegetarian")
+    approval = Inbox.expect(SlotApprovalRequest)
+    approve_slot(team, approval)
+
+    assert isinstance(Inbox.messages.get(timeout=5), PlanCompleted)
+
+
+def test_the_stated_wish_reaches_the_facility_manager(team):
+    request_meeting(team, lunch_wish=None)
+    approve_slot(team, Inbox.expect(SlotApprovalRequest))
+    question = Inbox.expect(LunchApprovalRequest)
+    team.send_from_to(
+        "@Human",
+        "@Coordinator",
+        LunchApprovalDecision(plan_id=question.plan_id, wants_lunch=True, wish="vegetarian"),
+    )
+
+    plan = Inbox.expect(PlanCompleted).plan
+    assert plan.lunch_wish == "vegetarian"
+    assert plan.order_id == ORDER_ID
+
+
+def test_the_confirmation_describes_the_lunch(team):
+    """The point of the summary: the human asked for lunch in words, and
+    should be told in words what arrived."""
+    request_meeting(team, lunch_wish=None)
+    approve_slot(team, Inbox.expect(SlotApprovalRequest))
+    question = Inbox.expect(LunchApprovalRequest)
+    team.send_from_to(
+        "@Human",
+        "@Coordinator",
+        LunchApprovalDecision(plan_id=question.plan_id, wants_lunch=True, wish="vegetarian"),
+    )
+
+    assert "vegetarian" in Inbox.expect(PlanCompleted).plan.lunch_summary
+
+
+def test_declining_lunch_is_not_a_failure(team):
+    """Only an unapproved slot fails a plan. No lunch is a smaller meeting."""
+    request_meeting(team, lunch_wish=None)
+    approve_slot(team, Inbox.expect(SlotApprovalRequest))
+    question = Inbox.expect(LunchApprovalRequest)
+    team.send_from_to(
+        "@Human",
+        "@Coordinator",
+        LunchApprovalDecision(plan_id=question.plan_id, wants_lunch=False),
+    )
+
+    plan = Inbox.expect(PlanCompleted).plan
+    assert plan.order_id is None
+    assert plan.lunch_wish == ""
+    assert plan.status is PlanStatus.CONFIRMED
+
+
+def test_the_lunch_gate_books_nothing_while_it_waits(team):
+    """Same property as the slot gate (D4): the question is asked before the
+    first write, so walking away from it leaves nothing to clean up."""
+    request_meeting(team, lunch_wish=None)
+    approve_slot(team, Inbox.expect(SlotApprovalRequest))
+    question = Inbox.expect(LunchApprovalRequest)
+
+    assert Inbox.messages.empty()
+
+    team.send_from_to(
+        "@Human",
+        "@Coordinator",
+        LunchApprovalDecision(plan_id=question.plan_id, wants_lunch=True),
+    )
+    assert Inbox.expect(PlanCompleted).plan.meeting_id == MEETING_ID

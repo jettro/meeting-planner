@@ -202,6 +202,7 @@ def request_meeting(runtime, with_lunch: bool = True) -> None:
             duration_minutes=60,
             location_id="AMS",
             with_lunch=with_lunch,
+            lunch_wish="",
         ),
     )
 

@@ -507,6 +507,7 @@ Found while walking the scenario. None are blockers, but they shape the work.
 | D6 | **OpenAI**, default model `gpt-6-luna` | Small/fast tier is enough for the three specialists; the coordinator uses no model at all |
 | D7 | **CLI runner in a 4th container**, MCP via compose service names | Consistent with the rest of the project; `akgentic-infra` deferred but **not** foreclosed — see §4.2 |
 | D8 | **Add `find_common_slots` first**, then the happy path | Turns fallible LLM arithmetic into one deterministic call (G1) |
+| D9 | **A second gate: lunch, described in free text** | A person wants a say in lunch, but not a menu — see §7.7 |
 
 ### 7.1 Still to settle, and what is deferred
 
@@ -700,6 +701,50 @@ idle. A run with a four-minute pause before answering completed normally, so
 the actor, its MCP session and its connection pool all survive an idle human.
 The gate is not the fragile part.
 
+### 7.7 A second gate, and the menu that never travels
+
+D4 said *one* gate, on the time slot, because that is the only decision that
+has to be made before anything is written. Using the team showed the reasoning
+was right about *when* to ask and wrong about *how much*: lunch simply appeared,
+and a person who would like a say in their own lunch had none.
+
+So there is a second question now, asked **after** the slot is approved and
+**before** anything is booked. The order matters: nobody should be asked about
+lunch for a meeting that may never happen.
+
+**The answer is free text, and that is what keeps D2 intact.** The obvious
+design — show the menu, let the human pick — would have dragged the NomNom menu
+from `@Catering` through `@FacilityManager` to `@Coordinator` and out to the
+human, turning the one agent allowed near that MCP server into a courier and
+telling the human exactly where lunch comes from. Letting a person say
+*"something vegetarian, no bread"* instead means **no menu ever moves**:
+`@Catering` reads the wish against the menu it alone holds, and the judgement
+stays with the agent that has the information. Isolation survives because we
+asked a vaguer question, not because we added a guard.
+
+The wish is a **data field on `BookFacilitiesAssignment`, deliberately absent
+from `rendering()`** — same trick as `with_lunch`. The facility manager reads it
+in Python and passes it down; the coordinator's prose still never mentions
+lunch, and the test that holds that line still passes.
+
+**Three states, not two.** `with_lunch=False` → no lunch, no question;
+`with_lunch=True, lunch_wish=None` → ask; `with_lunch=True, lunch_wish="..."` →
+settled. The third exists so `--lunch "a hot soup"` and `--no-lunch` never block
+a scripted run on a prompt nobody is there to answer. A gate with no
+non-interactive path is a gate that breaks automation.
+
+**Declining lunch is not a failure.** Only an unapproved slot fails a plan: a
+meeting with no agreed time is not a meeting, while a meeting with no lunch is
+just a smaller meeting. The two gates also read silence differently on purpose —
+empty means *no* at the slot gate and *you choose* at the lunch gate, because by
+then lunch has already been asked for and only the kind is open.
+
+Finally, the wish is **remembered on the plan**, so the D5 relocation saga can
+rebook the same kind of lunch at the new location rather than guessing again.
+And because the human asked in words, they are answered in words: a short
+summary travels back `OrderedLunch` → `LunchOrdered` → `FacilitiesBooked` →
+`MeetingPlan.lunch_summary` and is printed in the confirmation.
+
 ### 7.2 Implementation order
 
 1. ✅ `find_common_slots` REST endpoint + MCP tool on meeting-service, with tests (closes G1).
@@ -712,6 +757,7 @@ The gate is not the fragile part.
    running MCP containers and `gpt-6-luna` (see §7.4).
 6. ✅ CLI runner + approval gate via `HumanProxy` — verified live end to end (see §7.5).
 7. ✅ Dockerfile, compose service, Makefile targets, README.
+8. ✅ The lunch gate (D9) — a second question, free text, with a non-interactive path (§7.7).
 
 ---
 
@@ -826,3 +872,13 @@ The gate is not the fragile part.
   trace is now a `--verbose` detail rather than the first thing a person sees.
   Also ruled out, by experiment: a human taking four minutes to answer the
   approval prompt breaks nothing. 172 tests pass.
+- 2026-10-26: **D9, the lunch gate.** Added a second human question, asked after the slot is
+  approved and before anything is booked. It is answered in **free text**, which is what lets the
+  NomNom menu stay inside `@Catering` — showing a menu would have made the one agent allowed near
+  that server a courier and broken D2. `PlanMeetingRequest.lunch_wish` is tri-state (`None` asks,
+  anything else settles), so `--lunch "..."` and `--no-lunch` keep scripted runs from blocking.
+  Declining is not a failure. The wish is stored on the plan for the D5 relocation saga, and a
+  short summary flows back so the confirmation says what lunch actually arrived. `@Human` needed a
+  new handler for the question — an undeclared message type is logged and dropped, which would have
+  hung the plan silently. 193 tests; verified live across all four paths (asked, scripted,
+  declined, no lunch).

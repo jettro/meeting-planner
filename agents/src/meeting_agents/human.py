@@ -26,7 +26,12 @@ from akgentic.agent import HumanProxy
 from akgentic.core import ActorAddress
 from akgentic.core.messages import Message
 
-from meeting_agents.messages import PlanCompleted, PlanFailed, SlotApprovalRequest
+from meeting_agents.messages import (
+    LunchApprovalRequest,
+    PlanCompleted,
+    PlanFailed,
+    SlotApprovalRequest,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +92,12 @@ class ChannelHuman(HumanProxy):
         self, message: SlotApprovalRequest, sender: ActorAddress
     ) -> None:
         """The one question the team asks. Nothing is booked yet (D4)."""
+        self._relay(message)
+
+    def receiveMsg_LunchApprovalRequest(  # noqa: N802
+        self, message: LunchApprovalRequest, sender: ActorAddress
+    ) -> None:
+        """The second question (D9). Still nothing booked when it is asked."""
         self._relay(message)
 
     def receiveMsg_PlanCompleted(  # noqa: N802

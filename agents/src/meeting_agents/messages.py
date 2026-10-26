@@ -57,6 +57,10 @@ class PlanMeetingRequest(Message):
     duration_minutes: int = Field(default=60, gt=0, le=480)
     location_id: str
     with_lunch: bool = True
+    #: What kind of lunch, in the requester's own words. `None` means "not
+    #: decided yet - ask me", which is what opens the lunch gate (D9). A string
+    #: (including "") settles it up front, so a scripted run never blocks.
+    lunch_wish: str | None = None
 
     def to_plan(self) -> MeetingPlan:
         """The aggregate this request starts. The plan id is created here."""
@@ -67,7 +71,12 @@ class PlanMeetingRequest(Message):
             duration_minutes=self.duration_minutes,
             location_id=self.location_id,
             with_lunch=self.with_lunch,
+            lunch_wish=self.lunch_wish or "",
         )
+
+    def lunch_is_settled(self) -> bool:
+        """True when nobody needs to be asked about lunch."""
+        return not self.with_lunch or self.lunch_wish is not None
 
 
 class SlotApprovalDecision(Message):
@@ -91,6 +100,32 @@ class SlotApprovalDecision(Message):
         return self
 
 
+class LunchApprovalDecision(Message):
+    """The human's answer to the lunch question (D9).
+
+    A wish is free text on purpose: the person says "something vegetarian" and
+    @Catering turns that into items. Composing a lunch stays the agent's
+    judgement, which is what it has a menu and a model for.
+    """
+
+    plan_id: str
+    wants_lunch: bool
+    #: Empty means "yes, but you choose" - a valid and common answer.
+    wish: str = ""
+
+    @model_validator(mode="after")
+    def _a_refusal_carries_no_wish(self) -> LunchApprovalDecision:
+        """Reject the contradiction here rather than silently preferring one half.
+
+        The same lesson as `SlotApprovalDecision`: a client that sets the wrong
+        field should hear about it at the point of the mistake, not have the
+        coordinator quietly pick an interpretation.
+        """
+        if not self.wants_lunch and self.wish:
+            raise ValueError("a refusal of lunch must not also describe one")
+        return self
+
+
 # --------------------------------------------------------------------------
 # @Coordinator -> human
 # --------------------------------------------------------------------------
@@ -111,6 +146,28 @@ class SlotApprovalRequest(Message):
     def question(self) -> str:
         options = ", ".join(c.label() for c in self.candidates)
         return f"'{self.title}' on {self.day.isoformat()} - approve a slot: {options}"
+
+
+class LunchApprovalRequest(Message):
+    """Ask the human whether they want lunch, and what kind (D9).
+
+    Asked after the slot is approved and before anything is booked, so a "no"
+    costs nothing. The menu is deliberately *not* carried: the human describes
+    what they want, and @Catering - the only agent that can see a menu at all -
+    turns that into items. That keeps the isolation guarantee intact and keeps
+    the human from needing to know where lunch comes from (D2).
+    """
+
+    plan_id: str
+    title: str
+    day: date
+    headcount: int
+
+    def question(self) -> str:
+        return (
+            f"Lunch for {self.headcount} at '{self.title}' on {self.day.isoformat()}? "
+            "Say what you feel like, or decline."
+        )
 
 
 class PlanCompleted(Message):
@@ -199,6 +256,10 @@ class BookFacilitiesAssignment(Message):
     slot: ProposedSlot
     headcount: int
     with_lunch: bool
+    #: Read by @FacilityManager in code and passed to @Catering. Deliberately
+    #: absent from `rendering()`: the coordinator's words to this agent must
+    #: never mention lunch (D2), and a test holds that line.
+    lunch_wish: str = ""
 
     def rendering(self) -> str:
         return (
@@ -218,6 +279,9 @@ class FacilitiesBooked(Message):
     room_code: str
     booking_id: int
     order_id: str | None = None
+    #: What was actually ordered, in words, so the confirmation can say more
+    #: than an order id - an id tells the person nothing about their lunch.
+    lunch_summary: str = ""
 
 
 class OrderLunchAssignment(Message):
@@ -227,12 +291,19 @@ class OrderLunchAssignment(Message):
     location_id: str
     day: date
     headcount: int
+    wish: str = ""
 
     def rendering(self) -> str:
+        asked = (
+            f'They asked for: "{self.wish}". Honour that as closely as the menu '
+            "allows, and say so if it cannot be met."
+            if self.wish
+            else "Nobody stated a preference, so choose well on their behalf."
+        )
         return (
             f"Order lunch for {self.headcount} people at location "
             f"{self.location_id} on {self.day.isoformat()}. Choose from the menu "
-            "available there. Report the order id you get back."
+            f"available there. {asked} Report the order id you get back."
         )
 
 
@@ -241,6 +312,7 @@ class LunchOrdered(Message):
 
     plan_id: str
     order_id: str
+    summary: str = ""
 
 
 class AssignmentFailed(Message):
@@ -280,6 +352,8 @@ MESSAGE_TYPES: list[type] = [
     PlanMeetingRequest,
     SlotApprovalDecision,
     SlotApprovalRequest,
+    LunchApprovalDecision,
+    LunchApprovalRequest,
     PlanCompleted,
     PlanFailed,
     FindSlotsAssignment,

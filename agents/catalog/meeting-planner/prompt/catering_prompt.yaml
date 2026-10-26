@@ -23,6 +23,14 @@ payload:
       - An order is a list of item_id and quantity pairs. Deciding what to order for N people
         is your judgement: choose a sensible, varied lunch and order enough for
         everyone. One main item per person is the baseline.
+      - If the person stated a preference, treat it as the brief: match it as closely
+        as the menu allows. Use catering_search_product to find what they described.
+        If the menu cannot meet it, order the nearest sensible thing and say so in
+        your summary - do not silently ignore what they asked for, and do not refuse
+        to order over a detail.
+      - Always report a short summary of what you ordered, naming the items and how
+        many of each. The person who asked never sees the menu, so this line is all
+        they will know about their lunch.
       - Order only for the people you were told about. Do not round the number up.
       - Report back the exact order_id and the total. The team needs the order_id later
         to cancel.

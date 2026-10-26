@@ -50,8 +50,16 @@ make plan-meeting ARGS='--title "Design review" \
   --with jettro@rag4j.org daniel@rag4j.org --day 2034-06-20 --at luminis'
 ```
 
-The team proposes candidate time slots, waits for you to approve one — nothing is booked before
-you do — and then books the meeting, the room and the lunch.
+The team proposes candidate time slots and waits for you to approve one. It then asks what you
+feel like for lunch — answer in your own words (*"something vegetarian, no bread"*) and `@Catering`
+matches it against the menu, or answer `no` to skip it. Nothing is booked until both questions are
+answered, and the confirmation tells you what lunch actually arrived.
+
+To keep a scripted run from stopping at that question, settle it on the command line:
+
+```bash
+make plan-meeting ARGS='... --lunch "a hot soup"'   # or --no-lunch
+```
 
 It also runs as a container, reaching the MCP servers over the compose network instead of
 `localhost`:

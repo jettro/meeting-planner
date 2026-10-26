@@ -241,6 +241,7 @@ class FacilityManager(SpecialistAgent, Akgent[FacilityManagerConfig, AgentState]
                 location_id=message.location_id,
                 day=message.day,
                 headcount=message.headcount,
+                wish=message.lunch_wish,
             ),
         )
 
@@ -264,6 +265,7 @@ class FacilityManager(SpecialistAgent, Akgent[FacilityManagerConfig, AgentState]
                 room_code=room.room_code,
                 booking_id=room.booking_id,
                 order_id=message.order_id,
+                lunch_summary=message.summary,
             ),
         )
 
@@ -302,4 +304,11 @@ class Catering(SpecialistAgent):
             self.fail(message.plan_id, ordered.reason or "no lunch was ordered", sender)
             return
 
-        self.send(sender, LunchOrdered(plan_id=message.plan_id, order_id=ordered.order_id))
+        self.send(
+            sender,
+            LunchOrdered(
+                plan_id=message.plan_id,
+                order_id=ordered.order_id,
+                summary=ordered.summary,
+            ),
+        )

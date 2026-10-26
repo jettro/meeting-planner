@@ -48,6 +48,8 @@ payload:
     - __type__: meeting_agents.messages.PlanMeetingRequest
     - __type__: meeting_agents.messages.SlotApprovalDecision
     - __type__: meeting_agents.messages.SlotApprovalRequest
+    - __type__: meeting_agents.messages.LunchApprovalDecision
+    - __type__: meeting_agents.messages.LunchApprovalRequest
     - __type__: meeting_agents.messages.PlanCompleted
     - __type__: meeting_agents.messages.PlanFailed
     - __type__: meeting_agents.messages.FindSlotsAssignment

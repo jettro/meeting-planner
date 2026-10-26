@@ -17,6 +17,7 @@ from akgentic.team import TeamCard, TeamCardMember, TeamFactory
 from meeting_agents.human import ChannelHuman, QueueChannel, get_channel, set_channel
 from meeting_agents.messages import (
     MESSAGE_TYPES,
+    LunchApprovalRequest,
     PlanCompleted,
     PlanFailed,
     PlanMeetingRequest,
@@ -89,6 +90,21 @@ def test_an_approval_request_reaches_the_client(human, channel):
     assert isinstance(message, SlotApprovalRequest)
     assert message.plan_id == "p1"
     assert message.candidates == [SLOT]
+
+
+def test_the_lunch_question_reaches_the_client(human, channel):
+    """The second gate is useless if @Human drops it: an unhandled message
+    type is logged and silently discarded, so the plan would simply hang."""
+    human.send_from_to(
+        "@Human",
+        "@Human",
+        LunchApprovalRequest(plan_id="p1", title="Jettro and Daniel", day=DAY, headcount=2),
+    )
+
+    message = channel.take(timeout=5)
+
+    assert isinstance(message, LunchApprovalRequest)
+    assert message.plan_id == "p1"
 
 
 def test_a_result_reaches_the_client(human, channel):

@@ -14,6 +14,8 @@ from meeting_agents.messages import (
     BookFacilitiesAssignment,
     BookMeetingAssignment,
     FindSlotsAssignment,
+    LunchApprovalDecision,
+    LunchApprovalRequest,
     OrderLunchAssignment,
     PlanMeetingRequest,
     ProposedSlot,
@@ -152,3 +154,52 @@ def test_approval_must_name_its_slot():
 
     refusal = SlotApprovalDecision(plan_id="p1", approved=False)
     assert refusal.slot is None
+
+
+def test_a_request_without_a_lunch_wish_is_a_question_to_ask():
+    """Tri-state: `None` is the only value that stops the team to ask (D9)."""
+    assert not request().lunch_is_settled()
+
+
+def test_a_stated_wish_settles_lunch_up_front():
+    settled = request().model_copy(update={"lunch_wish": "something vegetarian"})
+    assert settled.lunch_is_settled()
+    assert settled.to_plan().lunch_wish == "something vegetarian"
+
+
+def test_declining_lunch_settles_it_too():
+    """`--no-lunch` must not block a scripted run on a prompt."""
+    assert request().model_copy(update={"with_lunch": False, "lunch_wish": ""}).lunch_is_settled()
+
+
+def test_a_refusal_carries_no_wish():
+    """A client that says no and describes a lunch has its fields confused,
+    and should hear about it here rather than order something by accident."""
+    with pytest.raises(ValidationError):
+        LunchApprovalDecision(plan_id="p1", wants_lunch=False, wish="sandwiches")
+
+
+def test_lunch_may_be_left_to_the_kitchen():
+    """An empty wish is a real answer: @Catering holds the menu, not the human."""
+    decision = LunchApprovalDecision(plan_id="p1", wants_lunch=True)
+    assert decision.wants_lunch
+    assert decision.wish == ""
+
+
+def test_the_lunch_question_says_who_it_is_for():
+    question = LunchApprovalRequest(
+        plan_id="p1", title="Jettro and Daniel", day=DAY, headcount=2
+    ).question()
+    assert "Jettro and Daniel" in question
+    assert "2" in question
+
+
+def test_the_lunch_wish_reaches_catering_verbatim():
+    rendered = OrderLunchAssignment(
+        plan_id="p1",
+        location_id="AMS",
+        day=DAY,
+        headcount=2,
+        wish="something vegetarian",
+    ).rendering()
+    assert "something vegetarian" in rendered

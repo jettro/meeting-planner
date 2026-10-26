@@ -30,6 +30,8 @@ from meeting_agents.messages import (
     BookMeetingAssignment,
     FacilitiesBooked,
     FindSlotsAssignment,
+    LunchApprovalDecision,
+    LunchApprovalRequest,
     MeetingBooked,
     PlanCompleted,
     PlanFailed,
@@ -71,6 +73,10 @@ class CoordinatorState(BaseState):
     #: told only once @PlanRepository confirms the write, so "completed" never
     #: means "completed, probably".
     awaiting_durability: list[str] = []
+    #: Plans whose requester left lunch undecided, so the lunch gate applies.
+    #: A request that settled it up front never reaches the gate, which is what
+    #: keeps a scripted run from blocking on a question (D9).
+    awaiting_lunch: list[str] = []
 
 
 class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
@@ -94,6 +100,10 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
         repository = self._member(self.config.repository_name)
         if repository is not None:
             self.send(repository, SavePlan(plan=plan))
+
+    def _stop_awaiting_lunch(self, plan_id: str) -> None:
+        remaining = [p for p in self.state.awaiting_lunch if p != plan_id]
+        self.init_state(self.state.model_copy(update={"awaiting_lunch": remaining}))
 
     def _plan(self, plan_id: str) -> MeetingPlan | None:
         plan = self.state.plans.get(plan_id)
@@ -124,6 +134,12 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
         """Start a plan and ask @Scheduler for the common free windows."""
         plan = message.to_plan()
         self._remember(plan)
+        if not message.lunch_is_settled():
+            self.init_state(
+                self.state.model_copy(
+                    update={"awaiting_lunch": [*self.state.awaiting_lunch, plan.plan_id]}
+                )
+            )
 
         scheduler = self._member(self.config.scheduler_name)
         if scheduler is None:
@@ -165,6 +181,60 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
         )
         self._remember(plan)
 
+        if plan.plan_id in self.state.awaiting_lunch:
+            self._ask_about_lunch(plan)
+            return
+        self._book_the_meeting(plan)
+
+    def receiveMsg_LunchApprovalDecision(  # noqa: N802
+        self, message: LunchApprovalDecision, sender: ActorAddress
+    ) -> None:
+        """The second gate (D9), and the last thing asked before anything is booked.
+
+        Declining lunch is not a failure - it is a smaller meeting. Only the
+        slot can fail a plan by being refused, because a meeting with no agreed
+        time is not a meeting.
+        """
+        plan = self._plan(message.plan_id)
+        if plan is None:
+            return
+
+        self._stop_awaiting_lunch(plan.plan_id)
+        plan = plan.model_copy(
+            update={
+                "with_lunch": message.wants_lunch,
+                "lunch_wish": message.wish if message.wants_lunch else "",
+            }
+        )
+        self._remember(plan)
+        self._book_the_meeting(plan)
+
+    # -- saga steps -------------------------------------------------------
+
+    def _ask_about_lunch(self, plan: MeetingPlan) -> None:
+        """Put the lunch question to the human and return, holding no thread."""
+        human = self._member(self.config.human_name)
+        if human is None:
+            self._fail(plan, f"no {self.config.human_name} to ask about lunch")
+            return
+
+        self.send(
+            human,
+            LunchApprovalRequest(
+                plan_id=plan.plan_id,
+                title=plan.title,
+                day=plan.day,
+                headcount=len(plan.participant_emails),
+                recipient=human,
+            ),
+        )
+
+    def _book_the_meeting(self, plan: MeetingPlan) -> None:
+        """Put the approved slot in the agendas. The first thing that is real."""
+        if plan.proposed_start is None or plan.proposed_end is None:
+            self._fail(plan, "no approved slot recorded for this plan")
+            return
+
         scheduler = self._member(self.config.scheduler_name)
         if scheduler is None:
             self._fail(plan, f"no {self.config.scheduler_name} on the team")
@@ -177,7 +247,7 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
                 title=plan.title,
                 participant_emails=plan.participant_emails,
                 day=plan.day,
-                slot=message.slot,
+                slot=ProposedSlot(start=plan.proposed_start, end=plan.proposed_end),
             ),
         )
 
@@ -255,6 +325,7 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
                 slot=ProposedSlot(start=plan.proposed_start, end=plan.proposed_end),
                 headcount=len(plan.participant_emails),
                 with_lunch=plan.with_lunch,
+                lunch_wish=plan.lunch_wish,
             ),
         )
 
@@ -271,6 +342,7 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
                 "room_code": message.room_code,
                 "booking_id": message.booking_id,
                 "order_id": message.order_id,
+                "lunch_summary": message.lunch_summary,
             }
         )
         self.init_state(

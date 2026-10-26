@@ -99,4 +99,12 @@ class OrderedLunch(BaseModel):
     order_id: str | None = Field(
         default=None, description="The exact order id the tool returned. Never invent one."
     )
+    summary: str = Field(
+        default="",
+        description=(
+            "What you ordered, in one short line a person can read, naming the "
+            "items and how many: '2 sandwiches, 1 salad, 2 coffees'. If a "
+            "preference could not be met, say so here in a few words."
+        ),
+    )
     reason: str = Field(default="", description="If succeeded is false, why not.")

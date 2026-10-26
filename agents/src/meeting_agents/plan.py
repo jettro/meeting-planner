@@ -69,6 +69,9 @@ class MeetingPlan(BaseModel):
     duration_minutes: int = Field(default=60, gt=0, le=480)
     location_id: str
     with_lunch: bool = True
+    #: What the human asked for, in their own words. Kept on the plan so a
+    #: relocation rebooks the lunch they wanted rather than a fresh guess (D5).
+    lunch_wish: str = ""
 
     # Filled in by @Scheduler, then approved by the human.
     proposed_start: time | None = None
@@ -80,6 +83,9 @@ class MeetingPlan(BaseModel):
     room_code: str | None = None
     booking_id: int | None = None
     order_id: str | None = None
+    #: What was ordered, in words. Derived from the order, not requested by
+    #: anyone: the confirmation has to be readable by the person who asked.
+    lunch_summary: str = ""
 
     cancelled: bool = False
 
