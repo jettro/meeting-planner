@@ -142,13 +142,45 @@ Correlation rides on `plan_id`, as it already does.
   becomes something we derive from the event stream ourselves.
 - ❌ The browser now owns the shape of a domain message. A Telegram client would have to repeat it.
 
-**Recommendation: A.** The reason is not elegance — it is that A makes "the team is waiting for a
-person" a **first-class server-side fact** rather than something each client reconstructs. That is
-precisely what an observability-focused iteration needs, and it is also the only option in which a
-second client (or a reload) can see a pending question. The parsing we already own and already
-test.
+**Decided: A.** The reason is not elegance — it is that A makes "the team is waiting for a person"
+a **first-class server-side fact** rather than something each client reconstructs. That is precisely
+what an observability-focused iteration needs, and it is also the only option in which a second
+client (or a reload) can see a pending question.
 
-A hybrid is possible later (accept both), but picking one to start with keeps the trace readable.
+### 4.1 Where structured data actually comes from
+
+Choosing A raises a fair worry: *does the coordinator now have to extract structured data out of a
+conversation?* **No.** D1 holds — the coordinator still does not reason. Three separate things get
+confused here, so they are pulled apart:
+
+**Starting a plan is not a conversation.** `PlanMeetingRequest` is a typed message and stays one.
+The browser builds it from a form and posts it with a `__model__` envelope. No text, no parsing, no
+model. The team then runs until it reaches a gate — *you start it with a booking, and it talks to
+you only when it needs to*. That is already how the saga behaves; nothing changes.
+
+**Answering a gate is where text appears, and today there is nothing to extract.** The proxy is
+handed the original question (verified: `handle.process_human_input(content, event.message)`), so it
+knows what is being answered:
+
+| Question | What the browser renders | What travels | What the proxy does |
+|---|---|---|---|
+| `SlotApprovalRequest` | A radio list of the candidate slots | `"2"` or `"n"` | Index into `question.candidates` → `SlotApprovalDecision` |
+| `LunchApprovalRequest` | A text field | `"something vegetarian"` | `"no"` → declined; anything else → the wish, verbatim |
+
+The slot answer is a **string a radio button produced**, not prose a person typed — the structure
+lives in the *question*, which carries the candidates. The lunch answer is free text *by design*
+(D9): the wish is a string field all the way down, and the understanding happens in `@Catering`,
+the one agent holding the menu. So for both current gates the conversion is deterministic,
+~20 lines, and **already written and tested in `cli.py`**.
+
+**Consequence worth acting on:** that parsing moves into a shared `answers.py` used by *both*
+`cli.py` and `ServerUserProxy`. Two clients, one tested interpretation — the literal payoff of
+"the CLI runner is a thin client".
+
+**When a gate one day needs real understanding** — *"move it to Tuesday afternoon and make it 90
+minutes"* — that is **not** coordinator work either. It is §4.2 rule 5: a second message type plus a
+small intake agent that converts text to a typed message. The coordinator keeps receiving types.
+That door stays shut for now, and stays unlocked.
 
 ---
 
@@ -233,17 +265,16 @@ server really does own execution.
 
 ---
 
-## 8. Open questions
+## 8. Decisions
 
-1. **The human bridge** — Option A or B (§4)? Recommendation: A.
-2. **Where the SPA is served** — its own nginx container (recommended, consistent with the repo), or
-   mounted as static files by the Python server (simpler, one less container)?
-3. **One team per plan, or one long-lived team?** The blog creates a team per case and stops it on
-   completion. A meeting plan is similarly short-lived, so team-per-plan looks right — and it makes
-   the trace readable, because one team is one meeting. Agree?
-4. **How much to build first.** Suggested first slice: server + health + trace + the plan flow,
-   i.e. everything except the plans-history screen. Or smaller — server and trace only, with the
-   CLI still driving — which would prove the observability story before any form exists.
+| # | Decision | Note |
+|---|---|---|
+| G1 | **Human bridge: option A** — a `ServerUserProxy` converts the answer against the question | See §4.1: no extraction problem exists today, and the conversion is shared with the CLI |
+| G2 | **The SPA gets its own nginx container** | Consistent with every other component here; `cors_origins` makes a second origin a config line |
+| G3 | **One team per plan**, stopped on completion | One team = one meeting makes the trace readable. The server revives a stopped team to deliver a late answer (verified), so stopping early is safe |
+| G4 | **First slice: server + health + trace + the full plan flow** | Both gates in the browser. The plans-history screen comes after |
+| G5 | **MUI** | `DataGrid` is the trace with almost no custom JavaScript |
+| G6 | **Answer parsing lives in a shared `answers.py`** | Used by both `cli.py` and `ServerUserProxy`; neither client owns the interpretation |
 
 ---
 
@@ -259,6 +290,13 @@ server really does own execution.
 
 ## 10. Changelog
 
+- 2026-10-27: Decisions G1–G6 agreed (§8). Resolved the typed-vs-text worry in §4.1: starting a
+  plan stays a typed message, so the team is started with a booking and only talks to a human at a
+  gate; and at the gates there is nothing to extract, because the slot answer is an index the
+  question itself defines and the lunch wish is free text by design (D9). The coordinator remains
+  deterministic. Verified `handle.process_human_input(content, event.message)` hands the proxy the
+  original question, which is what makes a type-aware conversion possible, and that a stopped team
+  is revived to receive a late answer.
 - 2026-10-27: Initial GUI/infra design. Verified `akgentic-infra` 1.16.0 against the installed
   package rather than the blog: confirmed the community wiring, the full route surface (including
   `POST /teams/{id}/message/from/{sender}/to/{recipient}`, which matches our `send_from_to` exactly),
