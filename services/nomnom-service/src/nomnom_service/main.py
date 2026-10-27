@@ -7,6 +7,7 @@ from sqlmodel import Session
 
 from nomnom_service.api import router as api_router
 from nomnom_service.db import engine, init_db
+from nomnom_service.health import router as health_router
 from nomnom_service.seed import seed
 from nomnom_service.ui import router as ui_router
 
@@ -21,6 +22,7 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(title="NomNom Service", lifespan=lifespan)
+    app.include_router(health_router)
     app.include_router(api_router)
     app.include_router(ui_router)
     return app

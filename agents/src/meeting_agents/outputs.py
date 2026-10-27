@@ -52,9 +52,7 @@ class SlotOut(BaseModel):
 class FoundSlots(BaseModel):
     """@Scheduler's answer to 'when is everyone free?'."""
 
-    succeeded: bool = Field(
-        description="True if you were able to search. False if a tool failed."
-    )
+    succeeded: bool = Field(description="True if you were able to search. False if a tool failed.")
     slots: list[SlotOut] = Field(
         default_factory=list,
         description=(
@@ -62,9 +60,7 @@ class FoundSlots(BaseModel):
             "Empty if there is no time that suits everyone - that is a valid answer."
         ),
     )
-    reason: str = Field(
-        default="", description="If succeeded is false, the failure the tool reported."
-    )
+    reason: str = Field(default="", description="If succeeded is false, the failure the tool reported.")
 
 
 class BookedMeeting(BaseModel):
@@ -82,9 +78,7 @@ class BookedRoom(BaseModel):
     """@FacilityManager's answer to 'book a room'."""
 
     succeeded: bool
-    room_code: str | None = Field(
-        default=None, description="The code of the room that was booked."
-    )
+    room_code: str | None = Field(default=None, description="The code of the room that was booked.")
     booking_id: int | None = Field(
         default=None,
         description="The exact booking id the tool returned. Never invent one.",

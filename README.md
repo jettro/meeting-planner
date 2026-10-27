@@ -72,12 +72,33 @@ make plan-meeting-docker ARGS='--title "Design review" ...'
 It is not a server: one run plans one meeting and exits, so it sits behind a compose profile and
 `make up` leaves it alone.
 
+## The team as a service
+
+The same team also runs behind HTTP, for clients that are not a terminal. `make up` starts it on
+<http://localhost:8200>; `make run-server` runs it on the host instead. It is the community tier of
+`akgentic-infra` with two routes of our own spliced in:
+
+| route | what it answers |
+|---|---|
+| `GET /platform/health` | all three services at once, probed concurrently — `up`, `degraded` (it answered, badly) or `unreachable` (it did not answer) |
+| `GET /plans`, `GET /plans/{id}` | the plans the team has made, readable after the team has stopped. Read-only: every change to a plan has compensations attached, so every change goes through the agents |
+
+Everything else is the framework's: `POST /teams` creates a team from the catalog,
+`POST /teams/{id}/message/from/@Human/to/@Coordinator` starts a plan with a typed
+`PlanMeetingRequest`, `GET /teams/{id}/events` (or `WS /ws/{id}`) is the trace, and
+`POST /teams/{id}/human-input` answers a gate with plain text.
+
+Both human gates work over HTTP: the answer is read against the question it refers to by
+`ChannelHuman.process_human_input`, using the same `answers.py` the terminal uses. A browser can
+render radio buttons for the slots and still send `"2"`.
+
 ## Project layout
 
 ```
 meeting-planner/
 ├── design.md                 # Analysis of the old project + rewrite decisions
 ├── design_akgents.md          # Design of the agent team (Akgents)
+├── design_gui.md              # Design of the team server + browser client
 ├── pyproject.toml             # uv workspace root (shared dev tooling config)
 ├── docker-compose.yml         # Runs all three services together
 ├── Makefile                   # Shortcuts for common dev tasks (see `make help`)
@@ -85,6 +106,10 @@ meeting-planner/
 │   ├── Dockerfile
 │   ├── catalog/               # Team, agent, tool, model and prompt YAML
 │   ├── src/meeting_agents/    # Coordinator, specialists, messages, plan store, CLI
+│   └── tests/
+├── server/                    # The same team, served over HTTP (akgentic-infra)
+│   ├── Dockerfile
+│   ├── src/meeting_server/    # app, catalog, platform health, plans, yaml types
 │   └── tests/
 └── services/
     ├── meeting-service/
@@ -158,6 +183,7 @@ Run `make help` for the full list. Highlights:
 | `make run-<name>`   | run a single service locally with `uvicorn --reload`         |
 | `make plan-meeting` | ask the agent team to plan a meeting (needs `make up`)       |
 | `make plan-meeting-docker` | the same, in the agents container                     |
+| `make run-server`   | run the team server on the host (needs `make up`)            |
 | `make build`        | `docker compose build`                                       |
 | `make up` / `down`  | start/stop the full stack (containers only; volumes kept)    |
 | `make clean`        | stop the stack **and delete** the SQLite data volumes         |

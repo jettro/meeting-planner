@@ -87,7 +87,5 @@ async def test_place_order_with_unknown_item_fails():
 
 async def test_cancel_unknown_order_returns_failure_not_error():
     async with Client(mcp_server.mcp) as client:
-        result = (
-            await client.call_tool("cancel_order", {"order_id": "does-not-exist"})
-        ).data
+        result = (await client.call_tool("cancel_order", {"order_id": "does-not-exist"})).data
         assert result["success"] is False

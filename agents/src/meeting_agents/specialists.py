@@ -134,10 +134,7 @@ class Scheduler(SpecialistAgent):
             return
 
         try:
-            windows = [
-                ProposedSlot(start=parse_clock(s.start), end=parse_clock(s.end))
-                for s in found.slots
-            ]
+            windows = [ProposedSlot(start=parse_clock(s.start), end=parse_clock(s.end)) for s in found.slots]
         except ClockError as exc:
             self.fail(message.plan_id, str(exc), sender)
             return
@@ -163,9 +160,7 @@ class Scheduler(SpecialistAgent):
             self.fail(message.plan_id, booked.reason or "the meeting was not booked", sender)
             return
 
-        self.send(
-            sender, MeetingBooked(plan_id=message.plan_id, meeting_id=booked.meeting_id)
-        )
+        self.send(sender, MeetingBooked(plan_id=message.plan_id, meeting_id=booked.meeting_id))
 
 
 class FacilityManagerConfig(AgentConfig):

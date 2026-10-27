@@ -269,12 +269,59 @@ server really does own execution.
 
 | # | Decision | Note |
 |---|---|---|
-| G1 | **Human bridge: option A** — a `ServerUserProxy` converts the answer against the question | See §4.1: no extraction problem exists today, and the conversion is shared with the CLI |
+| G1 | **Human bridge: option A** — the human agent converts the answer against the question | See §4.1 and §8.1: it turned out to be `ChannelHuman` itself, not a second class |
 | G2 | **The SPA gets its own nginx container** | Consistent with every other component here; `cors_origins` makes a second origin a config line |
 | G3 | **One team per plan**, stopped on completion | One team = one meeting makes the trace readable. The server revives a stopped team to deliver a late answer (verified), so stopping early is safe |
 | G4 | **First slice: server + health + trace + the full plan flow** | Both gates in the browser. The plans-history screen comes after |
 | G5 | **MUI** | `DataGrid` is the trace with almost no custom JavaScript |
-| G6 | **Answer parsing lives in a shared `answers.py`** | Used by both `cli.py` and `ServerUserProxy`; neither client owns the interpretation |
+| G6 | **Answer parsing lives in a shared `answers.py`** | Used by both `cli.py` and `ChannelHuman.process_human_input`; neither client owns the interpretation |
+| G7 | **The server teaches YAML how to write a `time`** rather than changing the domain | §8.2. The alternative was reshaping `ProposedSlot` to suit a storage backend |
+
+### 8.1 There is no `ServerUserProxy`, and that is the better answer
+
+The design said the GUI swap would be a different `agent_class` named in `human.yaml`
+(§4.2 rule 3). Building it found two things.
+
+First, the framework **validates `agent_class` when the catalog loads** and rejects anything that
+is not an importable dotted path, so `${HUMAN_AGENT_CLASS}` is not available — the catalog cannot
+carry a per-deployment class name. That was tried and reverted.
+
+Second, and more usefully: a separate class was not needed. `ChannelHuman` already extends
+`HumanProxy`, which already has `process_human_input(content, message)` — the method the server's
+human-input route calls. Overriding it to branch on the question type is ~15 lines, and the two
+reply vocabularies now sit side by side in one file:
+
+- a client that can build a typed message sends `send_from_to("@Human", "@Coordinator", decision)`
+  and never touches the class — the terminal;
+- a client that only has text posts to `/teams/{id}/human-input`, and the override reads it against
+  the question with `answers.py` — the browser.
+
+A second class would have duplicated all four `receiveMsg_*` handlers for the sake of one method,
+and an unhandled message type is silently dropped, so the duplicate would fail quietly the next
+time a message type is added. The swap point in `human.yaml` still exists and is still documented;
+it simply is not needed for this.
+
+### 8.2 The event store could not write a slot
+
+The first end-to-end run over HTTP completed the saga perfectly and *never showed the approval
+question in the event feed*. The persistence subscriber was logging
+`cannot represent an object, datetime.time(10, 0)` and dropping every message carrying a slot.
+
+The community tier persists with `yaml.safe_dump` deliberately — the safe dumper and safe loader
+are the same dialect, so a value that cannot be read back fails the write instead of corrupting a
+file. The safe dumper knows `date` and `datetime`; it does not know `time`. Our slots are `time`,
+because the day lives on the plan.
+
+The fix is `server/src/meeting_server/yaml_types.py`: one representer, installed at startup. The
+domain is not reshaped to suit a backend.
+
+The quoting in it is not cosmetic. YAML 1.1 reads a bare `10:00:00` as a **sexagesimal integer**,
+36000. Pydantic then reads 36000 as seconds since midnight and produces 10:00 anyway — correct by
+accident, and only for the times whose digits happen to parse that way (`09:30:00` has a leading
+zero and stays a string). Quoting removes the coin toss. Both facts have tests.
+
+This is the kind of failure the trace screen exists to catch, found by building the trace screen's
+data source.
 
 ---
 
@@ -290,6 +337,14 @@ server really does own execution.
 
 ## 10. Changelog
 
+- 2026-10-27: Built the first slice. `/health` on all three services (503 when the database is
+  unreachable) and a compose healthcheck using python rather than curl; `answers.py` extracted
+  (G6); the `server/` workspace package with `EnvResolvingCatalog`, `PlatformModule`
+  (`/platform/health`, fanned out concurrently), `PlansModule` (read-only), its Dockerfile and
+  compose service, and `make run-server`. Two findings changed the design: there is no
+  `ServerUserProxy` (§8.1) and the event store could not write a `time` (§8.2, G7). Verified live:
+  a plan created over HTTP, both gates answered as text through `/teams/{id}/human-input`, room and
+  a vegetarian lunch booked, and the finished plan readable from `/plans`. 238 tests pass.
 - 2026-10-27: Decisions G1–G6 agreed (§8). Resolved the typed-vs-text worry in §4.1: starting a
   plan stays a typed message, so the team is started with a booking and only talks to a human at a
   gate; and at the gates there is nothing to extract, because the slot answer is an index the

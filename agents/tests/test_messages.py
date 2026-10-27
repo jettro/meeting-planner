@@ -124,9 +124,7 @@ def test_facilities_assignment_carries_the_title():
 
 
 def test_lunch_assignment_carries_location_and_headcount():
-    rendered = OrderLunchAssignment(
-        plan_id="p1", location_id="AMS", day=DAY, headcount=4
-    ).rendering()
+    rendered = OrderLunchAssignment(plan_id="p1", location_id="AMS", day=DAY, headcount=4).rendering()
     assert "4 people" in rendered
     assert "AMS" in rendered
 
@@ -187,9 +185,7 @@ def test_lunch_may_be_left_to_the_kitchen():
 
 
 def test_the_lunch_question_says_who_it_is_for():
-    question = LunchApprovalRequest(
-        plan_id="p1", title="Jettro and Daniel", day=DAY, headcount=2
-    ).question()
+    question = LunchApprovalRequest(plan_id="p1", title="Jettro and Daniel", day=DAY, headcount=2).question()
     assert "Jettro and Daniel" in question
     assert "2" in question
 

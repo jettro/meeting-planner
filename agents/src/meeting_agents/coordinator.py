@@ -136,9 +136,7 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
         self._remember(plan)
         if not message.lunch_is_settled():
             self.init_state(
-                self.state.model_copy(
-                    update={"awaiting_lunch": [*self.state.awaiting_lunch, plan.plan_id]}
-                )
+                self.state.model_copy(update={"awaiting_lunch": [*self.state.awaiting_lunch, plan.plan_id]})
             )
 
         scheduler = self._member(self.config.scheduler_name)

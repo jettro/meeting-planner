@@ -52,9 +52,7 @@ def test_common_slots_reflects_both_agendas():
             "/api/meetings/common-slots",
             json={"participant_emails": [jettro, daniel], "day": day, "duration_minutes": 60},
         ).json()
-        assert body["slots"] == [
-            {"start": "09:00:00", "end": "17:00:00", "latest_start": "16:00:00"}
-        ]
+        assert body["slots"] == [{"start": "09:00:00", "end": "17:00:00", "latest_start": "16:00:00"}]
 
         # Book each of them separately; the common windows shrink accordingly.
         for email, start, end in ((jettro, "09:00:00", "11:00:00"), (daniel, "13:00:00", "14:00:00")):

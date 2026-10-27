@@ -136,8 +136,6 @@ def test_message_types_match_the_declared_vocabulary(card: TeamCard):
 def test_missing_env_var_fails_loudly(settings: Settings, monkeypatch):
     """A missing variable must name itself, not surface as a connection error."""
     monkeypatch.delenv("MEETING_MCP_URL", raising=False)
-    monkeypatch.setattr(
-        Settings, "as_catalog_env", lambda self: {"PLAN_STORE_PATH": "x.json"}
-    )
+    monkeypatch.setattr(Settings, "as_catalog_env", lambda self: {"PLAN_STORE_PATH": "x.json"})
     with pytest.raises(OSError, match="MEETING_MCP_URL"):
         load_team_card(settings)

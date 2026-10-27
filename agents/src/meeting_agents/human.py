@@ -6,10 +6,18 @@ never blocks waiting for an answer. That restraint is the whole point (§4.2):
 the blog's infra chapter records that a blocking stdin proxy had to be thrown
 away when the server arrived, and this is how that cost is avoided.
 
-The answer does not come back through here. A client replies with
-`TeamRuntime.send_from_to("@Human", "@Coordinator", decision)`, which works the
-same whether the client is a terminal, an HTTP handler or a websocket. So this
-module holds no reply logic to port.
+Answers arrive by one of two routes, and both are here. A client that can build
+a typed message replies with `send_from_to("@Human", "@Coordinator", decision)`
+and never touches this class - that is what the terminal does. A client that
+only has text - the browser, through the server's human-input endpoint - hands
+it to `process_human_input`, which reads it against the question that is being
+answered.
+
+That second route is why no separate server proxy class exists. The design
+expected one, named in `human.yaml` (§4.2 rule 3), but the framework validates
+`agent_class` when the catalog loads, so it cannot be a `${VAR}`, and a second
+class would have duplicated every handler above for the sake of one method.
+One bridge with two reply vocabularies is less to keep in step.
 
 A channel is used rather than config because config carries plain, serialisable
 data only - no live queues, no sockets (framework rule, §4.2). The actor looks
@@ -26,6 +34,7 @@ from akgentic.agent import HumanProxy
 from akgentic.core import ActorAddress
 from akgentic.core.messages import Message
 
+from meeting_agents.answers import interpret_lunch_answer, interpret_slot_answer
 from meeting_agents.messages import (
     LunchApprovalRequest,
     PlanCompleted,
@@ -34,6 +43,11 @@ from meeting_agents.messages import (
 )
 
 logger = logging.getLogger(__name__)
+
+#: Where an answer goes when the question did not record who asked it. Both
+#: gates are opened by the coordinator, which is the only agent that may talk
+#: to the human at all (D1).
+COORDINATOR = "@Coordinator"
 
 
 @runtime_checkable
@@ -114,3 +128,35 @@ class ChannelHuman(HumanProxy):
     def _relay(self, message: Message) -> None:
         logger.info("[%s] relaying %s", self.config.name, type(message).__name__)
         get_channel().deliver(message)
+
+    def process_human_input(self, content: str, message: Message) -> None:
+        """Answer a question with text, the way a browser has to.
+
+        The framework hands back the *original* question object, not just its
+        id, and that is what makes this work: the structure lives in the
+        question, so the answer only has to be read against it. A free-text
+        `AgentMessage` is still the framework's business, so it is delegated.
+
+        `UnreadableAnswer` is allowed out. Guessing which slot somebody meant
+        would be worse than a 4xx.
+        """
+        if isinstance(message, SlotApprovalRequest):
+            decision: Message = interpret_slot_answer(message, content)
+        elif isinstance(message, LunchApprovalRequest):
+            decision = interpret_lunch_answer(message, content)
+        else:
+            super().process_human_input(content, message)
+            return
+
+        recipient = message.sender or self.get_team_member(COORDINATOR)
+        if recipient is None:
+            logger.error("[%s] nowhere to send a %s", self.config.name, type(decision).__name__)
+            return
+        logger.info("[%s] answering with %s", self.config.name, type(decision).__name__)
+        # Borrowed from HumanProxy: send() reads _current_message to keep the
+        # answer attached to the question in the trace.
+        self._current_message = message
+        try:
+            self.send(recipient, decision)
+        finally:
+            self._current_message = None

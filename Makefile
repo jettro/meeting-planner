@@ -5,7 +5,7 @@ SERVICES := meeting-service location-service nomnom-service
 .PHONY: help sync lint format typecheck test check \
         run-meeting run-location run-nomnom \
         run-meeting-mcp run-location-mcp run-nomnom-mcp \
-        plan-meeting plan-meeting-docker \
+        plan-meeting plan-meeting-docker run-server \
         up down build logs ps clean reset
 
 help: ## Show this help
@@ -19,17 +19,17 @@ sync: ## Install/sync all workspace packages into the shared .venv
 	uv sync --all-packages
 
 lint: ## Run ruff checks across all services
-	uv run ruff check services agents
+	uv run ruff check services agents server
 
 format: ## Auto-format and auto-fix code with ruff
-	uv run ruff format services agents
-	uv run ruff check --fix services agents
+	uv run ruff format services agents server
+	uv run ruff check --fix services agents server
 
 typecheck: ## Run mypy across all services
-	uv run mypy services agents
+	uv run mypy services agents server
 
 test: ## Run the full pytest suite
-	uv run pytest services agents
+	uv run pytest services agents server
 
 check: lint typecheck test ## Run lint + typecheck + test (CI-equivalent)
 
@@ -69,6 +69,20 @@ plan-meeting: ## Plan a meeting from the terminal; needs `make up`. Pass ARGS="-
 
 plan-meeting-docker: ## Same, but inside the agents container. Pass ARGS="--title ..."
 	docker compose run --rm agents $(ARGS)
+
+# The server reaches the MCP servers and the three APIs on their published
+# ports when it runs on the host, exactly as a terminal run does. CORS lets in
+# the Vite dev server, which is a different origin by construction.
+SERVER_HOST_ENV := $(AGENT_HOST_ENV) \
+                   EVENT_STORE_PATH=data/events \
+                   WORKSPACES_ROOT=data/workspaces \
+                   MEETING_SERVICE_URL=http://localhost:8001 \
+                   LOCATION_SERVICE_URL=http://localhost:8002 \
+                   NOMNOM_SERVICE_URL=http://localhost:8003 \
+                   CORS_ORIGINS=http://localhost:5173
+
+run-server: ## Run the team server on the host (http://localhost:8200); needs `make up`
+	@$(SERVER_HOST_ENV) uv run --env-file .env --package meeting-server python -m meeting_server.app
 
 ## --- Docker Compose ----------------------------------------------------------
 

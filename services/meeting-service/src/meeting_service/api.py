@@ -104,9 +104,7 @@ def find_common_slots(
     agendas: list[list[AgendaItem]] = []
     for email in request.participant_emails:
         person = _get_person_or_404(session, email)
-        agendas.append(
-            list(session.exec(select(AgendaItem).where(AgendaItem.person_id == person.id)).all())
-        )
+        agendas.append(list(session.exec(select(AgendaItem).where(AgendaItem.person_id == person.id)).all()))
 
     windows = common_free_windows(agendas, request.day, request.duration_minutes)
     delta = timedelta(minutes=request.duration_minutes)

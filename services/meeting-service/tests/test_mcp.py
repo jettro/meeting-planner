@@ -144,9 +144,7 @@ async def test_find_common_slots():
             )
         ).data
         assert result["duration_minutes"] == 60
-        assert result["slots"] == [
-            {"start": "09:00:00", "end": "17:00:00", "latest_start": "16:00:00"}
-        ]
+        assert result["slots"] == [{"start": "09:00:00", "end": "17:00:00", "latest_start": "16:00:00"}]
 
 
 async def test_find_common_slots_unknown_person_returns_error():

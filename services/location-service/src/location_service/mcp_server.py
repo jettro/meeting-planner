@@ -168,9 +168,7 @@ async def book_room(
         return {"success": False, "reason": str(exc)}
 
     begins, finishes = times["start"], times["end"]
-    duration_minutes = (
-        datetime.combine(day, finishes) - datetime.combine(day, begins)
-    ).seconds // 60
+    duration_minutes = (datetime.combine(day, finishes) - datetime.combine(day, begins)).seconds // 60
     resp = await get_client().post(
         "/api/rooms/book",
         json={

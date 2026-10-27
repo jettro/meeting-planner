@@ -52,9 +52,7 @@ LATER = ProposedSlot(start=time(14, 0), end=time(15, 0))
 
 
 def a_request() -> SlotApprovalRequest:
-    return SlotApprovalRequest(
-        plan_id="p1", title="Jettro and Daniel", day=DAY, candidates=[MORNING, LATER]
-    )
+    return SlotApprovalRequest(plan_id="p1", title="Jettro and Daniel", day=DAY, candidates=[MORNING, LATER])
 
 
 def a_plan(**overrides):
@@ -154,7 +152,7 @@ def test_a_nonsense_answer_is_asked_again_rather_than_guessed(monkeypatch, capsy
     decision = ask_for_approval(a_request())
 
     assert decision.slot == MORNING
-    assert "Please answer 1-2" in capsys.readouterr().out
+    assert "Answer 1-2" in capsys.readouterr().out
 
 
 def test_the_candidates_are_shown_before_the_question(monkeypatch, capsys):
@@ -323,9 +321,7 @@ def live_team(tmp_path):
                                 store_path=str(tmp_path / "plans.json"),
                             ),
                         ),
-                        member(
-                            StubScheduler, BaseConfig(name="@Scheduler", role="Scheduler")
-                        ),
+                        member(StubScheduler, BaseConfig(name="@Scheduler", role="Scheduler")),
                         member(
                             StubFacilityManager,
                             BaseConfig(name="@FacilityManager", role="FacilityManager"),

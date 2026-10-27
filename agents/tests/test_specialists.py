@@ -155,9 +155,7 @@ def build_card(store_path, catering_class=ScriptedCatering) -> TeamCard:
                             PlanRepository,
                             PlanRepositoryConfig(store_path=str(store_path)),
                         ),
-                        member(
-                            ScriptedScheduler, specialist_config("@Scheduler")
-                        ),
+                        member(ScriptedScheduler, specialist_config("@Scheduler")),
                         member(
                             ScriptedFacilityManager,
                             specialist_config("@FacilityManager", FacilityManagerConfig),
@@ -217,9 +215,7 @@ def run_to_completion(team, with_lunch: bool = True):
     team.send_from_to(
         "@Human",
         "@Coordinator",
-        SlotApprovalDecision(
-            plan_id=request.plan_id, approved=True, slot=request.candidates[0]
-        ),
+        SlotApprovalDecision(plan_id=request.plan_id, approved=True, slot=request.candidates[0]),
     )
     return request
 
@@ -228,9 +224,7 @@ def test_the_whole_team_completes_a_plan(team):
     """The real specialists, the real coordinator, only the model replaced."""
     Script.give(FoundSlots, good_slots())
     Script.give(BookedMeeting, BookedMeeting(succeeded=True, meeting_id=MEETING_ID))
-    Script.give(
-        BookedRoom, BookedRoom(succeeded=True, room_code=ROOM_CODE, booking_id=BOOKING_ID)
-    )
+    Script.give(BookedRoom, BookedRoom(succeeded=True, room_code=ROOM_CODE, booking_id=BOOKING_ID))
     Script.give(OrderedLunch, OrderedLunch(succeeded=True, order_id=ORDER_ID))
 
     run_to_completion(team)
@@ -255,9 +249,7 @@ def test_the_scheduler_parses_the_times_it_is_given(team):
 def test_a_window_too_short_to_hold_the_meeting_stops_the_plan(team):
     """Found live: a window is not a meeting. Half an hour of overlap cannot
     host an hour-long meeting, and proposing it would book a bad slot."""
-    Script.give(
-        FoundSlots, FoundSlots(succeeded=True, slots=[SlotOut(start="09:00", end="09:30")])
-    )
+    Script.give(FoundSlots, FoundSlots(succeeded=True, slots=[SlotOut(start="09:00", end="09:30")]))
     request_meeting(team)
     failed = Inbox.expect(PlanFailed)
     assert "60 minutes" in failed.reason
@@ -307,9 +299,7 @@ def test_without_lunch_catering_is_never_asked(team, tmp_path):
     """Build a team whose @Catering records anything it receives."""
     Script.give(FoundSlots, good_slots())
     Script.give(BookedMeeting, BookedMeeting(succeeded=True, meeting_id=MEETING_ID))
-    Script.give(
-        BookedRoom, BookedRoom(succeeded=True, room_code=ROOM_CODE, booking_id=BOOKING_ID)
-    )
+    Script.give(BookedRoom, BookedRoom(succeeded=True, room_code=ROOM_CODE, booking_id=BOOKING_ID))
 
     run_to_completion(team, with_lunch=False)
     plan = Inbox.expect(PlanCompleted).plan
@@ -321,9 +311,7 @@ def test_the_coordinator_never_mentions_lunch_to_the_facility_manager(team):
     """D2 again, observed in the prompts the model actually received."""
     Script.give(FoundSlots, good_slots())
     Script.give(BookedMeeting, BookedMeeting(succeeded=True, meeting_id=MEETING_ID))
-    Script.give(
-        BookedRoom, BookedRoom(succeeded=True, room_code=ROOM_CODE, booking_id=BOOKING_ID)
-    )
+    Script.give(BookedRoom, BookedRoom(succeeded=True, room_code=ROOM_CODE, booking_id=BOOKING_ID))
     Script.give(OrderedLunch, OrderedLunch(succeeded=True, order_id=ORDER_ID))
 
     run_to_completion(team)
@@ -338,9 +326,7 @@ def test_failed_lunch_names_the_room_that_is_still_booked(team):
     """The room is already taken by then, so the failure must say so."""
     Script.give(FoundSlots, good_slots())
     Script.give(BookedMeeting, BookedMeeting(succeeded=True, meeting_id=MEETING_ID))
-    Script.give(
-        BookedRoom, BookedRoom(succeeded=True, room_code=ROOM_CODE, booking_id=BOOKING_ID)
-    )
+    Script.give(BookedRoom, BookedRoom(succeeded=True, room_code=ROOM_CODE, booking_id=BOOKING_ID))
     Script.give(OrderedLunch, OrderedLunch(succeeded=False, reason="the kitchen is closed"))
 
     run_to_completion(team)
@@ -369,8 +355,7 @@ def test_the_assignment_reaches_the_model_with_its_facts(team):
     Inbox.expect(SlotApprovalRequest)
 
     assert any(
-        "jettro@example.com" in p and "daniel@example.com" in p and "2031-09-15" in p
-        for p in Script.prompts
+        "jettro@example.com" in p and "daniel@example.com" in p and "2031-09-15" in p for p in Script.prompts
     )
 
 

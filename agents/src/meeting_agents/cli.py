@@ -21,6 +21,11 @@ from datetime import date
 from akgentic.core import ActorSystem
 from akgentic.team import TeamFactory, TeamRuntime
 
+from meeting_agents.answers import (
+    UnreadableAnswer,
+    interpret_lunch_answer,
+    interpret_slot_answer,
+)
 from meeting_agents.bootstrap import load_team_card
 from meeting_agents.human import QueueChannel, set_channel
 from meeting_agents.messages import (
@@ -73,28 +78,21 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def ask_for_approval(request: SlotApprovalRequest) -> SlotApprovalDecision:
-    """The one question the team asks (D4). Nothing is booked yet."""
+    """The one question the team asks (D4). Nothing is booked yet.
+
+    The terminal collects the answer; `answers.py` decides what it means, so
+    the browser cannot drift to a different reading of the same words.
+    """
     print(f"\n{request.question()}")
     for index, slot in enumerate(request.candidates, start=1):
         print(f"  {index}) {slot.start:%H:%M} - {slot.end:%H:%M}")
     print("  n) none of these")
 
     while True:
-        answer = input("Choose a slot: ").strip().lower()
-        if answer in {"n", "no", "none", ""}:
-            return SlotApprovalDecision(plan_id=request.plan_id, approved=False)
-        if answer.isdigit() and 1 <= int(answer) <= len(request.candidates):
-            chosen = request.candidates[int(answer) - 1]
-            return SlotApprovalDecision(plan_id=request.plan_id, approved=True, slot=chosen)
-        print(f"Please answer 1-{len(request.candidates)}, or n.")
-
-
-#: Answers that mean "no lunch". Anything else is taken as a description of
-#: one, because the whole point is that a person may type what they feel like.
-REFUSALS = {"n", "no", "none", "nothing", "skip"}
-#: Answers that mean "yes, but you choose". An empty wish is a real answer:
-#: composing the lunch is @Catering's judgement, with a menu we never show.
-DEFERRALS = {"", "y", "yes", "please", "anything", "surprise me", "you choose"}
+        try:
+            return interpret_slot_answer(request, input("Choose a slot: "))
+        except UnreadableAnswer as unreadable:
+            print(unreadable)
 
 
 def lunch_wish_from(args: argparse.Namespace) -> str | None:
@@ -119,14 +117,7 @@ def ask_for_lunch(request: LunchApprovalRequest) -> LunchApprovalDecision:
     job of the agent with the menu, not of a terminal.
     """
     print(f"\n{request.question()}")
-    answer = input("Lunch (or 'no'): ").strip()
-    folded = answer.lower()
-
-    if folded in REFUSALS:
-        return LunchApprovalDecision(plan_id=request.plan_id, wants_lunch=False)
-    if folded in DEFERRALS:
-        return LunchApprovalDecision(plan_id=request.plan_id, wants_lunch=True)
-    return LunchApprovalDecision(plan_id=request.plan_id, wants_lunch=True, wish=answer)
+    return interpret_lunch_answer(request, input("Lunch (or 'no'): "))
 
 
 def report_completed(message: PlanCompleted) -> None:

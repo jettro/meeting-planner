@@ -56,9 +56,7 @@ async def test_book_room_then_cancel():
         assert booked["success"] is True
         booking_id = booked["booking_id"]
 
-        cancelled = (
-            await client.call_tool("cancel_room_booking", {"booking_id": booking_id})
-        ).data
+        cancelled = (await client.call_tool("cancel_room_booking", {"booking_id": booking_id})).data
         assert cancelled["success"] is True
 
 
@@ -129,9 +127,7 @@ async def test_get_room_availability():
 
 async def test_cancel_unknown_booking_returns_failure_not_error():
     async with Client(mcp_server.mcp) as client:
-        result = (
-            await client.call_tool("cancel_room_booking", {"booking_id": 999999})
-        ).data
+        result = (await client.call_tool("cancel_room_booking", {"booking_id": 999999})).data
         assert result["success"] is False
 
 

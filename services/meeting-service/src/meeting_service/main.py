@@ -9,6 +9,7 @@ from sqlmodel import Session
 
 from meeting_service.api import router as api_router
 from meeting_service.db import engine, init_db
+from meeting_service.health import router as health_router
 from meeting_service.seed import seed
 from meeting_service.ui import router as ui_router
 
@@ -23,6 +24,7 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(title="Meeting Service", lifespan=lifespan)
+    app.include_router(health_router)
     app.include_router(api_router)
     app.include_router(ui_router)
     return app

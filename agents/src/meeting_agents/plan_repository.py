@@ -50,9 +50,7 @@ class PlanRepository(Akgent[PlanRepositoryConfig, PlanRepositoryState]):
     def on_start(self) -> None:
         self.init_state(PlanRepositoryState())
         self._store: PlanStore = self._build_store()
-        logger.info(
-            "[%s] plan store ready: %s", self.config.name, self.config.store_class
-        )
+        logger.info("[%s] plan store ready: %s", self.config.name, self.config.store_class)
 
     def _build_store(self) -> PlanStore:
         """Construct the store named by `store_class`.

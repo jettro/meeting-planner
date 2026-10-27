@@ -90,9 +90,7 @@ async def place_order(
         json={
             "location": location,
             "delivery_date": delivery_date.isoformat(),
-            "items": [
-                {"product_id": item["item_id"], "quantity": item["quantity"]} for item in items
-            ],
+            "items": [{"product_id": item["item_id"], "quantity": item["quantity"]} for item in items],
             "note": note,
         },
     )

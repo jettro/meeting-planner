@@ -119,19 +119,13 @@ class MeetingPlan(BaseModel):
         """
         steps: list[Compensation] = []
         if self.order_id is not None:
-            steps.append(
-                Compensation(step=CompensationStep.CANCEL_ORDER, reference=self.order_id)
-            )
+            steps.append(Compensation(step=CompensationStep.CANCEL_ORDER, reference=self.order_id))
         if self.booking_id is not None:
             steps.append(
-                Compensation(
-                    step=CompensationStep.CANCEL_ROOM_BOOKING, reference=str(self.booking_id)
-                )
+                Compensation(step=CompensationStep.CANCEL_ROOM_BOOKING, reference=str(self.booking_id))
             )
         if self.meeting_id is not None:
-            steps.append(
-                Compensation(step=CompensationStep.CANCEL_MEETING, reference=str(self.meeting_id))
-            )
+            steps.append(Compensation(step=CompensationStep.CANCEL_MEETING, reference=str(self.meeting_id)))
         return steps
 
     def relocation_compensations(self, new_location_id: str) -> list[Compensation]:
@@ -143,13 +137,9 @@ class MeetingPlan(BaseModel):
         """
         steps: list[Compensation] = []
         if new_location_id != self.location_id and self.order_id is not None:
-            steps.append(
-                Compensation(step=CompensationStep.CANCEL_ORDER, reference=self.order_id)
-            )
+            steps.append(Compensation(step=CompensationStep.CANCEL_ORDER, reference=self.order_id))
         if self.booking_id is not None:
             steps.append(
-                Compensation(
-                    step=CompensationStep.CANCEL_ROOM_BOOKING, reference=str(self.booking_id)
-                )
+                Compensation(step=CompensationStep.CANCEL_ROOM_BOOKING, reference=str(self.booking_id))
             )
         return steps

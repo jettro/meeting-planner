@@ -1,0 +1,101 @@
+"""Composing the server: the community tier, plus the two things we add.
+
+The assembly follows the framework's own instructions rather than inventing a
+parallel one. `server_modules` is spliced into, never retyped - a retyped copy
+of the composition drifts silently at the next upgrade, which the framework's
+own docstring warns about.
+
+Two things happen here that the framework cannot do for us:
+
+1. The event store is taught to write a `time`, without which no message
+   carrying a slot is ever persisted - see `yaml_types`.
+2. The catalog is replaced with one that resolves `${VAR}`. `TeamService` reads
+   `services.catalog` at the moment it loads a team, so assigning after wiring
+   is enough - and there is a test that holds the framework to that.
+3. `apply_env` is called, because the placeholders have to refer to something.
+"""
+
+from __future__ import annotations
+
+import logging
+
+from akgentic.catalog import YamlEntryRepository
+from akgentic.infra import CommunitySettings, create_app, wire_community
+from akgentic.infra.server.app import server_modules
+from fastapi import FastAPI
+from meeting_agents.bootstrap import apply_env
+from meeting_agents.settings import Settings as AgentSettings
+from meeting_agents.store import JsonPlanStore
+
+from meeting_server.catalog import EnvResolvingCatalog
+from meeting_server.plans import PlansModule
+from meeting_server.platform import PlatformModule
+from meeting_server.settings import ServerSettings
+from meeting_server.yaml_types import install_yaml_representers
+
+logger = logging.getLogger(__name__)
+
+#: The team the browser creates. One namespace, one team card - the server does
+#: not need a team picker to run one demo.
+NAMESPACE = "meeting-planner"
+
+
+def community_settings(settings: ServerSettings) -> CommunitySettings:
+    """The framework's settings, filled from ours.
+
+    `catalog_model_type_prefixes` is the one that bites: the app factory
+    reapplies the allowlist from settings at startup, so setting it anywhere
+    else is overwritten and every `{__type__: meeting_agents....}` in the
+    catalog is rejected as a disallowed prefix.
+    """
+    return CommunitySettings(
+        catalog_path=settings.catalog_path,
+        event_store_path=settings.event_store_path,
+        workspaces_root=settings.workspaces_root,
+        cors_origins=settings.cors_origins,
+        catalog_model_type_prefixes=["meeting_agents."],
+        host=settings.host,
+        port=settings.port,
+    )
+
+
+def create_meeting_app(settings: ServerSettings | None = None) -> FastAPI:
+    """The server, ready to run."""
+    settings = settings or ServerSettings.from_env()
+    agent_settings = AgentSettings.from_env()
+
+    # Before the event store sees its first slot.
+    install_yaml_representers()
+
+    # Before anything loads a card: the placeholders have to point at values.
+    apply_env(agent_settings)
+
+    infra_settings = community_settings(settings)
+    services = wire_community(infra_settings)
+    services.catalog = EnvResolvingCatalog(repository=YamlEntryRepository(root=infra_settings.catalog_path))
+
+    store = JsonPlanStore(settings.plan_store_path)
+    modules = [
+        *server_modules(services, infra_settings),
+        PlatformModule(settings),
+        PlansModule(store),
+    ]
+    logger.info(
+        "serving team namespace '%s' from %s, plans in %s",
+        NAMESPACE,
+        settings.catalog_path,
+        settings.plan_store_path,
+    )
+    return create_app(services, infra_settings, modules=modules)
+
+
+def main() -> None:
+    """Run the server. The container's entry point."""
+    import uvicorn
+
+    settings = ServerSettings.from_env()
+    uvicorn.run(create_meeting_app(settings), host=settings.host, port=settings.port)
+
+
+if __name__ == "__main__":
+    main()

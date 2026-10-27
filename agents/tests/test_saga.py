@@ -166,9 +166,7 @@ def build_card(store_path, scheduler_class=StubScheduler) -> TeamCard:
                                 store_path=str(store_path),
                             ),
                         ),
-                        member(
-                            scheduler_class, BaseConfig(name="@Scheduler", role="Scheduler")
-                        ),
+                        member(scheduler_class, BaseConfig(name="@Scheduler", role="Scheduler")),
                         member(
                             StubFacilityManager,
                             BaseConfig(name="@FacilityManager", role="FacilityManager"),
@@ -192,9 +190,7 @@ def team(tmp_path):
     system.shutdown()
 
 
-def request_meeting(
-    runtime, with_lunch: bool = True, lunch_wish: str | None = ""
-) -> None:
+def request_meeting(runtime, with_lunch: bool = True, lunch_wish: str | None = "") -> None:
     """By default the lunch question is already settled, because most of these
     tests are about the saga and not about the gate in front of it."""
     runtime.send_from_to(

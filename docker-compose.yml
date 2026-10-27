@@ -10,6 +10,14 @@ services:
     environment:
       MEETING_SERVICE_DB: /data/meeting.db
       MEETING_MCP_API_KEY: ${MEETING_MCP_API_KEY:-dev-meeting-mcp-key}
+    # python, not curl: the slim base image has no curl and adding one just
+    # for a health check is a bigger surface than the check is worth.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
 
   location-service:
     build:
@@ -22,6 +30,14 @@ services:
     environment:
       LOCATION_SERVICE_DB: /data/location.db
       LOCATION_MCP_API_KEY: ${LOCATION_MCP_API_KEY:-dev-location-mcp-key}
+    # python, not curl: the slim base image has no curl and adding one just
+    # for a health check is a bigger surface than the check is worth.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
 
   nomnom-service:
     build:
@@ -34,10 +50,53 @@ services:
     environment:
       NOMNOM_SERVICE_DB: /data/nomnom.db
       NOMNOM_MCP_API_KEY: ${NOMNOM_MCP_API_KEY:-dev-nomnom-mcp-key}
+    # python, not curl: the slim base image has no curl and adding one just
+    # for a health check is a bigger surface than the check is worth.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
 
   # The agent team (design_akgents.md, D7). Not a server: one run plans one
   # meeting and exits, so it sits behind a profile and `make up` ignores it.
   # Start it with `make plan-meeting-docker ARGS="..."`.
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    ports:
+      - "8200:8200"
+    # Same reason as the agents runner: seeding happens at startup, so an open
+    # port is not the same as usable data.
+    depends_on:
+      meeting-service:
+        condition: service_healthy
+      location-service:
+        condition: service_healthy
+      nomnom-service:
+        condition: service_healthy
+    volumes:
+      - server-data:/data
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-gpt-6-luna}
+      # The server builds the teams, so it needs what the agents need.
+      MEETING_MCP_URL: http://meeting-service:8101/mcp
+      LOCATION_MCP_URL: http://location-service:8102/mcp
+      NOMNOM_MCP_URL: http://nomnom-service:8103/mcp
+      MEETING_MCP_API_KEY: ${MEETING_MCP_API_KEY:-dev-meeting-mcp-key}
+      LOCATION_MCP_API_KEY: ${LOCATION_MCP_API_KEY:-dev-location-mcp-key}
+      NOMNOM_MCP_API_KEY: ${NOMNOM_MCP_API_KEY:-dev-nomnom-mcp-key}
+      # The REST APIs, for the platform screen - a different port from the MCP
+      # servers, and a different question: is the service itself healthy.
+      MEETING_SERVICE_URL: http://meeting-service:8001
+      LOCATION_SERVICE_URL: http://location-service:8002
+      NOMNOM_SERVICE_URL: http://nomnom-service:8003
+      # The SPA is served from its own origin, so CORS is not optional here.
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:8300}
+
   agents:
     build:
       context: ./agents
@@ -45,10 +104,15 @@ services:
     # The team asks the human to approve a time slot; that needs a terminal.
     stdin_open: true
     tty: true
+    # Seeding runs at startup, so "the port is open" is not the same as "the
+    # data is there". Waiting for healthy removes a race we have already hit.
     depends_on:
-      - meeting-service
-      - location-service
-      - nomnom-service
+      meeting-service:
+        condition: service_healthy
+      location-service:
+        condition: service_healthy
+      nomnom-service:
+        condition: service_healthy
     volumes:
       - agents-data:/data
     environment:
@@ -66,4 +130,5 @@ volumes:
   meeting-data:
   location-data:
   nomnom-data:
+  server-data:
   agents-data:
