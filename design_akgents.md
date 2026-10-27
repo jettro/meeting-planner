@@ -464,7 +464,7 @@ The **MeetingPlan** aggregate:
 cancel; the other two 404). Partial failure must surface to the human, not be swallowed.
 
 **Change location** → rebook lunch. Agreed rule: a nomnom order is tied to a **location**
-(e.g. `luminis`), not a room code, so swapping `room-a → room-b` *within* one location leaves the
+(e.g. `yuma`), not a room code, so swapping `room-a → room-b` *within* one location leaves the
 lunch order valid and must **not** trigger a rebook. Only a change of *location* cancels and
 re-places the order.
 

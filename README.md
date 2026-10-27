@@ -47,7 +47,7 @@ To run it, start the stack, put an `OPENAI_API_KEY` in `.env` (never commit it),
 ```bash
 make up
 make plan-meeting ARGS='--title "Design review" \
-  --with jettro@rag4j.org daniel@rag4j.org --day 2034-06-20 --at luminis'
+  --with sanne@rag4p.org daan@rag4p.org --day 2034-06-20 --at yuma'
 ```
 
 The team proposes candidate time slots and waits for you to approve one. It then asks what you
@@ -161,6 +161,7 @@ Run `make help` for the full list. Highlights:
 | `make build`        | `docker compose build`                                       |
 | `make up` / `down`  | start/stop the full stack (containers only; volumes kept)    |
 | `make clean`        | stop the stack **and delete** the SQLite data volumes         |
+| `make reset`        | wipe **all** data: volumes, stray local `*.db`, the plan store |
 
 ## Development notes
 
@@ -169,6 +170,9 @@ Run `make help` for the full list. Highlights:
   `.venv` at the repo root. `uv sync --all-packages` installs everything; `uv sync --package <name>`
   installs only one service (and will remove its siblings from the venv — prefer `--all-packages`
   for day-to-day dev, and `--package` only when you specifically need an isolated environment).
+- Demo data is seeded on first start only (`<service>_service/seed.py`), and seeding is skipped as
+  soon as a table has rows. So after changing a seed, run `make reset` to drop the data — and
+  `make build` as well, because the seed is baked into the image.
 - Each service owns its own SQLite file; there is no shared database. In Docker, each service's DB
   lives on its own named volume (see `docker-compose.yml`).
 - Tooling config (ruff, mypy, pytest) lives centrally in the root `pyproject.toml` and applies to

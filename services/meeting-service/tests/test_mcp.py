@@ -32,17 +32,17 @@ def _wire_mcp_to_in_process_app():
 async def test_list_people():
     async with Client(mcp_server.mcp) as client:
         people = (await client.call_tool("list_people", {})).data
-        assert {"email": "jettro@rag4j.org", "name": "Jettro Coenradie"} in people
+        assert {"email": "sanne@rag4p.org", "name": "Sanne de Vries"} in people
 
 
 async def test_get_person_availability():
     async with Client(mcp_server.mcp) as client:
         result = (
             await client.call_tool(
-                "get_person_availability", {"email": "jettro@rag4j.org", "day": "2030-01-02"}
+                "get_person_availability", {"email": "sanne@rag4p.org", "day": "2030-01-02"}
             )
         ).data
-        assert result["email"] == "jettro@rag4j.org"
+        assert result["email"] == "sanne@rag4p.org"
         assert result["free_slots"] == [{"start": "09:00", "end": "17:00"}]
 
 
@@ -52,7 +52,7 @@ async def test_book_meeting_then_feasibility_then_cancel():
             await client.call_tool(
                 "book_meeting",
                 {
-                    "participant_emails": ["jettro@rag4j.org"],
+                    "participant_emails": ["sanne@rag4p.org"],
                     "day": "2030-01-02",
                     "start": "09:00:00",
                     "end": "09:30:00",
@@ -67,14 +67,14 @@ async def test_book_meeting_then_feasibility_then_cancel():
             await client.call_tool(
                 "check_meeting_feasibility",
                 {
-                    "participant_emails": ["jettro@rag4j.org"],
+                    "participant_emails": ["sanne@rag4p.org"],
                     "day": "2030-01-02",
                     "start": "09:00:00",
                     "end": "09:30:00",
                 },
             )
         ).data
-        assert feasibility == {"feasible": False, "unavailable_people": ["jettro@rag4j.org"]}
+        assert feasibility == {"feasible": False, "unavailable_people": ["sanne@rag4p.org"]}
 
         cancelled = (await client.call_tool("cancel_meeting", {"meeting_id": meeting_id})).data
         assert cancelled["success"] is True
@@ -83,7 +83,7 @@ async def test_book_meeting_then_feasibility_then_cancel():
             await client.call_tool(
                 "check_meeting_feasibility",
                 {
-                    "participant_emails": ["jettro@rag4j.org"],
+                    "participant_emails": ["sanne@rag4p.org"],
                     "day": "2030-01-02",
                     "start": "09:00:00",
                     "end": "09:30:00",
@@ -99,7 +99,7 @@ async def test_book_meeting_conflict_returns_reason():
             await client.call_tool(
                 "book_meeting",
                 {
-                    "participant_emails": ["daniel@rag4j.org"],
+                    "participant_emails": ["daan@rag4p.org"],
                     "day": "2030-02-02",
                     "start": "10:00:00",
                     "end": "11:00:00",
@@ -113,7 +113,7 @@ async def test_book_meeting_conflict_returns_reason():
             await client.call_tool(
                 "book_meeting",
                 {
-                    "participant_emails": ["daniel@rag4j.org"],
+                    "participant_emails": ["daan@rag4p.org"],
                     "day": "2030-02-02",
                     "start": "10:00:00",
                     "end": "11:00:00",
@@ -137,7 +137,7 @@ async def test_find_common_slots():
             await client.call_tool(
                 "find_common_slots",
                 {
-                    "participant_emails": ["jettro@rag4j.org", "daniel@rag4j.org"],
+                    "participant_emails": ["sanne@rag4p.org", "daan@rag4p.org"],
                     "day": "2033-05-10",
                     "duration_minutes": 60,
                 },
@@ -154,7 +154,7 @@ async def test_find_common_slots_unknown_person_returns_error():
         result = (
             await client.call_tool(
                 "find_common_slots",
-                {"participant_emails": ["nobody@rag4j.org"], "day": "2033-05-11"},
+                {"participant_emails": ["nobody@rag4p.org"], "day": "2033-05-11"},
             )
         ).data
         assert "error" in result
@@ -169,7 +169,7 @@ async def test_an_offset_the_model_invented_is_ignored_and_reported():
             await client.call_tool(
                 "book_meeting",
                 {
-                    "participant_emails": ["jettro@rag4j.org"],
+                    "participant_emails": ["sanne@rag4p.org"],
                     "day": "2033-05-10",
                     "start": "14:00:00+02:00",
                     "end": "15:00:00+02:00",
@@ -189,7 +189,7 @@ async def test_a_time_that_is_not_a_clock_reading_is_refused():
             await client.call_tool(
                 "book_meeting",
                 {
-                    "participant_emails": ["jettro@rag4j.org"],
+                    "participant_emails": ["sanne@rag4p.org"],
                     "day": "2033-05-11",
                     "start": "after lunch",
                     "end": "15:00",

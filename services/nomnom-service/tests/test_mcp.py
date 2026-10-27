@@ -49,7 +49,7 @@ async def test_place_order_get_status_and_cancel():
             await client.call_tool(
                 "place_order",
                 {
-                    "location": "luminis",
+                    "location": "yuma",
                     "delivery_date": "2030-01-02",
                     "items": [{"item_id": item_id, "quantity": 2}],
                 },
@@ -75,7 +75,7 @@ async def test_place_order_with_unknown_item_fails():
             await client.call_tool(
                 "place_order",
                 {
-                    "location": "luminis",
+                    "location": "yuma",
                     "delivery_date": "2030-01-02",
                     "items": [{"item_id": 999999, "quantity": 1}],
                 },

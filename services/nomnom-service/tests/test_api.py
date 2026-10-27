@@ -10,7 +10,7 @@ def test_place_order_then_cancel():
         product_id = products[0]["id"]
 
         payload = {
-            "location": "luminis",
+            "location": "yuma",
             "delivery_date": "2030-01-02",
             "items": [{"product_id": product_id, "quantity": 2}],
             "note": "test order",

@@ -63,7 +63,7 @@ def a_plan(**overrides):
         participant_emails=["jettro@example.com", "daniel@example.com"],
         day=DAY,
         duration_minutes=60,
-        location_id="luminis",
+        location_id="yuma",
     ).to_plan()
     return plan.model_copy(update=overrides)
 
@@ -77,27 +77,27 @@ def test_a_meeting_is_described_entirely_on_the_command_line():
             "--title",
             "Jettro and Daniel",
             "--with",
-            "jettro@rag4j.org",
-            "daniel@rag4j.org",
+            "sanne@rag4p.org",
+            "daan@rag4p.org",
             "--day",
             "2034-06-14",
             "--at",
-            "luminis",
+            "yuma",
             "--minutes",
             "45",
         ]
     )
 
     assert args.title == "Jettro and Daniel"
-    assert args.participants == ["jettro@rag4j.org", "daniel@rag4j.org"]
+    assert args.participants == ["sanne@rag4p.org", "daan@rag4p.org"]
     assert args.day == date(2034, 6, 14)
     assert args.minutes == 45
-    assert args.location_id == "luminis"
+    assert args.location_id == "yuma"
     assert args.with_lunch is True
 
 
 def test_lunch_is_on_unless_it_is_turned_off():
-    base = ["--title", "T", "--with", "a@b.c", "--day", "2034-06-14", "--at", "luminis"]
+    base = ["--title", "T", "--with", "a@b.c", "--day", "2034-06-14", "--at", "yuma"]
 
     assert parse_args(base).with_lunch is True
     assert parse_args([*base, "--no-lunch"]).with_lunch is False
@@ -105,13 +105,13 @@ def test_lunch_is_on_unless_it_is_turned_off():
 
 def test_a_missing_day_is_refused_rather_than_guessed():
     with pytest.raises(SystemExit):
-        parse_args(["--title", "T", "--with", "a@b.c", "--at", "luminis"])
+        parse_args(["--title", "T", "--with", "a@b.c", "--at", "yuma"])
 
 
 def test_lunch_is_only_asked_about_when_it_is_left_open():
     """`None` is the one value that stops the team to ask, so a scripted run
     that says either `--lunch` or `--no-lunch` never blocks on a prompt."""
-    base = ["--title", "T", "--with", "a@b.c", "--day", "2034-06-14", "--at", "luminis"]
+    base = ["--title", "T", "--with", "a@b.c", "--day", "2034-06-14", "--at", "yuma"]
 
     assert lunch_wish_from(parse_args(base)) is None
     assert lunch_wish_from(parse_args([*base, "--lunch", "vegetarian"])) == "vegetarian"
@@ -357,7 +357,7 @@ def test_the_client_plans_a_whole_meeting_through_the_real_saga(live_team, monke
             participant_emails=["jettro@example.com", "daniel@example.com"],
             day=DAY,
             duration_minutes=60,
-            location_id="luminis",
+            location_id="yuma",
             lunch_wish="sandwiches",
         ),
     )
@@ -382,7 +382,7 @@ def test_declining_at_the_terminal_leaves_nothing_booked(live_team, monkeypatch)
             participant_emails=["jettro@example.com"],
             day=DAY,
             duration_minutes=60,
-            location_id="luminis",
+            location_id="yuma",
             lunch_wish="sandwiches",
         ),
     )
@@ -405,7 +405,7 @@ def test_missing_api_key_says_so_instead_of_failing_at_the_provider(monkeypatch,
             "--day",
             DAY.isoformat(),
             "--at",
-            "luminis",
+            "yuma",
         ]
     )
 
@@ -512,7 +512,7 @@ def test_the_client_asks_about_lunch_before_anything_is_booked(live_team, monkey
             participant_emails=["jettro@example.com", "daniel@example.com"],
             day=DAY,
             duration_minutes=60,
-            location_id="luminis",
+            location_id="yuma",
         ),
     )
 

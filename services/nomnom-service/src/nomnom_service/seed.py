@@ -43,7 +43,7 @@ def seed(session: Session) -> None:
 
     order = Order(
         order_id="seed-order-1",
-        location="luminis",
+        location="yuma",
         delivery_date=date.today() + timedelta(days=1),
         order_timestamp=datetime.now(UTC),
         note="Seeded demo order",

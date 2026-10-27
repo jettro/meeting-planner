@@ -32,9 +32,9 @@ def _wire_mcp_to_in_process_app():
 async def test_list_locations_and_rooms():
     async with Client(mcp_server.mcp) as client:
         locations = (await client.call_tool("list_locations", {})).data
-        assert any(loc["location_id"] == "luminis" for loc in locations)
+        assert any(loc["location_id"] == "yuma" for loc in locations)
 
-        rooms = (await client.call_tool("list_rooms", {"location_id": "luminis"})).data
+        rooms = (await client.call_tool("list_rooms", {"location_id": "yuma"})).data
         assert {"room_code": "room-a", "capacity": 4} in rooms
 
 
@@ -44,7 +44,7 @@ async def test_book_room_then_cancel():
             await client.call_tool(
                 "book_room",
                 {
-                    "location_id": "luminis",
+                    "location_id": "yuma",
                     "room_code": "room-a",
                     "day": "2031-01-02",
                     "start": "09:00:00",
@@ -68,7 +68,7 @@ async def test_book_room_conflict_returns_reason():
             await client.call_tool(
                 "book_room",
                 {
-                    "location_id": "luminis",
+                    "location_id": "yuma",
                     "room_code": "room-b",
                     "day": "2030-02-02",
                     "start": "10:00:00",
@@ -83,7 +83,7 @@ async def test_book_room_conflict_returns_reason():
             await client.call_tool(
                 "book_room",
                 {
-                    "location_id": "luminis",
+                    "location_id": "yuma",
                     "room_code": "room-b",
                     "day": "2030-02-02",
                     "start": "10:00:00",
@@ -102,7 +102,7 @@ async def test_get_room_availability():
             await client.call_tool(
                 "get_room_availability",
                 {
-                    "location_id": "luminis",
+                    "location_id": "yuma",
                     "day": "2030-03-03",
                     "start": "09:00:00",
                     "duration_minutes": 30,
@@ -116,7 +116,7 @@ async def test_get_room_availability():
             await client.call_tool(
                 "get_room_availability",
                 {
-                    "location_id": "luminis",
+                    "location_id": "yuma",
                     "day": "2030-03-03",
                     "start": "09:00:00",
                     "duration_minutes": 30,
@@ -145,7 +145,7 @@ async def test_an_offset_the_model_invented_is_ignored_and_reported():
             await client.call_tool(
                 "book_room",
                 {
-                    "location_id": "luminis",
+                    "location_id": "yuma",
                     "room_code": "room-a",
                     "day": "2031-01-02",
                     "start": "11:00:00+00:00",
@@ -168,7 +168,7 @@ async def test_a_time_that_is_not_a_clock_reading_is_refused():
             await client.call_tool(
                 "book_room",
                 {
-                    "location_id": "luminis",
+                    "location_id": "yuma",
                     "room_code": "room-a",
                     "day": "2031-01-02",
                     "start": "elevenish",

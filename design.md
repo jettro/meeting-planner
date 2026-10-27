@@ -35,7 +35,7 @@ Modules (Maven):
   book for all participants, and list free slots for a day.
 - **`Meeting`** / **`MeetingRequest`** / **`MeetingResponse`**: meeting entity + input/output DTOs.
   `MeetingService` is in-memory persistence (no DB).
-- **`Location`** / **`Room`**: 11 pre-seeded demo locations (Luminis, TechHub, CityView, Like Home,
+- **`Location`** / **`Room`**: 11 pre-seeded demo locations (Yuma, TechHub, CityView, Like Home,
   Meet Nature, GreenSpace, Harbor, Library, Loft, Villa, Campus), each with 3 rooms of varying
   capacity, each room has its own `Agenda`. Seeded with sample bookings for demo purposes.
 - **Food ordering domain** (`mcp-nomnom`): `Product`/`Category` catalog (`ProductStore`,

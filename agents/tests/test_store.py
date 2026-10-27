@@ -16,9 +16,9 @@ from meeting_agents.store import (
 def make_plan(**overrides) -> MeetingPlan:
     base = {
         "title": "Jettro & Daniel",
-        "participant_emails": ["jettro@rag4j.org", "daniel@rag4j.org"],
+        "participant_emails": ["sanne@rag4p.org", "daan@rag4p.org"],
         "day": date(2030, 6, 4),
-        "location_id": "luminis",
+        "location_id": "yuma",
     }
     return MeetingPlan(**{**base, **overrides})
 

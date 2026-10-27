@@ -9,10 +9,10 @@ from meeting_agents.plan import CompensationStep, MeetingPlan, PlanStatus
 def make_plan(**overrides) -> MeetingPlan:
     base = {
         "title": "Jettro & Daniel",
-        "participant_emails": ["jettro@rag4j.org", "daniel@rag4j.org"],
+        "participant_emails": ["sanne@rag4p.org", "daan@rag4p.org"],
         "day": date(2030, 6, 4),
         "duration_minutes": 60,
-        "location_id": "luminis",
+        "location_id": "yuma",
     }
     return MeetingPlan(**{**base, **overrides})
 
@@ -73,7 +73,7 @@ def test_a_draft_plan_has_nothing_to_compensate():
 
 def test_moving_rooms_within_a_location_keeps_the_lunch_order():
     plan = make_plan(meeting_id=12, booking_id=8, room_code="room-a", order_id="abc-123")
-    steps = plan.relocation_compensations("luminis")
+    steps = plan.relocation_compensations("yuma")
     assert [c.step for c in steps] == [CompensationStep.CANCEL_ROOM_BOOKING]
 
 

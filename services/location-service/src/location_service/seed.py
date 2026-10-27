@@ -9,8 +9,8 @@ from sqlmodel import Session, select
 from location_service.models import Location, Room, RoomBooking
 
 LOCATIONS: dict[str, tuple[str, str, list[tuple[str, int]]]] = {
-    "luminis": (
-        "Luminis",
+    "yuma": (
+        "Yuma",
         "Business meeting rooms across the Netherlands.",
         [("room-a", 4), ("room-b", 8), ("room-c", 12)],
     ),
@@ -79,9 +79,9 @@ def seed(session: Session) -> None:
     today = date.today()
     monday = today - timedelta(days=today.weekday())
     sample_bookings = [
-        ("luminis", "room-a", monday, time(9, 0), time(10, 30), "Monday Team Stand-up"),
+        ("yuma", "room-a", monday, time(9, 0), time(10, 30), "Monday Team Stand-up"),
         ("techhub", "alpha", monday, time(14, 0), time(15, 30), "Code Review Monday"),
-        ("luminis", "room-b", monday + timedelta(days=1), time(10, 0), time(11, 30), "Sprint Planning"),
+        ("yuma", "room-b", monday + timedelta(days=1), time(10, 0), time(11, 30), "Sprint Planning"),
         ("cityview", "sky", monday + timedelta(days=2), time(9, 30), time(11, 0), "Midweek Strategy"),
         ("harbor", "dock", monday + timedelta(days=3), time(14, 30), time(16, 0), "Waterfront Meeting"),
         ("villa", "salon", monday + timedelta(days=4), time(15, 0), time(17, 0), "End of Week VIP Meeting"),

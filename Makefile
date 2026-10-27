@@ -6,7 +6,7 @@ SERVICES := meeting-service location-service nomnom-service
         run-meeting run-location run-nomnom \
         run-meeting-mcp run-location-mcp run-nomnom-mcp \
         plan-meeting plan-meeting-docker \
-        up down build logs ps clean
+        up down build logs ps clean reset
 
 help: ## Show this help
 	@echo "Usage: make <target>"
@@ -89,3 +89,14 @@ ps: ## Show status of the compose stack
 
 clean: ## Stop containers and remove volumes (destroys SQLite data!)
 	docker compose down -v
+
+# Everything the running system has ever written lives in one of three places:
+# the named volumes, the SQLite files a local `make run-*` leaves in the repo
+# root, and the agents' plan store. Wiping only the volumes leaves a stale
+# local database behind, which is confusing precisely when you are trying to
+# start clean. The seed data comes back by itself on the next start.
+reset: clean ## Wipe ALL data (volumes, local *.db, plan store); stack stays down
+	rm -f meeting.db location.db nomnom.db
+	rm -f $(foreach s,$(SERVICES),services/$(s)/*.db)
+	rm -rf data
+	@echo "All data removed. 'make up' starts again from the seed data."
