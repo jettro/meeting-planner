@@ -173,3 +173,100 @@ export function shortName(model: string | undefined): string {
 export function isDomainEvent(event: TeamEvent): boolean {
   return Boolean(event.message?.__model__?.startsWith("meeting_agents."));
 }
+
+/**
+ * The part of an event worth reading.
+ *
+ * Every envelope carries the same six housekeeping fields; what differs is
+ * where the content hides. `SentMessage` keeps it in `message`, `EventMessage`
+ * in `event`, `StartMessage` in `config`, and `ReceivedMessage` /
+ * `ProcessedMessage` carry nothing but a pointer back to the message they are
+ * acknowledging.
+ */
+export function payloadOf(event: TeamEvent): Record<string, unknown> {
+  const envelope = event as unknown as Record<string, unknown>;
+  for (const key of ["message", "event", "config"]) {
+    const value = envelope[key];
+    if (value && typeof value === "object") {
+      return value as Record<string, unknown>;
+    }
+  }
+  return envelope.message_id ? { message_id: envelope.message_id } : {};
+}
+
+/** Fields that identify the envelope rather than say anything about the run. */
+const PLUMBING = new Set([
+  "id",
+  "__model__",
+  "parent_id",
+  "team_id",
+  "squad_id",
+  "agent_id",
+  "display_type",
+]);
+
+/**
+ * The same data, minus the plumbing.
+ *
+ * An actor address is eleven fields of identity wrapped around one name. Left
+ * alone it buries the payload it is attached to, so it collapses to the name -
+ * which is what every other part of this screen shows anyway.
+ */
+export function readable(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(readable);
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    if (record.__actor_address__) return record.name ?? "";
+    return Object.fromEntries(
+      Object.entries(record)
+        .filter(([key]) => !PLUMBING.has(key))
+        .map(([key, nested]) => [key, readable(nested)]),
+    );
+  }
+  return value;
+}
+
+/**
+ * The payload, minus what is already on screen.
+ *
+ * An inner message repeats the envelope's own timestamp, sender and
+ * recipient. Those are three columns of the grid and the dialog's own
+ * subtitle, so repeating them in the content pushes the content out of view.
+ * The raw tab still has everything.
+ */
+const ECHOED = new Set(["timestamp", "sender", "recipient", "parent", "parent_id"]);
+
+export function contentOf(event: TeamEvent): Record<string, unknown> {
+  const fields = readable(payloadOf(event)) as Record<string, unknown>;
+  return Object.fromEntries(Object.entries(fields).filter(([key]) => !ECHOED.has(key)));
+}
+
+/** One line of content for the grid: enough to recognise, never enough to read. */
+export function summarise(event: TeamEvent): string {
+  const parts = Object.entries(contentOf(event))
+    .filter(([, value]) => value !== null && value !== "" && value !== undefined)
+    .map(([key, value]) => `${key}: ${scalar(value)}`);
+  const line = parts.join(", ");
+  return line.length > 120 ? `${line.slice(0, 119)}…` : line;
+}
+
+function scalar(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.length <= 2 ? value.map(scalar).join(" / ") : `${value.length} items`;
+  }
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const named = shortName(record.__model__ as string | undefined);
+    // A nested object with no class name of its own still has fields; the
+    // first couple of them say more than "{…}" ever does.
+    const peek = Object.entries(record)
+      .filter(([key, nested]) => !ECHOED.has(key) && nested !== null && typeof nested !== "object")
+      .slice(0, 2)
+      .map(([key, nested]) => `${key}: ${String(nested)}`)
+      .join(", ");
+    if (peek) return named ? `${named}(${peek})` : `{${peek}}`;
+    return named || "{…}";
+  }
+  return String(value);
+}
+

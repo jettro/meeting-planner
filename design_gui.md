@@ -358,6 +358,16 @@ whole §1 feature and it cost one `useState`.
 
 ## 10. Changelog
 
+- 2026-10-27: The trace shows message *contents*, not just types. Each row carries a one-line
+  summary of the payload and opens a dialog with the whole thing — **Fields** (the payload with
+  the plumbing removed) and **Raw** (the envelope as it came off the socket, because the moment
+  something looks wrong the pretty version is the first thing to distrust). Three rules make it
+  readable: an actor address collapses to its `name` (eleven fields of identity around one name,
+  otherwise burying the payload it is attached to); ids, `team_id` and `display_type` are dropped;
+  and `timestamp`/`sender`/`recipient` are dropped from the content because they are already the
+  grid's own columns. The payoff is largest in the framework view, where a `StartMessage` now
+  shows an agent's wiring and prompt and an `EventMessage` shows the commands it was given.
+
 - 2026-10-27: Built the SPA (`gui/`). Vite + React 19 + TypeScript + MUI 9, `@mui/x-data-grid`,
   TanStack Query and React Router; `api/client.ts` (the only place that knows the server's shapes),
   `useTeamStream` (one socket, de-duplicated by event id), `TeamContext` (pending gate and outcome

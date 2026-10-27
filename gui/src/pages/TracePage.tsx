@@ -9,7 +9,8 @@ import {
 } from "@mui/material";
 import { DataGrid, type GridColDef } from "@mui/x-data-grid";
 import { useMemo, useState } from "react";
-import { isDomainEvent, shortName, type TeamEvent } from "../api/client";
+import { isDomainEvent, shortName, summarise, type TeamEvent } from "../api/client";
+import { EventDetails } from "../components/EventDetails";
 import { useTeam } from "../TeamContext";
 
 /**
@@ -20,10 +21,15 @@ import { useTeam } from "../TeamContext";
  * of our typed messages, which is the story of a meeting being arranged. The
  * framework view adds what the framework says about itself: starts, receipts,
  * model calls. That second one is why this screen exists at all (§1).
+ *
+ * The grid shows a one-line summary of the payload, which is enough to
+ * recognise a message but never enough to read one. Clicking a row opens the
+ * whole thing.
  */
 export default function TracePage() {
   const { teamId, events, connected } = useTeam();
   const [showFramework, setShowFramework] = useState(false);
+  const [selected, setSelected] = useState<TeamEvent | null>(null);
 
   const rows = useMemo(() => {
     const visible = showFramework ? events : events.filter(isDomainEvent);
@@ -34,7 +40,8 @@ export default function TracePage() {
       from: event.sender?.name ?? "",
       to: event.recipient?.name ?? "",
       kind: describe(event),
-      envelope: shortName(event.__model__),
+      summary: summarise(event),
+      event,
     }));
   }, [events, showFramework]);
 
@@ -43,8 +50,8 @@ export default function TracePage() {
     { field: "time", headerName: "Time", width: 100 },
     { field: "from", headerName: "From", width: 160 },
     { field: "to", headerName: "To", width: 160 },
-    { field: "kind", headerName: "Message", flex: 1, minWidth: 220 },
-    { field: "envelope", headerName: "Envelope", width: 170 },
+    { field: "kind", headerName: "Message", width: 200 },
+    { field: "summary", headerName: "Contents", flex: 1, minWidth: 280 },
   ];
 
   if (!teamId) {
@@ -84,8 +91,18 @@ export default function TracePage() {
         disableRowSelectionOnClick
         autoHeight
         hideFooterSelectedRowCount
+        onRowClick={(row) => setSelected(row.row.event as TeamEvent)}
+        sx={{ "& .MuiDataGrid-row": { cursor: "pointer" } }}
         initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
         pageSizeOptions={[25, 50, 100]}
+      />
+
+      {/* Keyed on the event, so opening another row starts on Fields again
+          rather than wherever the last one was left. */}
+      <EventDetails
+        key={selected?.id}
+        event={selected}
+        onClose={() => setSelected(null)}
       />
     </Box>
   );
