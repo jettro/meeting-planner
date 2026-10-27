@@ -212,7 +212,7 @@ startup race already.
 
 ### 5.3 `gui/` — the SPA
 
-See §6.
+See §6 for the stack, and §8.3 for what changed once it existed.
 
 ---
 
@@ -276,6 +276,10 @@ server really does own execution.
 | G5 | **MUI** | `DataGrid` is the trace with almost no custom JavaScript |
 | G6 | **Answer parsing lives in a shared `answers.py`** | Used by both `cli.py` and `ChannelHuman.process_human_input`; neither client owns the interpretation |
 | G7 | **The server teaches YAML how to write a `time`** rather than changing the domain | §8.2. The alternative was reshaping `ProposedSlot` to suit a storage backend |
+| G8 | **One socket, held by `TeamProvider`** | A reconnect replays from cursor zero, so a second subscriber is a second full history. Pages read the stream; they never open one |
+| G9 | **The team being watched lives in memory, not in the URL** | A reload loses the socket anyway, and a shareable link to a team waiting on *this* browser is a trap. `MemoryRouter` says so out loud |
+| G10 | **No forms library** | React Hook Form + Zod was planned; five fields and two gates did not earn a dependency. Minimal custom JavaScript cuts both ways |
+| G11 | **The API base is a build argument, not a runtime variable** | Vite inlines `import.meta.env`. The browser runs on the host, so the default is the host's port mapping, never a compose service name |
 
 ### 8.1 There is no `ServerUserProxy`, and that is the better answer
 
@@ -323,9 +327,26 @@ zero and stays a string). Quoting removes the coin toss. Both facts have tests.
 This is the kind of failure the trace screen exists to catch, found by building the trace screen's
 data source.
 
+### 8.3 What the SPA taught us
+
+Three things only showed up once a browser was holding the socket.
+
+**MUI 9 is not MUI 5.** `<Typography paragraph>`, `InputLabelProps`, and system props on `Stack`
+(`alignItems`) are all gone; `sx` and `slotProps` replace them. Worth knowing before copying any
+example older than this year.
+
+**`tsc --noEmit` is not the build.** It passed on all three screens while `npm run build`
+(`tsc -b && vite build`) found five type errors, because the project references in `tsconfig` carry
+settings the bare invocation does not. `make gui-build` is the only check that counts.
+
+**The trace is the demo.** With the framework toggle off, the grid is twenty rows that read like a
+story: `@Human → @Coordinator PlanMeetingRequest`, `@Coordinator → @Scheduler FindSlotsAssignment`,
+`@Scheduler → @Coordinator SlotsFound`, both gates, then `MeetingBooked`. With it on, the same run
+is ~60 rows including every actor's `StartMessage` and every `ReceivedMessage`. The toggle is the
+whole §1 feature and it cost one `useState`.
+
 ---
 
-## 9. Not now, but recorded
 
 - **Memory.** Per agent/user memory, possibly with shared memory between agents. Needs an
   evaluation of what akgents offers before any design.
@@ -336,6 +357,15 @@ data source.
 ---
 
 ## 10. Changelog
+
+- 2026-10-27: Built the SPA (`gui/`). Vite + React 19 + TypeScript + MUI 9, `@mui/x-data-grid`,
+  TanStack Query and React Router; `api/client.ts` (the only place that knows the server's shapes),
+  `useTeamStream` (one socket, de-duplicated by event id), `TeamContext` (pending gate and outcome
+  derived from the stream), and three screens — Platform, Plan a meeting, Trace. Decisions G8–G11
+  (§8); §8.3 records what building it taught us. Containerised behind nginx on 8300 with an SPA
+  history fallback, plus `make gui-install/gui-dev/gui-build/gui-lint`. Verified in a real browser
+  end to end: form → slot gate as radio buttons → lunch gate as free text ("something warm, no
+  meat") → `room-a at yuma`, 2 soups, booked — with the whole conversation visible in the trace.
 
 - 2026-10-27: Built the first slice. `/health` on all three services (503 when the database is
   unreachable) and a compose healthcheck using python rather than curl; `answers.py` extracted

@@ -92,6 +92,27 @@ Both human gates work over HTTP: the answer is read against the question it refe
 `ChannelHuman.process_human_input`, using the same `answers.py` the terminal uses. A browser can
 render radio buttons for the slots and still send `"2"`.
 
+## The browser client
+
+`gui/` is a React single-page app — the demo platform the command line was not. `make up` serves
+it from nginx on <http://localhost:8300>; `make gui-dev` runs it from Vite on
+<http://localhost:5173> against the same server. Both origins are already in the server's
+`CORS_ORIGINS`.
+
+Three screens:
+
+| screen | what it does |
+|---|---|
+| **Platform** | the three services, polled every ten seconds. `up` / `degraded` / `unreachable` are kept apart: a 503 and a silence have different causes |
+| **Plan a meeting** | the form, then the two gates as they arrive — the slots as radio buttons (the candidates travel with the question), lunch as free text, because `@Catering` holds the menu and is the only agent that should read the words — then the booked meeting |
+| **Trace** | every message, live, with a *framework events* toggle. Off, it is twenty rows that read like a story. On, it is the actor system starting up, receiving and processing — the "show me what happens at the framework level" view |
+
+TypeScript, MUI, TanStack Query, React Router, and about forty lines of WebSocket. The API base is
+baked in at build time (`VITE_API_BASE`), because Vite inlines it and the browser runs on the host.
+
+One socket serves all three screens: the server replays from cursor zero on connect, so a second
+subscriber would be a second full history.
+
 ## Project layout
 
 ```
@@ -111,6 +132,10 @@ meeting-planner/
 │   ├── Dockerfile
 │   ├── src/meeting_server/    # app, catalog, platform health, plans, yaml types
 │   └── tests/
+├── gui/                       # React SPA (Vite + MUI), served by nginx
+│   ├── Dockerfile
+│   ├── nginx.conf
+│   └── src/                   # api client, useTeamStream, TeamContext, pages
 └── services/
     ├── meeting-service/
     │   ├── pyproject.toml
@@ -159,6 +184,11 @@ make build
 make up
 make logs
 make down
+
+# The browser client: http://localhost:8300 once the stack is up,
+# or run it from Vite against the same server
+make gui-install
+make gui-dev         # http://localhost:5173
 ```
 
 Each service exposes:
@@ -184,6 +214,10 @@ Run `make help` for the full list. Highlights:
 | `make plan-meeting` | ask the agent team to plan a meeting (needs `make up`)       |
 | `make plan-meeting-docker` | the same, in the agents container                     |
 | `make run-server`   | run the team server on the host (needs `make up`)            |
+| `make gui-install`  | install the SPA's node dependencies                          |
+| `make gui-dev`      | run the SPA from Vite on <http://localhost:5173>             |
+| `make gui-build`    | type-check and build the SPA into `gui/dist`                 |
+| `make gui-lint`     | lint the SPA                                                 |
 | `make build`        | `docker compose build`                                       |
 | `make up` / `down`  | start/stop the full stack (containers only; volumes kept)    |
 | `make clean`        | stop the stack **and delete** the SQLite data volumes         |

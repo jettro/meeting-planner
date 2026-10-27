@@ -6,6 +6,7 @@ SERVICES := meeting-service location-service nomnom-service
         run-meeting run-location run-nomnom \
         run-meeting-mcp run-location-mcp run-nomnom-mcp \
         plan-meeting plan-meeting-docker run-server \
+        gui-install gui-dev gui-build gui-lint \
         up down build logs ps clean reset
 
 help: ## Show this help
@@ -83,6 +84,20 @@ SERVER_HOST_ENV := $(AGENT_HOST_ENV) \
 
 run-server: ## Run the team server on the host (http://localhost:8200); needs `make up`
 	@$(SERVER_HOST_ENV) uv run --env-file .env --package meeting-server python -m meeting_server.app
+
+## --- Browser client (npm) ----------------------------------------------------
+
+gui-install: ## Install the SPA's node dependencies
+	cd gui && npm install
+
+gui-dev: ## Run the SPA in dev mode (http://localhost:5173); needs the server on 8200
+	cd gui && npm run dev
+
+gui-build: ## Type-check and build the SPA into gui/dist
+	cd gui && npm run build
+
+gui-lint: ## Lint the SPA
+	cd gui && npm run lint
 
 ## --- Docker Compose ----------------------------------------------------------
 

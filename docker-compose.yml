@@ -97,6 +97,19 @@ services:
       # The SPA is served from its own origin, so CORS is not optional here.
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:8300}
 
+  # The browser client. It talks to the server over the host's port mapping,
+  # not over this network, so the API base is a build argument baked into the
+  # bundle rather than an environment variable read at runtime.
+  gui:
+    build:
+      context: ./gui
+      args:
+        VITE_API_BASE: ${VITE_API_BASE:-http://localhost:8200}
+    ports:
+      - "8300:80"
+    depends_on:
+      - server
+
   agents:
     build:
       context: ./agents
