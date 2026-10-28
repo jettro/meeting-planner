@@ -1,8 +1,10 @@
 # Meeting Planner — Design Document
 
 ## Status
-Draft — analysis phase. This document tracks the migration of the old Java/Embabel
-"meeting-planner-embabel" project into a new Python-based multi-package / multi-container project.
+Built. This document covers the analysis of the old Java/Embabel "meeting-planner-embabel" project
+and the first two phases of its rewrite: the three services (§2) and their MCP servers (§3). The
+agent team and everything after it are designed in their own documents — `design_akgents.md`,
+`design_gui.md`, `design_cancel.md`, `design_durability.md` and `design_chat.md`.
 
 Source project analyzed: `/Users/jettrocoenradie/Development/personal/agent4j/meeting-planner-embabel`
 

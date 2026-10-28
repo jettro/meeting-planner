@@ -14,7 +14,7 @@ import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, isDomainEvent, shortName, summarise, type TeamEvent } from "../api/client";
 import { EventDetails } from "../components/EventDetails";
-import { useTeam } from "../TeamContext";
+import { useTeam } from "../team";
 
 /**
  * Everything the team said, in order.

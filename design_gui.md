@@ -360,14 +360,34 @@ story: `@Human → @Coordinator PlanMeetingRequest`, `@Coordinator → @Schedule
 is ~60 rows including every actor's `StartMessage` and every `ReceivedMessage`. The toggle is the
 whole §1 feature and it cost one `useState`.
 
+### 8.4 The event store could not write a status either
+
+G14 made `MeetingPlan.status` a `computed_field`, so it would travel to the browser instead of being
+re-derived there. It broke persistence in exactly the way §8.2 did: every message carrying a plan —
+`PlanCompleted`, `PlanFailed`, `PlanCancelled` — was dropped by the persistence subscriber, and the
+Plans screen's runs had no outcome in their stored traces.
+
+The cause was one level down from §8.2's. `model_dump()` runs in *python* mode, so an enum stays an
+enum; `PlanStatus` subclasses `str`, and the safe dumper dispatches on **exact** type — a `str`
+subclass is not a `str` to it. The fix sits beside the `time` one in `yaml_types.py`: enums are
+written as their value, registered as a family (`add_multi_representer(Enum, …)`) rather than one
+by one, because the next enum added to the domain should not have to find this out again. Both
+halves have tests (`test_yaml_types.py`).
+
+The lesson is the same as §8.2's, and worth saying twice: the actors never notice. A message the
+store cannot write is still delivered, so the team runs perfectly while its history silently loses
+exactly the messages a screen is waiting for.
+
 ---
 
+## 9. Later
 
 - **Memory.** Per agent/user memory, possibly with shared memory between agents. Needs an
   evaluation of what akgents offers before any design.
-- **Guardrails**, possibly via a decision model. No known framework support; the first task is
-  finding the hook where a guardrail can intercept — the `BaseAgent.act()` path and the
-  `ResultMessage` return are the obvious candidates to investigate.
+- **Guardrails**, possibly via a decision model. The hook is found: `BaseAgent.extra_capabilities()`
+  takes pydantic-ai capabilities, whose `before_tool_execute` / `after_output_validate` hooks can
+  refuse a call or an answer. The first one exists — `TalkOnlyToHuman` in `design_chat.md` (I7);
+  a guardrail on a specialist's `book_*` calls would be the next.
 
 ---
 

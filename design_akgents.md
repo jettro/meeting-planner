@@ -6,9 +6,11 @@ drives those services through their MCP endpoints on behalf of a human.
 
 ## Status
 
-**Design agreed; implementation started.** §7 records the decisions, §7.2 the implementation
-order — step 1 (`find_common_slots`) is done. Also agreed: v1's human entry point is a typed
-`PlanMeetingRequest`, not free text.
+**Built.** All eight steps of §7.2 are done, and the team has grown since: a server and a browser
+(`design_gui.md`), cancellation (`design_cancel.md`), a durable coordinator whose state is the
+meeting's only record (`design_durability.md`, which withdraws D3 and §5.1 (b)), and a second team
+you talk to (`design_chat.md`). v1's human entry point is a typed `PlanMeetingRequest`; free text
+now arrives through `@Intake` in front of it, as §4.2 rule 5 kept room for.
 
 ---
 
@@ -334,6 +336,38 @@ YAML  →  Catalog(repository=YamlEntryRepository(root)).load_team(ns)  →  Tea
 
 So YAML only decides **what `@name`s exist** and **which profiles are hireable**.
 
+### 3.7 Mechanics confirmed while building the team (step 4)
+
+Each of these was checked against the installed packages, not assumed:
+
+* **Nothing in the framework resolves `${VAR}`.** `resolve_env_vars` says so in
+  its own docstring ("called by runtime consumers, not by catalog services") and
+  no caller exists anywhere in the installed code. `meeting_agents.bootstrap`
+  therefore owns resolution, and does it after hydration so it reaches a value
+  wherever it ended up. It raises on a missing variable rather than leaving a
+  placeholder to surface later as a connection error to a host named
+  `${MEETING_MCP_URL}`.
+* **Dispatch is by method name**: `receiveMsg_<MessageType>`, Thespian-style.
+  An unhandled type is logged as `Unknown message ...` and dropped — which is
+  how the dropped `PlanSnapshot` acknowledgement was first spotted.
+* **`list[type]` fields take `{__type__: dotted.path}`** in YAML. A bare string
+  fails validation (`Input should be a type`). This is how `message_types` is
+  written.
+* **A YAML file's name must equal its `id`** — `team.yaml` must declare
+  `id: team`. `load_team` then finds it by `kind: team`, not by id.
+* **The model-type allowlist governs `Entry.model_type` only, not
+  `agent_class`.** `_resolve_agent_class` calls `import_class` with no allowlist
+  check, so `meeting_agents.coordinator.Coordinator` loads without
+  `set_allowed_prefixes` — our `model_type` stays `akgentic.core.AgentCard`.
+* **`AgentCard.config` is coerced to the `ConfigType` of its `agent_class`.**
+  This is what lets `CoordinatorConfig` and `PlanRepositoryConfig` be written as
+  plain YAML, and it produces the isolation guarantee in its strongest form: the
+  deterministic agents have **no `tools` field at all**, so no configuration
+  mistake could give either of them an MCP server.
+* `TeamRuntime.send_from_to(sender_name, recipient_name, message)` is the
+  outside-in entry point, and `TeamFactory.build(card, actor_system, ...)` is a
+  static method.
+
 ---
 
 ## 4. Team topology (agreed)
@@ -530,37 +564,19 @@ rewrite. Any change that would break one of those rules needs discussing first.
 
 **Deferred indefinitely:** gap G2's dedicated move/reschedule endpoints.
 
-### 3.7 Mechanics confirmed while building the team (step 4)
+### 7.2 Implementation order
 
-Each of these was checked against the installed packages, not assumed:
-
-* **Nothing in the framework resolves `${VAR}`.** `resolve_env_vars` says so in
-  its own docstring ("called by runtime consumers, not by catalog services") and
-  no caller exists anywhere in the installed code. `meeting_agents.bootstrap`
-  therefore owns resolution, and does it after hydration so it reaches a value
-  wherever it ended up. It raises on a missing variable rather than leaving a
-  placeholder to surface later as a connection error to a host named
-  `${MEETING_MCP_URL}`.
-* **Dispatch is by method name**: `receiveMsg_<MessageType>`, Thespian-style.
-  An unhandled type is logged as `Unknown message ...` and dropped — which is
-  how the dropped `PlanSnapshot` acknowledgement was first spotted.
-* **`list[type]` fields take `{__type__: dotted.path}`** in YAML. A bare string
-  fails validation (`Input should be a type`). This is how `message_types` is
-  written.
-* **A YAML file's name must equal its `id`** — `team.yaml` must declare
-  `id: team`. `load_team` then finds it by `kind: team`, not by id.
-* **The model-type allowlist governs `Entry.model_type` only, not
-  `agent_class`.** `_resolve_agent_class` calls `import_class` with no allowlist
-  check, so `meeting_agents.coordinator.Coordinator` loads without
-  `set_allowed_prefixes` — our `model_type` stays `akgentic.core.AgentCard`.
-* **`AgentCard.config` is coerced to the `ConfigType` of its `agent_class`.**
-  This is what lets `CoordinatorConfig` and `PlanRepositoryConfig` be written as
-  plain YAML, and it produces the isolation guarantee in its strongest form: the
-  deterministic agents have **no `tools` field at all**, so no configuration
-  mistake could give either of them an MCP server.
-* `TeamRuntime.send_from_to(sender_name, recipient_name, message)` is the
-  outside-in entry point, and `TeamFactory.build(card, actor_system, ...)` is a
-  static method.
+1. ✅ `find_common_slots` REST endpoint + MCP tool on meeting-service, with tests (closes G1).
+2. ✅ New `agents/` workspace package: dependencies, `MeetingPlan` model, plan store.
+3. ✅ Catalog YAML: 3 `MCPTool` entries, model config, prompts, the 3 specialist agent entries.
+   (The team card and the two deterministic agent entries move to step 4, because their
+   `agent_class` dotted paths must exist before the YAML referencing them can be loaded.)
+4. ✅ `@Coordinator` + `@PlanRepository` deterministic actors; typed messages; `team/team.yaml`.
+5. ✅ `@Scheduler`, `@FacilityManager`, `@Catering` LLM agents — verified live against the
+   running MCP containers and `gpt-6-luna` (see §7.4).
+6. ✅ CLI runner + approval gate via `HumanProxy` — verified live end to end (see §7.5).
+7. ✅ Dockerfile, compose service, Makefile targets, README.
+8. ✅ The lunch gate (D9) — a second question, free text, with a non-interactive path (§7.7).
 
 ### 7.3 Durability before notification (decided while implementing)
 
@@ -747,25 +763,13 @@ just a smaller meeting. The two gates also read silence differently on purpose �
 empty means *no* at the slot gate and *you choose* at the lunch gate, because by
 then lunch has already been asked for and only the kind is open.
 
-Finally, the wish is **remembered on the plan**, so the D5 relocation saga can
-rebook the same kind of lunch at the new location rather than guessing again.
-And because the human asked in words, they are answered in words: a short
+Finally, the wish is **remembered on the plan**, so the record says what was
+asked for and not only what arrived. (It was first kept for the D5 relocation
+saga, to rebook the same kind of lunch at a new location; D5 is withdrawn, and
+nothing moves location any more.) And because the human asked in words, they
+are answered in words: a short
 summary travels back `OrderedLunch` → `LunchOrdered` → `FacilitiesBooked` →
 `MeetingPlan.lunch_summary` and is printed in the confirmation.
-
-### 7.2 Implementation order
-
-1. ✅ `find_common_slots` REST endpoint + MCP tool on meeting-service, with tests (closes G1).
-2. ✅ New `agents/` workspace package: dependencies, `MeetingPlan` model, plan store.
-3. ✅ Catalog YAML: 3 `MCPTool` entries, model config, prompts, the 3 specialist agent entries.
-   (The team card and the two deterministic agent entries move to step 4, because their
-   `agent_class` dotted paths must exist before the YAML referencing them can be loaded.)
-4. ✅ `@Coordinator` + `@PlanRepository` deterministic actors; typed messages; `team/team.yaml`.
-5. ✅ `@Scheduler`, `@FacilityManager`, `@Catering` LLM agents — verified live against the
-   running MCP containers and `gpt-6-luna` (see §7.4).
-6. ✅ CLI runner + approval gate via `HumanProxy` — verified live end to end (see §7.5).
-7. ✅ Dockerfile, compose service, Makefile targets, README.
-8. ✅ The lunch gate (D9) — a second question, free text, with a non-interactive path (§7.7).
 
 ---
 
@@ -786,8 +790,6 @@ summary travels back `OrderedLunch` → `LunchOrdered` → `FacilitiesBooked` �
   CLI runner in a 4th container; `find_common_slots` added first. Cancellation/compensation sagas
   and `akgentic-infra` deferred. One item left open: confirming a typed `PlanMeetingRequest` as
   the v1 human entry point (§7.1).
-
-## 9. Changelog
 
 - 2026-10-26: Step 1 — `find_common_slots` added to meeting-service (closes G1); see `design.md`.
 - 2026-10-26: Added §4.2 after a steer that a **GUI and free-format input are wanted in time**.

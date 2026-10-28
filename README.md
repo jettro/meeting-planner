@@ -299,7 +299,19 @@ Run `make help` for the full list. Highlights:
 
 ## Roadmap
 
-See `design.md` for the full rewrite plan and `design_akgents.md` for the agent team. Still to
-come: running the agent team in its own container, compensating sagas for cancelling or moving a
-meeting, a web frontend (`akgentic-infra` + Angular) alongside the CLI, free-format input instead
-of typed arguments, and OAuth2/auth-server.
+Each step so far has a design document, written before it was built: `design.md` (the services
+and their MCP servers), `design_akgents.md` (the agent team), `design_gui.md` (the team as a
+service, the browser and the console), `design_cancel.md` (cancelling), `design_durability.md`
+(the team is the meeting) and `design_chat.md` (the team you talk to).
+
+Still to come, each with a design first:
+
+- **Memory** — for example remembering someone's lunch preference, or which "Daan" they usually
+  mean. Notes have started; the first task is an evaluation of what akgents offers.
+- **Guardrails** — the hook is known (`BaseAgent.extra_capabilities()`, where `TalkOnlyToHuman`
+  already lives); a guard on the specialists' `book_*` calls would be the next one.
+- **Evals** for the LLM agents — the three live conversations in `design_chat.md` §14 are the
+  first cases.
+- Open questions from `design_chat.md` §11: changing a request after it is sent, the model for
+  `@Intake`, and how much of the relay to narrate.
+- Not planned: a change-meeting feature (cancel and plan again), and OAuth2/auth-server.

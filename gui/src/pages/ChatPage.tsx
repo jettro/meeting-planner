@@ -23,7 +23,7 @@ import {
   type TeamEvent,
 } from "../api/client";
 import { GatePrompt } from "../components/GatePrompt";
-import { useTeam } from "../TeamContext";
+import { useTeam } from "../team";
 import { PlanSummary } from "./PlanPage";
 
 /** One line of the conversation, as it was said. */

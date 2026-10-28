@@ -19,7 +19,7 @@ import {
   type MeetingPlan,
 } from "../api/client";
 import { GatePrompt } from "../components/GatePrompt";
-import { useTeam } from "../TeamContext";
+import { useTeam } from "../team";
 
 const TODAY_PLUS_A_YEAR = new Date(Date.now() + 365 * 24 * 3600 * 1000)
   .toISOString()

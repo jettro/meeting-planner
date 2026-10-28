@@ -97,6 +97,4 @@ def test_a_plan_with_a_status_can_be_written_after_installing():
 
 def test_an_enum_round_trips_as_its_value():
     install_yaml_representers()
-    assert yaml.safe_load(yaml.safe_dump({"step": CompensationStep.CANCEL_ORDER})) == {
-        "step": "cancel_order"
-    }
+    assert yaml.safe_load(yaml.safe_dump({"step": CompensationStep.CANCEL_ORDER})) == {"step": "cancel_order"}

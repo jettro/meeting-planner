@@ -27,7 +27,7 @@ import {
   type MeetingPlan,
 } from "../api/client";
 import { useCancelPlan } from "../hooks/useCancelPlan";
-import { useTeam } from "../TeamContext";
+import { useTeam } from "../team";
 
 /** One team run, and the meeting it arranged. One team is one meeting. */
 interface Meeting {
