@@ -99,7 +99,7 @@ it from nginx on <http://localhost:8300>; `make gui-dev` runs it from Vite on
 <http://localhost:5173> against the same server. Both origins are already in the server's
 `CORS_ORIGINS`.
 
-Three screens:
+Four screens:
 
 | screen | what it does |
 |---|---|
@@ -111,8 +111,24 @@ Three screens:
 TypeScript, MUI, TanStack Query, React Router, and about forty lines of WebSocket. The API base is
 baked in at build time (`VITE_API_BASE`), because Vite inlines it and the browser runs on the host.
 
-One socket serves all three screens: the server replays from cursor zero on connect, so a second
+One socket serves all four screens: the server replays from cursor zero on connect, so a second
 subscriber would be a second full history.
+
+## The framework's own console
+
+`gui/` shows the *meeting*. The Akgentic console shows the *team*, and it is worth having both: the
+transcript with per-agent thinking bubbles, the roster, the agent hierarchy as a graph, each
+member's LLM context and system prompt, the workspaces, and what the run spent.
+
+    make console          # http://localhost:8400
+
+It is upstream's [`akgentic-frontend`](https://github.com/b12consulting/akgentic-frontend), run
+unmodified. There is no checkout in this repository: Docker builds it from the upstream git URL at
+a pinned commit, and the only file we own is `console/config.json`, mounted over the image. See
+`console/README.md`.
+
+This works at all because our server *is* `akgentic-infra` — `create_app` with two modules added —
+so the console's protocol is already served. Nothing was written to support it.
 
 ## Project layout
 
@@ -186,6 +202,7 @@ make up
 make logs
 make down
 
+# The framework's console: http://localhost:8400 (teams, hierarchy, costs)
 # The browser client: http://localhost:8300 once the stack is up,
 # or run it from Vite against the same server
 make gui-install

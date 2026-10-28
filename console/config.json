@@ -1,0 +1,8 @@
+{
+  "api": "http://localhost:8200",
+  "hideLogin": true,
+  "hideHome": false,
+  "welcomeMessage": "Meeting planner - the Akgentic console",
+  "autoRedirectContext": "",
+  "initRightPanelCollapsed": false
+}

@@ -283,6 +283,9 @@ server really does own execution.
 | G12 | **A plan records the team runs that touched it** | `MeetingPlan.team_ids`, stamped by `@PlanRepository` because it is the only writer. One team plans one meeting, so a plan changed later has several runs and its trace is all of them |
 | G13 | **One Trace screen, two sources** | `/trace` is the live socket, `/trace/<team>` is a stored run fetched once. A second screen would have duplicated every column and both toggles to show the same thing |
 | G14 | **`status` is a `computed_field`** | The browser should not re-derive what the domain already knows. Derived stays derived: it serialises out and is never read in — see §8.4 for what that cost |
+| G15 | **Two clients, not one** | Our SPA is about the *meeting* and is the demo. Upstream's console is about the *team* — hierarchy, prompts, token spend — and is the instrument. Merging them would mean building the second badly |
+| G16 | **The console is built from upstream's git URL, never vendored** | A checkout makes every upstream fix a merge, and a fork is the one thing we have no use for. The pin is a full commit SHA in compose; a short SHA is refused by the git build context |
+| G17 | **The console is configured by a mounted file, not a build argument** | Upstream reads `config.json` over its baked-in defaults before rendering, so the backend changes without a rebuild. Our own SPA cannot do this — Vite inlines `import.meta.env` (G11) — and the difference is upstream's design, not an inconsistency |
 
 ### 8.1 There is no `ServerUserProxy`, and that is the better answer
 
@@ -360,6 +363,13 @@ whole §1 feature and it cost one `useState`.
 ---
 
 ## 10. Changelog
+
+- 2026-10-28: Added the **Akgentic console** on 8400 (G15–G17), upstream's Angular client run
+  unmodified. It cost one compose service and one `config.json`, because the server is
+  `akgentic-infra` itself: the protocol the console speaks was already being served. It gives us
+  for free the things our SPA deliberately does not have — the agent hierarchy as a graph, each
+  member's system prompt and LLM context, and what a run spent. `console/README.md` records why
+  there is no checkout.
 
 - 2026-10-28: Added the **Plans** screen (read-only, G4's deferred half): every plan the team has
   made, with its derived status, its service references — the meeting/booking/order ids that

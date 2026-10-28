@@ -7,7 +7,7 @@ SERVICES := meeting-service location-service nomnom-service
         run-meeting-mcp run-location-mcp run-nomnom-mcp \
         plan-meeting plan-meeting-docker run-server \
         gui-install gui-dev gui-build gui-lint \
-        up down build logs ps clean reset
+        up down build logs ps clean reset console
 
 help: ## Show this help
 	@echo "Usage: make <target>"
@@ -115,6 +115,14 @@ logs: ## Tail logs from all running containers
 
 ps: ## Show status of the compose stack
 	docker compose ps
+
+# The framework's own client (console/README.md). It reads the mounted
+# config.json at startup, so a configuration change needs a restart of this
+# container - but never a rebuild.
+console: ## Open the Akgentic console (http://localhost:8400)
+	docker compose up -d console
+	@echo "Console on http://localhost:8400 - talking to the server on 8200"
+	@command -v open >/dev/null && open http://localhost:8400 || true
 
 clean: ## Stop containers and remove volumes (destroys SQLite data!)
 	docker compose down -v
