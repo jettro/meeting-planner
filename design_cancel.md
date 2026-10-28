@@ -20,7 +20,10 @@ Cancel *is* that piece, alone.
 
 ## 1. What cancelling does
 
-Everything the plan booked is released, in reverse booking order:
+**All three bookings go.** The lunch order, the room, and the meeting itself.
+There is nothing to choose and nothing to ask — cancel means cancel.
+
+In reverse booking order, because that is the order the services expect:
 
 | Held | Released by | Where |
 |---|---|---|
@@ -28,10 +31,11 @@ Everything the plan booked is released, in reverse booking order:
 | `booking_id` | `cancel_room_booking` | location-service |
 | `meeting_id` | `cancel_meeting` | meeting-service |
 
-That list is already computed, correctly, by `MeetingPlan.compensations()`.
-It includes only the bookings that actually happened, so it is safe on a
-half-finished plan — which is exactly when it is needed most. The three
-`cancel_*` MCP tools exist and take the ids the plan is holding.
+That list is already computed, correctly, by `MeetingPlan.compensations()`,
+which returns all three for a finished plan. The only time it returns fewer is
+a plan that never got that far: a plan cancelled before lunch was ordered has
+no `order_id` to release. The three `cancel_*` MCP tools exist and take the ids
+the plan is holding.
 
 So the work is not *what* to cancel. It is wiring up the running of it.
 
@@ -92,26 +96,17 @@ cancelling: dict[str, list[Compensation]]
 
 **A failed step does not stop the run.** One stale reference — a booking
 somebody already released by hand — must not strand the other two. The failure
-is recorded on the plan and the next step goes out.
+is reported at the end and the next step goes out.
 
 ## 5. What the plan ends up saying
 
 The plan keeps its ids. It is a record of what was booked, and erasing them
-would lose that; `cancelled` is what makes `status` read `CANCELLED`, and it
-already exists.
+would lose that. `cancelled: bool` already exists and is already what makes
+`status` read `CANCELLED`, so **no new field is needed on the plan**.
 
-Two fields are added, both written only at the end:
-
-```python
-cancelled: bool = False                          # exists
-released: list[CompensationStep] = []            # what came back succeeded
-cancel_failures: list[str] = []                  # step plus reason, one line each
-```
-
-`released` and `cancel_failures` together say exactly how much of the undo
-worked. A plan whose `cancel_failures` is non-empty is still `CANCELLED` — the
-intent was carried out as far as it could be — but the screen can show that it
-was not clean, and the ids are still there for a human to chase.
+A step that failed is reported in `PlanCancelled` and is in the trace, which
+for a demo is where you would look anyway. Mirroring it onto the plan is a
+second place to keep in step for no new behaviour.
 
 ## 6. The browser
 
@@ -120,8 +115,6 @@ was not clean, and the ids are still there for a human to chase.
 - A **confirmation** listing what will be released, in words, not ids (§3).
 - The plan stays in the Plans list afterwards, with a `CANCELLED` chip. This is
   a demo of a saga undoing itself; hiding the result would hide the point.
-- If `cancel_failures` is non-empty, the dialog says so, with the references
-  that are still outstanding.
 - Nothing else changes. There is no Revise button, no History section, no
   team-lifecycle call. To plan a different meeting, the human uses **Plan
   another**, which is what that button already does.
@@ -133,13 +126,12 @@ was not clean, and the ids are still there for a human to chase.
    structured output beside the other specialist results.
 2. One `receiveMsg_CancelAssignment` per specialist — three small handlers,
    each calling the one `cancel_*` tool it owns.
-3. The coordinator: the queue, the serial driver, `PlanCancelled`.
-4. `released` / `cancel_failures` on the plan; delete
-   `relocation_compensations()` and its tests.
-5. The server endpoint and `client.ts`.
-6. The button, the confirmation, the chip.
+3. The coordinator: the queue, the serial driver, `cancelled = True`,
+   `PlanCancelled`. Delete `relocation_compensations()` and its tests.
+4. The server endpoint and `client.ts`.
+5. The button, the confirmation, the chip.
 
-Steps 1–4 are testable without the stack, as the saga tests already are.
+Steps 1–3 are testable without the stack, as the saga tests already are.
 
 ## 8. Open questions
 
