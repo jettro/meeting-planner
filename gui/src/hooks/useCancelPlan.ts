@@ -19,6 +19,16 @@ import { useTeamStream } from "./useTeamStream";
  *
  * It asks no questions, which is the whole difference. There is no gate to
  * answer, because there is nothing left to decide once the human has said yes.
+ *
+ * ## Any live run is stopped first, and that is not politeness
+ *
+ * `PlanStore.save` is a blind replace - last write wins, no version check -
+ * and a cancellation runs in a *second* team while the first may still be
+ * holding the plan in memory. Release the room, and a team that is still
+ * going books the lunch and saves its own copy over the top: the plan reads
+ * CONFIRMED again, with a meeting that no longer exists and an order nothing
+ * references. Stopping is synchronous, so once it returns the old team cannot
+ * write at all. That is what makes this safe rather than merely likely.
  */
 export function useCancelPlan() {
   const [teamId, setTeamId] = useState<string | null>(null);
@@ -40,7 +50,10 @@ export function useCancelPlan() {
   // agents report a cancellation after the write, so by the time this fires
   // there is a cancelled plan to re-read.
   useEffect(() => {
-    if (outcome) void queryClient.invalidateQueries({ queryKey: ["plans"] });
+    if (outcome) {
+      void queryClient.invalidateQueries({ queryKey: ["plans"] });
+      void queryClient.invalidateQueries({ queryKey: ["teams"] });
+    }
   }, [outcome, queryClient]);
 
   const run = useCallback(async (plan: MeetingPlan) => {
@@ -48,6 +61,12 @@ export function useCancelPlan() {
     setError(null);
     setTeamId(null);
     try {
+      // Every run that touched this plan, not just the one that looked alive
+      // a moment ago: liveness is polled, and stopping something already
+      // stopped is free.
+      for (const previous of plan.team_ids) {
+        await api.stopTeam(previous);
+      }
       const team = await api.createTeam(plan);
       setTeamId(team.team_id);
       await api.cancelPlan(team.team_id, plan.plan_id);

@@ -291,6 +291,9 @@ server really does own execution.
 | G20 | **The cancel confirmation is a browser dialog, not a human gate** | The SPA already holds the plan, so it can name what is about to be released without a round trip. The slot and lunch gates are different: they need an answer the client does not have, and the answer changes what gets booked. A confirmation only decides whether the message is sent at all |
 | G21 | **Cancelling is a typed message, so it needed no endpoint** | `POST /teams/{id}/message/from/@Human/to/@Coordinator` with a `CancelPlanRequest` is the same route planning uses. Adding `POST /plans/{id}/cancel` would have put a second way to start a run beside the framework's own |
 | G22 | **A cancelled plan stays in the list, with its ids** | It is the record of what was booked, and this is a demo of a saga undoing itself — hiding the result would hide the point |
+| G23 | **An unfinished plan is offered Resume or Cancel by *team liveness*, never by its status** | The framework idle-stops a team an hour after its last message. Alive means parked at a gate and still answerable; stopped means the coordinator's in-memory state is gone and the plan can never be finished, so releasing what it booked is all that is left |
+| G24 | **Which gate is open is read from the trace, not from what the browser typed** | A decision carries the question's `id` as its `parent_id`, so a run resumed in another tab shows the gate that is genuinely still open instead of re-asking a settled one |
+| G25 | **Cancelling stops every run on the plan first** | `PlanStore.save` is a blind replace, and a live team would otherwise save its stale copy over the cancellation — leaving a plan that reads CONFIRMED with bookings that no longer exist. `stop` is synchronous, so after it returns the old team cannot write. 409 means already stopped, which is the outcome wanted |
 
 ### 8.1 There is no `ServerUserProxy`, and that is the better answer
 
@@ -368,6 +371,18 @@ whole §1 feature and it cost one `useState`.
 ---
 
 ## 10. Changelog
+
+- 2026-10-29: **An unfinished plan can be resumed**, and cancelling now stops
+  whatever is still running on the plan first. The split is by team liveness rather than plan
+  status (G23): the framework idle-stops a team an hour after its last message, so a live team
+  is one parked at a gate and still worth answering, while a stopped one can never be finished
+  because the coordinator's state was only ever in memory. Resuming turned out to cost almost
+  nothing — the screen is already derived from the stream and the server replays a team's whole
+  history on connect, so attaching needs only the id. The one real change was reading *which
+  gate is still open* from the trace via `parent_id` (G24), which is what makes a run resumed in
+  another tab show the right question. The stop-first rule (G25) closes a genuine corruption:
+  `PlanStore.save` is a blind replace, so a live team could otherwise save its stale copy over a
+  cancellation and leave a plan reading CONFIRMED with bookings that no longer exist.
 
 - 2026-10-29: **A meeting can be cancelled**, which releases the lunch order, the room and the
   meeting — see `design_cancel.md`. There is deliberately no edit: two earlier designs for

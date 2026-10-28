@@ -149,9 +149,13 @@ second place to keep in step for no new behaviour.
 - A **confirmation** listing what will be released, in words, not ids (§3).
 - The plan stays in the Plans list afterwards, with a `CANCELLED` chip. This is
   a demo of a saga undoing itself; hiding the result would hide the point.
-- Nothing else changes. There is no Revise button, no History section, no
-  team-lifecycle call. To plan a different meeting, the human uses **Plan
-  another**, which is what that button already does.
+- An unfinished plan whose team is still alive offers **Resume** instead, with
+  cancelling demoted to **Stop and cancel** beside it (§8). A finished plan
+  never offers Resume, however alive its team looks — a team stays `running`
+  for an hour after it has done everything it was asked to.
+- There is no Revise button and no History section. To plan a different
+  meeting, the human uses **Plan another**, which is what that button already
+  does.
 
 ## 7. What was built
 
@@ -197,16 +201,64 @@ Afterwards the meeting, the booking and the order were gone from the three
 services, the plan read `CANCELLED` with its ids intact, and it listed **two**
 runs — the one that booked it and the one that released it.
 
-## 8. Open questions
+## 8. Mid-flight plans, and resuming them
 
-1. **Cancelling a plan that is mid-flight**, before it has finished booking.
-   The compensation list is correct at the moment it is read, but a booking in
-   progress could land after it. Simplest answer for a demo: refuse to cancel a
-   plan that is not at rest, and say why.
-2. **`PlanFailed` already reports `outstanding`** compensations without running
-   them. Once the runner exists, should a failure run them automatically, or
-   keep reporting and let the human press Cancel? Reporting is the more honest
-   demo — it shows the mess, then shows it being cleaned up.
+Question 1 below used to be open. It is settled, and the answer came from the
+framework rather than from us: **a team idle-stops an hour after its last
+message** (`ORCHESTRATOR_TIMEOUT_DELAY`, default 3600, unset here). So an
+unfinished plan is already in one of two states, and they want opposite things.
+
+**Its team is still alive.** It is parked at a gate, waiting for an answer it
+will still accept. Nothing is wrong, and nothing needs releasing — somebody
+closed a tab. This one is **resumed**.
+
+**Its team is stopped.** The coordinator kept its state in memory and is not
+durable (Appendix A), so there is no way to finish it, ever. Whatever it
+booked before it stopped is stranded. This one is **cancelled**.
+
+That is the whole rule, and neither branch needs to ask whether a plan is "at
+rest" — team liveness answers it. A finished plan is unaffected: it is
+cancelled, as §1 says.
+
+### 8.1 Resuming costs almost nothing
+
+Everything the plan screen shows is derived from the event stream, and the
+server replays a team's whole history on connect. So attaching to a live run
+needs only its id: the questions, the answers already given and the outcome
+all arrive again and the screen rebuilds itself.
+
+The one change needed was in deciding which gate is open. The browser used to
+remember what it had answered, which a resumed run does not know. A decision
+carries the question's `id` as its `parent_id`, so an answered question can be
+recognised **from the trace** — and then a run resumed in a different tab, or
+after a reload, shows the gate that is genuinely still open rather than
+re-asking one that was settled.
+
+### 8.2 Cancelling stops the live team first, and that is not politeness
+
+`PlanStore.save` is a blind replace — last write wins, no version check — and
+a cancellation runs in a *second* team while the first may still hold the plan
+in memory. Release the room, and a team that is still going books the lunch
+and saves its own copy over the top: the plan reads `CONFIRMED` again, with a
+meeting that no longer exists and an order nothing references.
+
+So every run on the plan is stopped before the cancelling team is created.
+`POST /teams/{id}/stop` is synchronous, so once it returns the old team cannot
+write at all. It answers **409** when the team is already stopped, which is
+both the common case and the outcome being asked for, so that is not an error
+here — liveness is polled and is allowed to be out of date.
+
+This guard lives in the browser, which is where cancellation is started from
+(G21 — a cancellation is a typed message, not an endpoint of ours). That is
+proportionate for a demo with one client; a system with several would want it
+behind the write instead.
+
+### 8.3 Still open
+
+**`PlanFailed` already reports `outstanding`** compensations without running
+them. Should a failure run them automatically, or keep reporting and let the
+human press Cancel? Reporting is the more honest demo — it shows the mess,
+then shows it being cleaned up.
 
 ---
 
@@ -240,3 +292,15 @@ It also decides something for *this* design: cancelling an old plan happens in
 a **new team**, which loads the plan from the repository. Not in the team that
 made it. The coordinator there would have no memory of it anyway, and the plan
 store is the thing that does.
+
+A fourth fact, found later and the one §8 turns on:
+
+- **Teams idle-stop on their own.** `IdleStopSubscriber` counts in-flight work
+  from the telemetry it already receives and stops the team when the count has
+  been zero for `ORCHESTRATOR_TIMEOUT_DELAY` seconds —
+  `DEFAULT_IDLE_STOP_DELAY_SECONDS = 3600`, and we do not set the variable.
+  Measured: a team created at 14:31 stopped at 15:31 with nobody calling
+  anything. So `status` on `GET /teams` means *alive*, not *busy*: a run that
+  finished everything still reads `running` for the rest of the hour. It is
+  only a useful signal next to a plan that has **not** finished, where alive
+  does mean "still has work to do".

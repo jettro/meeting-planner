@@ -40,6 +40,15 @@ interface TeamState {
   /** `PlanCompleted` or `PlanFailed`, once one has arrived. */
   outcome: DomainMessage | null;
   start: (request: PlanRequest) => Promise<void>;
+  /**
+   * Watch a run that is already going, instead of starting one.
+   *
+   * Everything below is derived from the stream, and the server replays a
+   * team's whole history on connect, so attaching needs nothing but the id:
+   * the questions, the answers already given and the outcome all arrive again
+   * and the screen rebuilds itself.
+   */
+  attach: (teamId: string) => void;
   answer: (content: string) => Promise<void>;
   reset: () => void;
 }
@@ -73,8 +82,20 @@ export function TeamProvider({ children }: { children: ReactNode }) {
 
   const pending = useMemo(() => {
     if (outcome) return null;
+    // A question is closed when its answer is in the stream - every decision
+    // carries the question's id as its `parent_id`. Reading it from the
+    // events rather than from what this browser happens to have typed is what
+    // makes a resumed run correct: the answers given before the tab was
+    // closed are in the replay, so the gate that is genuinely still open is
+    // the one that shows.
+    const closed = new Set(
+      events
+        .filter(isDomainEvent)
+        .map((event) => event.message!.parent_id)
+        .filter((id): id is string => Boolean(id)),
+    );
     const open = messagesOfKind(events, QUESTIONS).filter(
-      (question) => !answered.includes(question.id),
+      (question) => !closed.has(question.id) && !answered.includes(question.id),
     );
     return open[open.length - 1] ?? null;
   }, [events, answered, outcome]);
@@ -98,6 +119,12 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     } finally {
       setStarting(false);
     }
+  }, []);
+
+  const attach = useCallback((existingTeamId: string) => {
+    setError(null);
+    setAnswered([]);
+    setTeamId(existingTeamId);
   }, []);
 
   const answer = useCallback(
@@ -132,6 +159,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     pending,
     outcome,
     start,
+    attach,
     answer,
     reset,
   };

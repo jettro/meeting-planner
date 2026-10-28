@@ -35,8 +35,30 @@ export interface ActorRef {
 
 export interface DomainMessage {
   id: string;
+  /**
+   * The message this one answers. On a decision it is the question's `id`,
+   * which is what lets a replayed trace say which gates are already closed
+   * without the browser having to remember - see `TeamContext`.
+   */
+  parent_id?: string | null;
   __model__: string;
   [key: string]: unknown;
+}
+
+/**
+ * A team run as the framework lists it.
+ *
+ * `status` is the one field worth distrusting. It means *alive*, not *busy*:
+ * the framework idle-stops a team after `ORCHESTRATOR_TIMEOUT_DELAY` seconds
+ * with nothing in flight (an hour by default), so a finished run reads
+ * `running` until that fires. It is only meaningful next to a plan that has
+ * not finished, where alive really does mean "still has work to do".
+ */
+export interface TeamSummary {
+  team_id: string;
+  name: string;
+  status: "running" | "stopped" | string;
+  created_at: string;
 }
 
 export interface TeamEvent {
@@ -224,8 +246,22 @@ export const api = {
       }),
     }),
 
-  stopTeam: (teamId: string) =>
-    call<null>(`/teams/${teamId}`, { method: "DELETE" }),
+  stopTeam: async (teamId: string): Promise<void> => {
+    const response = await fetch(`${BASE}/teams/${teamId}/stop`, { method: "POST" });
+    // 409 is "it is already stopped", which is the outcome being asked for.
+    // It is also the likeliest answer in practice: the framework idle-stops
+    // teams on its own, so any liveness the browser read a moment ago may
+    // already be out of date by the time somebody clicks.
+    if (!response.ok && response.status !== 409) {
+      throw new Error((await response.text()) || `${response.status} ${response.statusText}`);
+    }
+  },
+
+  /** Every run the server knows about, newest state included. */
+  listTeams: async (): Promise<TeamSummary[]> => {
+    const body = await call<{ teams: TeamSummary[] }>("/teams");
+    return body.teams;
+  },
 };
 
 export function streamUrl(teamId: string): string {

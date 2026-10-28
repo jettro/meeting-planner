@@ -20,6 +20,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, type MeetingPlan } from "../api/client";
 import { useCancelPlan } from "../hooks/useCancelPlan";
+import { useLiveRuns } from "../hooks/useLiveRuns";
+import { useTeam } from "../TeamContext";
 
 /**
  * Every plan the team has made, including the ones nobody is watching.
@@ -31,11 +33,21 @@ import { useCancelPlan } from "../hooks/useCancelPlan";
  * One thing can be done to a plan from here, and it is not an edit. There is
  * no way to change a meeting in this system: a meeting that is wrong is
  * cancelled, which releases everything it holds, and a new one is planned.
+ *
+ * An unfinished plan is offered something else first. Whether it can be
+ * carried to the end depends on one thing - whether the team that was running
+ * it is still alive - because the coordinator keeps its state in memory and
+ * is not durable. Alive means it is parked at a gate and the answer is still
+ * wanted: that one is resumed. Stopped means nobody can ever finish it, and
+ * releasing whatever it booked is the only thing left.
  */
 export default function PlansPage() {
   const [selected, setSelected] = useState<MeetingPlan | null>(null);
   const [confirming, setConfirming] = useState<MeetingPlan | null>(null);
   const cancellation = useCancelPlan();
+  const liveRunFor = useLiveRuns();
+  const team = useTeam();
+  const navigate = useNavigate();
   const { data, isLoading, error } = useQuery({
     queryKey: ["plans"],
     queryFn: api.plans,
@@ -98,7 +110,13 @@ export default function PlansPage() {
 
       <PlanDialog
         plan={selected}
+        liveRun={selected ? liveRunFor(selected.team_ids) : null}
         onClose={() => setSelected(null)}
+        onResume={(teamId) => {
+          setSelected(null);
+          team.attach(teamId);
+          navigate("/plan");
+        }}
         onCancelMeeting={(plan) => {
           setSelected(null);
           cancellation.reset();
@@ -108,6 +126,7 @@ export default function PlansPage() {
 
       <CancelDialog
         plan={confirming}
+        liveRun={confirming ? liveRunFor(confirming.team_ids) : null}
         cancellation={cancellation}
         onClose={() => {
           setConfirming(null);
@@ -134,15 +153,24 @@ function StatusChip({ status }: { status: string }) {
 
 function PlanDialog({
   plan,
+  liveRun,
   onClose,
+  onResume,
   onCancelMeeting,
 }: {
   plan: MeetingPlan | null;
+  liveRun: string | null;
   onClose: () => void;
+  onResume: (teamId: string) => void;
   onCancelMeeting: (plan: MeetingPlan) => void;
 }) {
   const navigate = useNavigate();
   if (!plan) return null;
+
+  // Only an unfinished plan can be resumed, and only while its team is still
+  // alive to be resumed into.
+  const unfinished = plan.status !== "CONFIRMED" && plan.status !== "CANCELLED";
+  const resumeTeam = unfinished && !plan.cancelled ? liveRun : null;
 
   const rows: [string, string][] = [
     ["Day", plan.day],
@@ -220,17 +248,24 @@ function PlanDialog({
       <Divider />
       <DialogActions sx={{ px: 3, py: 2 }}>
         <Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1 }}>
-          A meeting cannot be changed, only called off and planned again.
+          {resumeTeam
+            ? "This meeting is unfinished and its team is still waiting."
+            : "A meeting cannot be changed, only called off and planned again."}
         </Typography>
         <Button onClick={onClose}>Close</Button>
         <Button
           color="error"
-          variant="outlined"
+          variant={resumeTeam ? "text" : "outlined"}
           disabled={plan.cancelled}
           onClick={() => onCancelMeeting(plan)}
         >
-          Cancel meeting
+          {resumeTeam ? "Stop and cancel" : "Cancel meeting"}
         </Button>
+        {resumeTeam && (
+          <Button variant="contained" onClick={() => onResume(resumeTeam)}>
+            Resume
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );
@@ -262,10 +297,12 @@ function heldBy(plan: MeetingPlan): string[] {
  */
 function CancelDialog({
   plan,
+  liveRun,
   cancellation,
   onClose,
 }: {
   plan: MeetingPlan | null;
+  liveRun: string | null;
   cancellation: ReturnType<typeof useCancelPlan>;
   onClose: () => void;
 }) {
@@ -297,6 +334,13 @@ function CancelDialog({
             <DialogContentText sx={{ mt: 2 }}>
               It cannot be undone. To meet anyway, plan a new meeting.
             </DialogContentText>
+            {liveRun && (
+              <Alert severity="warning" sx={{ mt: 2 }}>
+                This meeting is still being planned. Its team will be stopped
+                first, so nothing it was in the middle of can book anything
+                after the release.
+              </Alert>
+            )}
           </>
         )}
 
