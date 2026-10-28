@@ -20,6 +20,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   api,
+  CHAT_NAMESPACE,
   TEAM_NAMESPACE,
   waitingForTheHuman,
   type CoordinatorState,
@@ -31,6 +32,8 @@ import { useTeam } from "../TeamContext";
 /** One team run, and the meeting it arranged. One team is one meeting. */
 interface Meeting {
   teamId: string;
+  /** Which team made it: the form's, or a conversation's. */
+  namespace: string;
   createdAt: string;
   state: CoordinatorState;
   plan: MeetingPlan;
@@ -66,10 +69,12 @@ export default function MeetingsPage() {
     refetchInterval: 30_000,
   });
 
-  // Ours only, newest first. The server also holds runs of any other team card
-  // loaded into it, and those have no coordinator of ours to read.
+  // Ours only - the form's and the conversations' - newest first. The server
+  // also holds runs of any other team card loaded into it, and those have no
+  // coordinator of ours to read.
+  const ours = new Set([TEAM_NAMESPACE, CHAT_NAMESPACE]);
   const runs = (teams.data ?? [])
-    .filter((run) => run.catalog_namespace === TEAM_NAMESPACE)
+    .filter((run) => ours.has(run.catalog_namespace ?? ""))
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
 
   // One snapshot per run. Fine for a demo with tens of runs; a server-side
@@ -86,7 +91,15 @@ export default function MeetingsPage() {
   const meetings: Meeting[] = runs.flatMap((run, index) => {
     const state = states[index]?.data;
     return state?.plan
-      ? [{ teamId: run.team_id, createdAt: run.created_at, state, plan: state.plan }]
+      ? [
+          {
+            teamId: run.team_id,
+            namespace: run.catalog_namespace ?? TEAM_NAMESPACE,
+            createdAt: run.created_at,
+            state,
+            plan: state.plan,
+          },
+        ]
       : [];
   });
   const isLoading = teams.isLoading || states.some((query) => query.isLoading);
@@ -94,6 +107,7 @@ export default function MeetingsPage() {
 
   const columns: GridColDef[] = [
     { field: "title", headerName: "Title", flex: 1, minWidth: 180 },
+    { field: "via", headerName: "Via", width: 110 },
     { field: "day", headerName: "Day", width: 120 },
     { field: "time", headerName: "Time", width: 130 },
     { field: "where", headerName: "Where", width: 160 },
@@ -118,11 +132,14 @@ export default function MeetingsPage() {
     return {
       id: meeting.teamId,
       title: plan.title,
+      via: meeting.namespace === CHAT_NAMESPACE ? "conversation" : "form",
       day: plan.day,
       time: plan.proposed_start
         ? `${plan.proposed_start.slice(0, 5)}–${plan.proposed_end?.slice(0, 5)}`
         : "—",
-      where: plan.room_code ? `${plan.room_code} at ${plan.location_id}` : plan.location_id,
+      where: plan.room_code
+        ? `${plan.room_code} at ${plan.location_name || plan.location_id}`
+        : plan.location_name || plan.location_id || plan.location_wish,
       people: plan.participant_emails.length,
       // A failure is not a status the plan derives - it lives beside the plan
       // in the coordinator's state - so the row says it in so many words.
@@ -163,12 +180,12 @@ export default function MeetingsPage() {
       <MeetingDialog
         meeting={selected}
         onClose={() => setSelected(null)}
-        onResume={async (teamId) => {
+        onResume={async (meeting) => {
           setSelected(null);
           // A stopped team has to be restored before its stream will play.
-          await api.restoreTeam(teamId);
-          team.attach(teamId);
-          navigate("/plan");
+          await api.restoreTeam(meeting.teamId);
+          team.attach(meeting.teamId, meeting.namespace);
+          navigate(meeting.namespace === CHAT_NAMESPACE ? "/chat" : "/plan");
         }}
         onCancelMeeting={(meeting) => {
           setSelected(null);
@@ -212,7 +229,7 @@ function MeetingDialog({
 }: {
   meeting: Meeting | null;
   onClose: () => void;
-  onResume: (teamId: string) => void;
+  onResume: (meeting: Meeting) => void;
   onCancelMeeting: (meeting: Meeting) => void;
 }) {
   const navigate = useNavigate();
@@ -232,7 +249,13 @@ function MeetingDialog({
         : "not decided",
     ],
     ["Participants", plan.participant_emails.join(", ")],
-    ["Location", plan.location_id],
+    ["Location", plan.location_name ? `${plan.location_name} (${plan.location_id})` : plan.location_id],
+    ...(plan.location_wish
+      ? ([
+          ["Described as", plan.location_wish],
+          ["Chosen because", plan.location_reason || "—"],
+        ] as [string, string][])
+      : []),
     ["Room", plan.room_code ?? "none"],
     ["Lunch", plan.lunch_summary || (plan.with_lunch ? "not ordered" : "none wanted")],
     ["Asked for", plan.lunch_wish || "—"],
@@ -324,7 +347,7 @@ function MeetingDialog({
           Cancel meeting
         </Button>
         {resumable && (
-          <Button variant="contained" onClick={() => onResume(meeting.teamId)}>
+          <Button variant="contained" onClick={() => onResume(meeting)}>
             Resume
           </Button>
         )}

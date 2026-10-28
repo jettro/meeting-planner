@@ -1,0 +1,10 @@
+id: _meta
+kind: meta
+namespace: meeting-planner-chat
+user_id: anonymous
+model_type: akgentic.catalog.models.namespace_meta.NamespaceMeta
+description: "The chat team: the form team, with @Intake in front."
+payload:
+  name: meeting-planner-chat
+  description: "Arranges a meeting from a conversation: @Intake listens, the deterministic team books."
+  shareable: false

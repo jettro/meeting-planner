@@ -199,3 +199,51 @@ def test_the_lunch_wish_reaches_catering_verbatim():
         wish="something vegetarian",
     ).rendering()
     assert "something vegetarian" in rendered
+
+
+# -- where: an id or a wish (design_chat.md §13.1) --------------------------
+
+
+def where(**fields) -> PlanMeetingRequest:
+    return PlanMeetingRequest(
+        title="Offsite",
+        participant_emails=["sanne@rag4p.org"],
+        day=date(2035, 3, 12),
+        **fields,
+    )
+
+
+def test_a_place_can_be_described_instead_of_named():
+    plan = where(location_wish="somewhere quiet").to_plan()
+
+    assert plan.location_id == ""
+    assert plan.location_wish == "somewhere quiet"
+
+
+def test_both_an_id_and_a_wish_is_refused():
+    """The coordinator would have to pick one silently."""
+    with pytest.raises(ValidationError, match="exactly one"):
+        where(location_id="yuma", location_wish="somewhere quiet")
+
+
+def test_neither_an_id_nor_a_wish_is_refused():
+    with pytest.raises(ValidationError, match="exactly one"):
+        where()
+
+
+def test_a_blank_wish_is_not_a_wish():
+    with pytest.raises(ValidationError, match="exactly one"):
+        where(location_wish="   ")
+
+
+def test_the_slot_question_names_a_chosen_place():
+    question = SlotApprovalRequest(
+        plan_id="p1",
+        title="Offsite",
+        day=date(2035, 3, 12),
+        candidates=[ProposedSlot(start=time(10, 0), end=time(11, 0))],
+        location_name="Library",
+        location_reason="quiet",
+    )
+
+    assert "'Offsite' at Library (quiet) on 2035-03-12" in question.question()

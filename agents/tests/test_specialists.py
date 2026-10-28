@@ -22,7 +22,10 @@ from akgentic.team import TeamCard, TeamCardMember, TeamFactory
 from meeting_agents.coordinator import Coordinator, CoordinatorConfig
 from meeting_agents.messages import (
     MESSAGE_TYPES,
+    AssignmentFailed,
     CancelPlanRequest,
+    FindPeopleAssignment,
+    PeopleFound,
     PlanCancelled,
     PlanCompleted,
     PlanFailed,
@@ -34,8 +37,12 @@ from meeting_agents.messages import (
 from meeting_agents.outputs import (
     BookedMeeting,
     BookedRoom,
+    ChosenLocation,
     FoundSlots,
+    MatchedPeople,
+    NameMatchOut,
     OrderedLunch,
+    PersonOut,
     ReleasedBooking,
     SlotOut,
 )
@@ -128,6 +135,14 @@ class RecordingHuman(UserProxy):
         Inbox.messages.put(message)
 
     def receiveMsg_PlanCancelled(self, message, sender) -> None:  # noqa: N802
+        Inbox.messages.put(message)
+
+    # The people lookup answers whoever asked; in these tests that is @Human,
+    # standing in for @Intake (design_chat.md §13.2).
+    def receiveMsg_PeopleFound(self, message, sender) -> None:  # noqa: N802
+        Inbox.messages.put(message)
+
+    def receiveMsg_AssignmentFailed(self, message, sender) -> None:  # noqa: N802
         Inbox.messages.put(message)
 
 
@@ -470,3 +485,177 @@ def test_a_cancel_run_that_raises_becomes_a_named_failure(team):
     assert len(cancelled.failures) == 1
     assert "cancel_meeting" in cancelled.failures[0]
     assert cancelled.plan.status is PlanStatus.CANCELLED
+
+
+# -- a place described rather than named (design_chat.md §13.1) -----------
+
+
+def ask_for_a_place(team, wish: str = "a natural environment") -> None:
+    team.send_from_to(
+        "@Human",
+        "@Coordinator",
+        PlanMeetingRequest(
+            title="Offsite",
+            participant_emails=["jettro@example.com", "daniel@example.com"],
+            day=DAY,
+            location_wish=wish,
+            with_lunch=False,
+        ),
+    )
+
+
+def nature() -> ChosenLocation:
+    return ChosenLocation(
+        succeeded=True,
+        location_id="meet-nature",
+        name="Meeting in Nature",
+        reason="outdoor activities - closest to a natural environment",
+    )
+
+
+def test_a_described_place_is_chosen_before_the_slots(team):
+    """The facility manager chooses, and the human sees the choice with the times."""
+    Script.give(ChosenLocation, nature())
+    Script.give(FoundSlots, good_slots())
+
+    ask_for_a_place(team)
+    question = Inbox.expect(SlotApprovalRequest)
+
+    assert question.location_name == "Meeting in Nature"
+    assert "outdoor activities" in question.location_reason
+    assert "Meeting in Nature" in question.question()
+    # The place was asked about first, in the requester's own words.
+    assert "a natural environment" in Script.prompts[0]
+    assert "Find every" in Script.prompts[1]
+
+
+def test_the_meeting_is_booked_at_the_chosen_place(team):
+    Script.give(ChosenLocation, nature())
+    Script.give(FoundSlots, good_slots())
+    Script.give(BookedMeeting, BookedMeeting(succeeded=True, meeting_id=MEETING_ID))
+    Script.give(BookedRoom, BookedRoom(succeeded=True, room_code="forest", booking_id=BOOKING_ID))
+
+    ask_for_a_place(team)
+    question = Inbox.expect(SlotApprovalRequest)
+    team.send_from_to(
+        "@Human",
+        "@Coordinator",
+        SlotApprovalDecision(plan_id=question.plan_id, approved=True, slot=question.candidates[0]),
+    )
+    plan = Inbox.expect(PlanCompleted).plan
+
+    assert plan.location_id == "meet-nature"
+    assert plan.location_wish == "a natural environment"
+    assert plan.location_name == "Meeting in Nature"
+    assert any("location meet-nature" in prompt for prompt in Script.prompts)
+
+
+def test_choosing_a_place_says_how_many_need_seating(team):
+    Script.give(ChosenLocation, nature())
+    Script.give(FoundSlots, good_slots())
+
+    ask_for_a_place(team)
+    Inbox.expect(SlotApprovalRequest)
+
+    assert "for 2 people" in Script.prompts[0]
+
+
+def test_nothing_fitting_is_an_honest_no_before_anything_is_booked(team):
+    Script.give(ChosenLocation, ChosenLocation(succeeded=False, reason="no location has a sports hall"))
+
+    ask_for_a_place(team, wish="somewhere sporty")
+    failed = Inbox.expect(PlanFailed)
+
+    assert failed.reason == "no location has a sports hall"
+    assert failed.outstanding == []
+    assert len(Script.prompts) == 1, "no slots were searched for a place that does not exist"
+
+
+def test_a_choice_without_an_id_is_refused(team):
+    """A name alone cannot be booked - and an invented id would be worse."""
+    Script.give(ChosenLocation, ChosenLocation(succeeded=True, name="Somewhere nice"))
+
+    ask_for_a_place(team)
+
+    assert "no location fits" in Inbox.expect(PlanFailed).reason
+
+
+def test_a_named_location_is_never_looked_up(team):
+    """An id in the request means the saga runs exactly as it always did."""
+    Script.give(FoundSlots, good_slots())
+
+    request_meeting(team)
+    question = Inbox.expect(SlotApprovalRequest)
+
+    assert question.location_name == ""
+    assert not any("Choose the location" in prompt for prompt in Script.prompts)
+
+
+# -- people named rather than addressed (design_chat.md §13.2) -------------
+
+
+SANNE = PersonOut(name="Sanne Visser", email="sanne@rag4p.org")
+DAAN_V = PersonOut(name="Daan de Vries", email="daan@rag4p.org")
+DAAN_J = PersonOut(name="Daan Jansen", email="daan.jansen@rag4p.org")
+
+
+def look_up(team, *names: str) -> None:
+    team.send_from_to("@Human", "@Scheduler", FindPeopleAssignment(names=list(names)))
+
+
+def test_a_name_with_one_match_is_settled(team):
+    Script.give(
+        MatchedPeople,
+        MatchedPeople(succeeded=True, matches=[NameMatchOut(asked="Sanne", candidates=[SANNE])]),
+    )
+
+    look_up(team, "Sanne")
+    found = Inbox.expect(PeopleFound)
+
+    assert [(m.asked, [p.email for p in m.candidates]) for m in found.matches] == [
+        ("Sanne", ["sanne@rag4p.org"])
+    ]
+
+
+def test_an_ambiguous_name_reports_everyone_it_could_mean(team):
+    """Never a pick: two Daans is a question for the person, not for the model."""
+    Script.give(
+        MatchedPeople,
+        MatchedPeople(succeeded=True, matches=[NameMatchOut(asked="Daan", candidates=[DAAN_V, DAAN_J])]),
+    )
+
+    look_up(team, "Daan")
+
+    assert len(Inbox.expect(PeopleFound).matches[0].candidates) == 2
+
+
+def test_a_name_the_model_skipped_is_reported_as_nobody(team):
+    """Every name asked gets an answer, in order - none is silently dropped."""
+    Script.give(
+        MatchedPeople,
+        MatchedPeople(succeeded=True, matches=[NameMatchOut(asked="Sanne", candidates=[SANNE])]),
+    )
+
+    look_up(team, "Sanne", "Bram")
+    found = Inbox.expect(PeopleFound)
+
+    assert [m.asked for m in found.matches] == ["Sanne", "Bram"]
+    assert found.matches[1].candidates == []
+
+
+def test_the_lookup_frames_itself_as_one_that_books_nothing(team):
+    Script.give(MatchedPeople, MatchedPeople(succeeded=True))
+
+    look_up(team, "Sanne")
+    Inbox.expect(PeopleFound)
+
+    assert "book nothing" in Script.prompts[0]
+    assert '"Sanne"' in Script.prompts[0]
+
+
+def test_a_lookup_that_could_not_search_is_a_failure(team):
+    Script.give(MatchedPeople, MatchedPeople(succeeded=False, reason="meeting service unreachable"))
+
+    look_up(team, "Sanne")
+
+    assert Inbox.expect(AssignmentFailed).reason == "meeting service unreachable"

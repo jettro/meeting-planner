@@ -35,18 +35,26 @@ from meeting_agents.messages import (
     CancelAssignment,
     Cancelled,
     FacilitiesBooked,
+    FindLocationAssignment,
+    FindPeopleAssignment,
     FindSlotsAssignment,
+    LocationFound,
     LunchOrdered,
     MeetingBooked,
+    NameMatch,
     OrderLunchAssignment,
+    PeopleFound,
+    Person,
     ProposedSlot,
     SlotsFound,
 )
 from meeting_agents.outputs import (
     BookedMeeting,
     BookedRoom,
+    ChosenLocation,
     ClockError,
     FoundSlots,
+    MatchedPeople,
     OrderedLunch,
     ReleasedBooking,
     parse_clock,
@@ -180,6 +188,38 @@ class Scheduler(SpecialistAgent):
 
         self.send(sender, SlotsFound(plan_id=message.plan_id, candidates=candidates))
 
+    def receiveMsg_FindPeopleAssignment(  # noqa: N802
+        self, message: FindPeopleAssignment, sender: ActorAddress
+    ) -> None:
+        """Turn names into the people they could mean. A lookup: nothing is booked.
+
+        Every candidate is reported, never a pick: a wrong guess is a meeting in a
+        stranger's agenda, and choosing between two people called Daan is a
+        question for the person who asked (design_chat.md §13.2). The answer
+        goes to whoever asked, as every answer here does.
+        """
+        found = self.attempt(message, MatchedPeople, message.plan_id, sender)
+        if found is None:
+            return
+        if not found.succeeded:
+            self.fail(message.plan_id, found.reason or "could not search the address book", sender)
+            return
+
+        # Every name asked gets an entry, in the order asked - one the model
+        # skipped is "nobody matches", not a silently dropped participant.
+        by_name = {match.asked: match for match in found.matches}
+        matches = [
+            NameMatch(
+                asked=name,
+                candidates=[
+                    Person(name=person.name, email=person.email)
+                    for person in (by_name[name].candidates if name in by_name else [])
+                ],
+            )
+            for name in message.names
+        ]
+        self.send(sender, PeopleFound(plan_id=message.plan_id, matches=matches))
+
     def receiveMsg_BookMeetingAssignment(  # noqa: N802
         self, message: BookMeetingAssignment, sender: ActorAddress
     ) -> None:
@@ -234,6 +274,36 @@ class FacilityManager(SpecialistAgent, Akgent[FacilityManagerConfig, AgentState]
         # about lunch - it is not part of the agent's replayable state, and the
         # durable record of a plan belongs to @Coordinator's state regardless.
         self._pending: dict[str, PendingFacilities] = {}
+
+    def receiveMsg_FindLocationAssignment(  # noqa: N802
+        self, message: FindLocationAssignment, sender: ActorAddress
+    ) -> None:
+        """Turn a description into a location. A lookup: nothing is booked.
+
+        The same move @Catering makes with a lunch wish (D9): this agent is the
+        only one that can see the locations and what they are like, so the
+        judgement stays here and the list never travels (design_chat.md §13.1).
+        """
+        chosen = self.attempt(message, ChosenLocation, message.plan_id, sender)
+        if chosen is None:
+            return
+        if not chosen.succeeded or not chosen.location_id:
+            self.fail(
+                message.plan_id,
+                chosen.reason or f'no location fits "{message.wish}"',
+                sender,
+            )
+            return
+
+        self.send(
+            sender,
+            LocationFound(
+                plan_id=message.plan_id,
+                location_id=chosen.location_id,
+                name=chosen.name or chosen.location_id,
+                reason=chosen.reason,
+            ),
+        )
 
     def receiveMsg_BookFacilitiesAssignment(  # noqa: N802
         self, message: BookFacilitiesAssignment, sender: ActorAddress

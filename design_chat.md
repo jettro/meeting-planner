@@ -9,8 +9,9 @@ questions and answers back and forth.
 
 > **The one sentence to keep:** *the model listens; the coordinator decides; the human approves.*
 
-**Status:** proposal. Nothing is built yet. §13 answers how places and people are found from
-the person's own words; §11 lists what is still open, §12 the spike and the order of work.
+**Status:** built (2026-10-28) and verified live — §14 records what building it taught us.
+§13 answers how places and people are found from the person's own words; Q2–Q4 in §11 are still
+open.
 
 ---
 
@@ -459,6 +460,51 @@ addresses runs exactly as today — which is what makes it safe to build first, 
 
 ---
 
+## 14. What building it taught us
+
+**The spike, item by item.** (1) A fresh `SlotApprovalRequest` from `@Intake` to `@Human` is
+answered through the server's own `process_human_input` and books the meeting; the coordinator's
+copy, addressed to `@Intake`, is refused — both have tests (`test_intake.py`). (2) `IntakeState`
+keeps the backstory: `BaseAgent` reads it from `ctx.deps.state.backstory` on every run, so a
+subclass that carries it across is enough, and it survives a stop and restore with its `plan_id`
+(`test_chat_restore.py`). (3) Not exercised by a test — the scripted model replaces `act()` — but
+the LLM context is restored from the run's own `LlmMessageEvent`s, which a notification turn
+emits like any other. (4) Cross-namespace refs resolve: `load_team` falls back to the live
+repository for them, gated on the target namespace's `_meta` entry carrying `shareable: true`,
+which `meeting-planner` now has. (5) `TalkOnlyToHuman` sits on `after_output_validate`, the hook
+the framework's own recipient check uses, with the same `can_retry` rule. (6) Across three live
+conversations neither lookup made a specialist book anything: the services held exactly the
+meetings and room bookings that were approved.
+
+**Our own `model_type` needs the allowlist on every path.** `IntakeTools` is the first catalog
+entry whose `model_type` is ours. The server already allowed `meeting_agents.` — but it applies the
+allowlist in `create_app`, not in `wire_community`, so a test that wires the services alone fails
+the same way the CLI did. `bootstrap.build_catalog` now sets it too, and the server test loads the
+chat namespace through the composed app.
+
+**A question is answered as the server stores it.** The first restore test handed the live
+question object to `process_human_input` and failed: its sender was an address from before the
+stop. The server never does that — it reads the question back from the event store, where
+addresses are snapshots that `process_human_input` rehydrates by name — and the test now does the
+same. The relay was right; the test was not faithful.
+
+**Live, the model behaved as the prompt asked.** It looked people up before requesting, confirmed
+the request in one sentence, asked who "Pieter" was when the lookup found nobody, and answered
+*"Just book the 10 o'clock one for me"* with *"I can't choose or approve a time for you. Please
+select 10:00–11:00 in the question on your screen."* The facility manager matched "somewhere in
+nature" and "somewhere sporty" to *Meeting in Nature*, and "somewhere quiet for focus" to
+*Library*, each with a reason the slot card showed. After relaying a gate the model usually said
+nothing — the notification protocol allows it, and the card speaks for itself — which partly
+answers Q4: narrating every relay costs a call and rarely produces a line.
+
+**Verified live** (host-run server against an isolated copy of the services, real specialists on
+`gpt-6-luna`): two conversations over the API and one in the browser, each ending in a booked
+meeting at a chosen place with the right people; the browser one cancelled again from the Meetings
+screen, with everything released. Not repeated live: Resume of a stopped conversation, which
+`test_chat_restore.py` covers against the real event store.
+
+---
+
 ## Appendix A: the dropped design — an LLM coordinator
 
 The first version of this document made the coordinator itself a `BaseAgent` that read free text
@@ -494,3 +540,9 @@ the intake design leaves that with the code that already holds it.
   same rule D9 set for lunch: the judgement stays with the agent that holds the information. This
   adds one read-only handler to each of two specialists and one step to the coordinator — nothing
   that books or releases — and it is built first, on the form team.
+- 2026-10-28: **Built.** The location wish and the people lookup first, on the form team (a
+  *describe the place* field, `--place` on the CLI); then `@Intake` (`intake.py`: the agent, its
+  state, three tools, the relay, `TalkOnlyToHuman`), the `meeting-planner-chat` catalog by
+  reference to the form team's agents, and the *Talk to the planner* page. 317 tests pass;
+  verified live in three conversations (§14).
+

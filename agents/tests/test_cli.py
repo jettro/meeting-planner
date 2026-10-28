@@ -512,3 +512,23 @@ def test_the_client_asks_about_lunch_before_anything_is_booked(live_team, monkey
     shown = capsys.readouterr().out
     assert "lunch" in shown.lower()
     assert "order-abc" in shown
+
+
+def test_a_place_can_be_described_instead_of_named():
+    args = parse_args(
+        ["--title", "T", "--with", "a@b.c", "--day", "2034-06-14", "--place", "somewhere quiet"]
+    )
+    assert args.location_wish == "somewhere quiet"
+    assert args.location_id == ""
+
+
+def test_a_place_and_an_id_cannot_both_be_given():
+    with pytest.raises(SystemExit):
+        parse_args(
+            ["--title", "T", "--with", "a@b.c", "--day", "2034-06-14", "--at", "yuma", "--place", "quiet"]
+        )
+
+
+def test_some_place_must_be_given():
+    with pytest.raises(SystemExit):
+        parse_args(["--title", "T", "--with", "a@b.c", "--day", "2034-06-14"])

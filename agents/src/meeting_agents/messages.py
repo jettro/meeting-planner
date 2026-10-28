@@ -55,12 +55,31 @@ class PlanMeetingRequest(Message):
     participant_emails: list[str]
     day: date
     duration_minutes: int = Field(default=60, gt=0, le=480)
-    location_id: str
+    #: Where, as an id the location service knows. Either this or a
+    #: `location_wish`, never both and never neither.
+    location_id: str = ""
+    #: Where, in the requester's own words - "somewhere in nature". The
+    #: facility manager, the only agent that sees the locations, turns it into
+    #: one (design_chat.md §13.1), and the human sees the choice at the slot
+    #: gate before anything is booked.
+    location_wish: str = ""
     with_lunch: bool = True
     #: What kind of lunch, in the requester's own words. `None` means "not
     #: decided yet - ask me", which is what opens the lunch gate (D9). A string
     #: (including "") settles it up front, so a scripted run never blocks.
     lunch_wish: str | None = None
+
+    @model_validator(mode="after")
+    def _one_way_to_say_where(self) -> PlanMeetingRequest:
+        """An id or a wish, never both and never neither.
+
+        Both would leave the coordinator to pick one silently; neither would
+        give the facility manager nothing to book. Either is a client mistake,
+        and it is reported where it was made.
+        """
+        if bool(self.location_id.strip()) == bool(self.location_wish.strip()):
+            raise ValueError("say where with a location_id or a location_wish - exactly one of them")
+        return self
 
     def to_plan(self) -> MeetingPlan:
         """The aggregate this request starts. The plan id is created here."""
@@ -69,7 +88,8 @@ class PlanMeetingRequest(Message):
             participant_emails=list(self.participant_emails),
             day=self.day,
             duration_minutes=self.duration_minutes,
-            location_id=self.location_id,
+            location_id=self.location_id.strip(),
+            location_wish=self.location_wish.strip(),
             with_lunch=self.with_lunch,
             lunch_wish=self.lunch_wish or "",
         )
@@ -157,10 +177,16 @@ class SlotApprovalRequest(Message):
     title: str
     day: date
     candidates: list[ProposedSlot]
+    #: The place, when the facility manager chose it from a description. Shown
+    #: with the slots, so approving the time approves the place (§13.1). Empty
+    #: when the request named a location id itself.
+    location_name: str = ""
+    location_reason: str = ""
 
     def question(self) -> str:
         options = ", ".join(c.label() for c in self.candidates)
-        return f"'{self.title}' on {self.day.isoformat()} - approve a slot: {options}"
+        where = f" at {self.location_name} ({self.location_reason})" if self.location_name else ""
+        return f"'{self.title}'{where} on {self.day.isoformat()} - approve a slot: {options}"
 
 
 class LunchApprovalRequest(Message):
@@ -225,6 +251,82 @@ class PlanCancelled(Message):
 # --------------------------------------------------------------------------
 # @Coordinator -> specialists  (assignments: rendered for a model)
 # --------------------------------------------------------------------------
+
+
+class FindLocationAssignment(Message):
+    """@FacilityManager: which location fits what the requester described?
+
+    A lookup, not a booking: nothing is reserved, and the answer is shown to the
+    human with the slots before anything is. The headcount travels so a
+    location that cannot seat everyone is not chosen.
+    """
+
+    plan_id: str
+    wish: str
+    headcount: int
+
+    def rendering(self) -> str:
+        return (
+            f'Choose the location that best fits this description: "{self.wish}". '
+            f"It is for {self.headcount} people. Use your list_locations tool and read "
+            "each location's description; use list_rooms to skip a location that has no "
+            "room for that many people. Copy the location id exactly as listed. Book "
+            "nothing. If nothing fits reasonably, say so rather than picking at random."
+        )
+
+
+class LocationFound(Message):
+    """@FacilityManager -> @Coordinator."""
+
+    plan_id: str
+    location_id: str
+    name: str
+    #: Why this one, in a few words - shown to the human at the slot gate.
+    reason: str = ""
+
+
+class Person(BaseModel):
+    """Someone in the address book: the name people use, and the email the tools need."""
+
+    name: str
+    email: str
+
+    model_config = {"frozen": True}
+
+
+class NameMatch(BaseModel):
+    """Everyone a name could mean. One is settled; none or several is a question."""
+
+    asked: str
+    candidates: list[Person] = Field(default_factory=list)
+
+
+class FindPeopleAssignment(Message):
+    """@Scheduler: who are these people? A lookup - nothing is booked.
+
+    Asked by `@Intake` before any meeting exists, so there is no plan yet;
+    `plan_id` stays empty and only says which conversation asked
+    (design_chat.md §13.2).
+    """
+
+    plan_id: str = ""
+    names: list[str]
+
+    def rendering(self) -> str:
+        names = ", ".join(f'"{name}"' for name in self.names)
+        return (
+            f"Look these people up with your list_people tool: {names}. For every name, "
+            "report every person it could mean - all of them if it is ambiguous, none if "
+            "nobody matches - with their exact email address as listed. Do not choose "
+            "between people with the same name, and book nothing."
+        )
+
+
+class PeopleFound(Message):
+    """@Scheduler -> whoever asked."""
+
+    plan_id: str = ""
+    matches: list[NameMatch]
 
 
 class FindSlotsAssignment(Message):
@@ -405,6 +507,10 @@ MESSAGE_TYPES: list[type] = [
     PlanCompleted,
     PlanFailed,
     PlanCancelled,
+    FindLocationAssignment,
+    LocationFound,
+    FindPeopleAssignment,
+    PeopleFound,
     FindSlotsAssignment,
     SlotsFound,
     BookMeetingAssignment,

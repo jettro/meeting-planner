@@ -42,7 +42,9 @@ from meeting_agents.messages import (
     Cancelled,
     CancelPlanRequest,
     FacilitiesBooked,
+    FindLocationAssignment,
     FindSlotsAssignment,
+    LocationFound,
     LunchApprovalDecision,
     LunchApprovalRequest,
     MeetingBooked,
@@ -163,7 +165,7 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
     def receiveMsg_PlanMeetingRequest(  # noqa: N802
         self, message: PlanMeetingRequest, sender: ActorAddress
     ) -> None:
-        """Start the meeting and ask @Scheduler for the common free windows."""
+        """Start the meeting: find the place if it was described, then the time."""
         plan = message.to_plan()
         if self.state.plan is not None:
             # One team, one meeting. Answered rather than dropped, so a client
@@ -181,18 +183,23 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
 
         self._update(plan=plan, awaiting_lunch=not message.lunch_is_settled())
 
-        scheduler = self._member(self.config.scheduler_name)
-        if scheduler is None:
-            self._fail(plan, f"no {self.config.scheduler_name} on the team")
+        if plan.location_id:
+            self._find_slots(plan)
             return
 
+        # The place was described, not named. @FacilityManager is the only
+        # agent that sees the locations, so it chooses - before the slots, so
+        # the human approves the place together with the time (§13.1).
+        facility = self._member(self.config.facility_name)
+        if facility is None:
+            self._fail(plan, f"no {self.config.facility_name} to choose a location")
+            return
         self.send(
-            scheduler,
-            FindSlotsAssignment(
+            facility,
+            FindLocationAssignment(
                 plan_id=plan.plan_id,
-                participant_emails=plan.participant_emails,
-                day=plan.day,
-                duration_minutes=plan.duration_minutes,
+                wish=plan.location_wish,
+                headcount=len(plan.participant_emails),
             ),
         )
 
@@ -286,6 +293,23 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
         self._release(steps)
 
     # -- saga steps -------------------------------------------------------
+
+    def _find_slots(self, plan: MeetingPlan) -> None:
+        """Ask @Scheduler for the windows in which everybody is free."""
+        scheduler = self._member(self.config.scheduler_name)
+        if scheduler is None:
+            self._fail(plan, f"no {self.config.scheduler_name} on the team")
+            return
+
+        self.send(
+            scheduler,
+            FindSlotsAssignment(
+                plan_id=plan.plan_id,
+                participant_emails=plan.participant_emails,
+                day=plan.day,
+                duration_minutes=plan.duration_minutes,
+            ),
+        )
 
     def _ask_about_lunch(self, plan: MeetingPlan) -> None:
         """Put the lunch question to the human and return, holding no thread."""
@@ -418,6 +442,28 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
 
     # -- specialists -> coordinator ---------------------------------------
 
+    def receiveMsg_LocationFound(  # noqa: N802
+        self, message: LocationFound, sender: ActorAddress
+    ) -> None:
+        """The place is chosen. Record it, then look for a time.
+
+        Nothing is booked by choosing: the human sees the place with the slots,
+        and a "no" to those costs nothing.
+        """
+        plan = self._plan(message.plan_id)
+        if plan is None or self._being_cancelled(plan):
+            return
+
+        plan = plan.model_copy(
+            update={
+                "location_id": message.location_id,
+                "location_name": message.name,
+                "location_reason": message.reason,
+            }
+        )
+        self._update(plan=plan)
+        self._find_slots(plan)
+
     def receiveMsg_SlotsFound(  # noqa: N802
         self, message: SlotsFound, sender: ActorAddress
     ) -> None:
@@ -455,6 +501,8 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
                 title=plan.title,
                 day=plan.day,
                 candidates=message.candidates,
+                location_name=plan.location_name,
+                location_reason=plan.location_reason,
                 recipient=human,
             ),
         )

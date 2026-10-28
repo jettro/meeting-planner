@@ -1,0 +1,21 @@
+id: coordinator
+kind: agent
+namespace: meeting-planner-chat
+user_id: anonymous
+model_type: akgentic.core.AgentCard
+description: "The form team's coordinator, unchanged in code, answering to @Intake."
+payload:
+  description: "Sequences the booking saga. Deterministic: no model, no MCP tool."
+  agent_class: meeting_agents.coordinator.Coordinator
+  can_be_hired: false
+  skills:
+    - coordination
+    - planning
+  config:
+    name: "@Coordinator"
+    role: Coordinator
+    # The one difference from the form team (design_chat.md I2): every question
+    # and outcome goes to @Intake, which relays it to the human.
+    human_name: "@Intake"
+    scheduler_name: "@Scheduler"
+    facility_name: "@FacilityManager"

@@ -60,8 +60,17 @@ function SlotGate({
       <CardContent>
         <Typography variant="h6">When should it be?</Typography>
         <Typography color="text.secondary" gutterBottom>
-          {question.title} on {question.day}. Nothing is booked yet.
+          {question.title}
+          {question.location_name ? ` at ${question.location_name}` : ""} on {question.day}.
+          Nothing is booked yet.
         </Typography>
+        {question.location_name && (
+          // The team chose the place from a description, so the choice is
+          // shown with its reason: approving the time approves the place too.
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            Chosen because: {question.location_reason || "it fits what you described"}
+          </Typography>
+        )}
         <FormControl>
           <RadioGroup value={choice} onChange={(event) => setChoice(event.target.value)}>
             {question.candidates.map((slot, index) => (

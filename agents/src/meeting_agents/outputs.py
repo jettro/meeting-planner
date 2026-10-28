@@ -86,6 +86,48 @@ class BookedRoom(BaseModel):
     reason: str = Field(default="", description="If succeeded is false, why not.")
 
 
+class PersonOut(BaseModel):
+    name: str = Field(description="The person's name, as list_people gave it.")
+    email: str = Field(description="Their email address, exactly as list_people gave it.")
+
+
+class NameMatchOut(BaseModel):
+    asked: str = Field(description="The name you were asked about, unchanged.")
+    candidates: list[PersonOut] = Field(
+        default_factory=list,
+        description="Everyone this name could mean. Empty if nobody matches; several if it is ambiguous.",
+    )
+
+
+class MatchedPeople(BaseModel):
+    """@Scheduler's answer to 'who are these people?'."""
+
+    succeeded: bool = Field(description="True if you could search the address book. False if a tool failed.")
+    matches: list[NameMatchOut] = Field(
+        default_factory=list, description="One entry per name you were asked."
+    )
+    reason: str = Field(default="", description="If succeeded is false, the failure the tool reported.")
+
+
+class ChosenLocation(BaseModel):
+    """@FacilityManager's answer to 'which location fits this description?'."""
+
+    succeeded: bool = Field(
+        description="True if a location fits reasonably. False if none does, or a tool failed."
+    )
+    location_id: str | None = Field(
+        default=None, description="The location id exactly as list_locations gave it. Never invent one."
+    )
+    name: str = Field(default="", description="The location's name, as listed.")
+    reason: str = Field(
+        default="",
+        description=(
+            "Why this location, in a few words a person can check - or, if succeeded is "
+            "false, why nothing fits."
+        ),
+    )
+
+
 class OrderedLunch(BaseModel):
     """@Catering's answer to 'order lunch'."""
 

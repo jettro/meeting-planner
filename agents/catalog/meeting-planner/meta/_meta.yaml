@@ -1,0 +1,12 @@
+id: _meta
+kind: meta
+namespace: meeting-planner
+user_id: anonymous
+model_type: akgentic.catalog.models.namespace_meta.NamespaceMeta
+description: "The form team, whose agents the chat team reuses."
+payload:
+  name: meeting-planner
+  description: "Arranges a meeting from a typed request: a deterministic coordinator and three specialists."
+  # Shareable so meeting-planner-chat can refer to these agents rather than
+  # copy them - the two teams then cannot drift apart (design_chat.md §9).
+  shareable: true

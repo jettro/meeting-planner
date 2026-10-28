@@ -68,7 +68,13 @@ class MeetingPlan(BaseModel):
     participant_emails: list[str]
     day: date
     duration_minutes: int = Field(default=60, gt=0, le=480)
+    #: Empty until chosen, when the request described the place instead.
     location_id: str
+    #: What the requester asked for in words, and what was made of it - kept
+    #: so the record says what was wanted, not only what was chosen (§13.1).
+    location_wish: str = ""
+    location_name: str = ""
+    location_reason: str = ""
     with_lunch: bool = True
     #: What the human asked for, in their own words. Kept on the plan so the
     #: record says what was wanted, not only what arrived (D5).

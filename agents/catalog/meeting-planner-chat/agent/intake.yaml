@@ -1,0 +1,32 @@
+id: intake
+kind: agent
+namespace: meeting-planner-chat
+user_id: anonymous
+model_type: akgentic.core.AgentCard
+description: "Holds the conversation, sends one typed request, relays the rest."
+payload:
+  description: "Turns a conversation into a meeting request. No MCP: it reaches the team through its tools."
+  agent_class: meeting_agents.intake.IntakeAgent
+  can_be_hired: false
+  skills:
+    - conversation
+    - intake
+  config:
+    name: "@Intake"
+    role: Intake
+    human_name: "@Human"
+    coordinator_name: "@Coordinator"
+    scheduler_name: "@Scheduler"
+    prompt:
+      template:
+        __ref__: intake_prompt
+      params: {}
+    # Same reasoning as the specialists (design_akgents.md 7.6): a slow model
+    # call must not end the conversation.
+    runtime_cfg:
+      http_client_config:
+        timeout: 240.0
+    model_cfg:
+      __ref__: meeting-planner.default_model
+    tools:
+      - __ref__: intake_tools

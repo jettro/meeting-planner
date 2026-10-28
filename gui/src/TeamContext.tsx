@@ -10,11 +10,14 @@ import {
 } from "react";
 import {
   api,
+  CHAT_NAMESPACE,
+  HUMAN,
   isDomainEvent,
   LUNCH_QUESTION,
   PLAN_COMPLETED,
   PLAN_FAILED,
   SLOT_QUESTION,
+  TEAM_NAMESPACE,
   type DomainMessage,
   type PlanRequest,
   type TeamEvent,
@@ -31,6 +34,8 @@ import { useTeamStream } from "./hooks/useTeamStream";
  */
 interface TeamState {
   teamId: string | null;
+  /** Which kind of team is being watched: the form's, or the conversation's. */
+  namespace: string | null;
   events: TeamEvent[];
   connected: boolean;
   starting: boolean;
@@ -48,8 +53,13 @@ interface TeamState {
    * the questions, the answers already given and the outcome all arrive again
    * and the screen rebuilds itself.
    */
-  attach: (teamId: string) => void;
+  attach: (teamId: string, namespace?: string) => void;
   answer: (content: string) => Promise<void>;
+  /**
+   * Say something in a conversation, starting one first if the team being
+   * watched is not a conversation. Free text to @Intake; never a gate answer.
+   */
+  say: (content: string) => Promise<void>;
   reset: () => void;
 }
 
@@ -58,15 +68,26 @@ const Context = createContext<TeamState | null>(null);
 const QUESTIONS = new Set([SLOT_QUESTION, LUNCH_QUESTION]);
 const OUTCOMES = new Set([PLAN_COMPLETED, PLAN_FAILED]);
 
+/**
+ * Questions and outcomes addressed to the human (design_chat.md I9).
+ *
+ * In a conversation every question is in the trace twice: the coordinator's
+ * copy to @Intake, and the relay's fresh copy to @Human. Only the second is the
+ * human's - it is the one /human-input can route - so only messages addressed
+ * to @Human count. In the form team every question already is, so nothing
+ * changes there.
+ */
 function messagesOfKind(events: TeamEvent[], kinds: Set<string>): DomainMessage[] {
   return events
     .filter(isDomainEvent)
+    .filter((event) => event.recipient?.name === HUMAN)
     .map((event) => event.message!)
     .filter((message) => kinds.has(message.__model__));
 }
 
 export function TeamProvider({ children }: { children: ReactNode }) {
   const [teamId, setTeamId] = useState<string | null>(null);
+  const [namespace, setNamespace] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [answered, setAnswered] = useState<string[]>([]);
@@ -113,6 +134,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
       // The team exists before the plan is sent, so a failure here still
       // leaves something to look at in the trace.
       setTeamId(team.team_id);
+      setNamespace(TEAM_NAMESPACE);
       await api.startPlan(team.team_id, request);
     } catch (problem) {
       setError(problem instanceof Error ? problem.message : String(problem));
@@ -121,11 +143,34 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const attach = useCallback((existingTeamId: string) => {
+  const attach = useCallback((existingTeamId: string, existingNamespace: string = TEAM_NAMESPACE) => {
     setError(null);
     setAnswered([]);
     setTeamId(existingTeamId);
+    setNamespace(existingNamespace);
   }, []);
+
+  const say = useCallback(
+    async (content: string) => {
+      setError(null);
+      try {
+        let conversation = namespace === CHAT_NAMESPACE ? teamId : null;
+        if (!conversation) {
+          setStarting(true);
+          setAnswered([]);
+          conversation = (await api.createConversation()).team_id;
+          setTeamId(conversation);
+          setNamespace(CHAT_NAMESPACE);
+        }
+        await api.say(conversation, content);
+      } catch (problem) {
+        setError(problem instanceof Error ? problem.message : String(problem));
+      } finally {
+        setStarting(false);
+      }
+    },
+    [namespace, teamId],
+  );
 
   const answer = useCallback(
     async (content: string) => {
@@ -146,12 +191,14 @@ export function TeamProvider({ children }: { children: ReactNode }) {
 
   const reset = useCallback(() => {
     setTeamId(null);
+    setNamespace(null);
     setAnswered([]);
     setError(null);
   }, []);
 
   const value: TeamState = {
     teamId,
+    namespace,
     events,
     connected: status === "open",
     starting,
@@ -161,6 +208,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     start,
     attach,
     answer,
+    say,
     reset,
   };
 

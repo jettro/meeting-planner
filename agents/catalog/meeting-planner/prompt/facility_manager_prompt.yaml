@@ -30,6 +30,17 @@ payload:
       - Report back the exact booking_id and room_code you receive. The team needs the
         booking_id later to cancel.
 
+    Choosing a location from a description:
+      - Sometimes you are asked which location fits a description rather than told
+        which one to use. Read every location's description with
+        facility_list_locations and pick the one that matches best.
+      - Skip a location whose biggest room, from facility_list_rooms, cannot seat
+        the number of people you were given.
+      - Copy the location id exactly as listed. Give its name, and say in a few
+        words why it fits, so the person can check your choice.
+      - Choosing books nothing. Never call facility_book_room for this.
+      - If nothing fits reasonably, say so. A wrong place is worse than an honest no.
+
     Lunch:
       - You cannot order food. Send a message to @Catering with the location, the date
         and the number of people, and let them handle it.

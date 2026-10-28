@@ -18,8 +18,13 @@
 const BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8200";
 
 export const TEAM_NAMESPACE = "meeting-planner";
+/** The team you talk to: @Intake in front of the same agents (design_chat.md). */
+export const CHAT_NAMESPACE = "meeting-planner-chat";
 export const HUMAN = "@Human";
 export const COORDINATOR = "@Coordinator";
+export const INTAKE = "@Intake";
+/** The framework's free-text message - a conversation is made of these. */
+export const AGENT_MESSAGE = "akgentic.agent.messages.AgentMessage";
 
 /** The `__model__` tags this client reacts to, rather than merely displays. */
 export const SLOT_QUESTION = "meeting_agents.messages.SlotApprovalRequest";
@@ -85,6 +90,9 @@ export interface SlotQuestion extends DomainMessage {
   title: string;
   day: string;
   candidates: ProposedSlot[];
+  /** The place, when the team chose it from a description - empty otherwise. */
+  location_name: string;
+  location_reason: string;
 }
 
 export interface LunchQuestion extends DomainMessage {
@@ -101,6 +109,9 @@ export interface MeetingPlan {
   day: string;
   duration_minutes: number;
   location_id: string;
+  location_wish: string;
+  location_name: string;
+  location_reason: string;
   with_lunch: boolean;
   lunch_wish: string;
   proposed_start: string | null;
@@ -160,7 +171,9 @@ export interface PlanRequest {
   participant_emails: string[];
   day: string;
   duration_minutes: number;
+  /** Exactly one of these two: a location id, or the place in your own words. */
   location_id: string;
+  location_wish: string;
 }
 
 /**
@@ -171,7 +184,7 @@ export interface PlanRequest {
  */
 export type RunSubject = Pick<
   MeetingPlan,
-  "title" | "day" | "location_id" | "participant_emails"
+  "title" | "day" | "location_id" | "location_wish" | "participant_emails"
 >;
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
@@ -236,7 +249,9 @@ export const api = {
         metadata: {
           title: subject.title,
           day: subject.day,
-          location_id: subject.location_id,
+          // The request's "where", as it was asked: an id, or the words the
+          // team will turn into one. It is known now and never maintained.
+          location_id: subject.location_id || subject.location_wish,
           participants: subject.participant_emails.length,
         },
       }),
@@ -256,6 +271,31 @@ export const api = {
           ...request,
         },
       }),
+    }),
+
+  /**
+   * Start a conversation: a chat team, with nothing asked yet.
+   *
+   * No metadata, unlike `createTeam`: nothing about the meeting is known
+   * when a conversation starts, and the chat card declares no metadata type
+   * (G18). The Meetings screen reads the title from the coordinator anyway.
+   */
+  createConversation: () =>
+    call<{ team_id: string }>("/teams", {
+      method: "POST",
+      body: JSON.stringify({ catalog_namespace: CHAT_NAMESPACE }),
+    }),
+
+  /**
+   * Say something to @Intake. Plain text: the framework wraps it in an
+   * `AgentMessage` from @Human. A gate is never answered this way - only on
+   * its card, through `answer` - which is what keeps "the human approves"
+   * structural (design_chat.md I4).
+   */
+  say: (teamId: string, content: string) =>
+    call<null>(`/teams/${teamId}/message/from/${HUMAN}/to/${INTAKE}`, {
+      method: "POST",
+      body: JSON.stringify({ content }),
     }),
 
   /** Answer a gate. `messageId` is the *inner* question id. */

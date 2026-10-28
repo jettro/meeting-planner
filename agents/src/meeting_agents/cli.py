@@ -62,7 +62,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--day", required=True, type=date.fromisoformat, help="The day, as YYYY-MM-DD.")
     parser.add_argument("--minutes", type=int, default=60, help="Length in minutes.")
-    parser.add_argument("--at", dest="location_id", required=True, help="Location id.")
+    # Where: an id, or a description the facility manager turns into one. The
+    # parser enforces the same "exactly one" the request does, so a mistake is
+    # reported before a team is built.
+    where = parser.add_mutually_exclusive_group(required=True)
+    where.add_argument("--at", dest="location_id", default="", help="Location id.")
+    where.add_argument(
+        "--place",
+        dest="location_wish",
+        default="",
+        metavar="DESCRIPTION",
+        help='What kind of place, in your own words - "somewhere in nature". The team chooses.',
+    )
     parser.add_argument("--no-lunch", dest="with_lunch", action="store_false", help="Skip the lunch order.")
     parser.add_argument(
         "--lunch",
@@ -202,6 +213,7 @@ def main(argv: list[str] | None = None) -> int:
                 day=args.day,
                 duration_minutes=args.minutes,
                 location_id=args.location_id,
+                location_wish=args.location_wish,
                 with_lunch=args.with_lunch,
                 lunch_wish=lunch_wish_from(args),
             ),

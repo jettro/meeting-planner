@@ -1,0 +1,7 @@
+id: intake_tools
+kind: tool
+namespace: meeting-planner-chat
+user_id: anonymous
+model_type: meeting_agents.intake.IntakeTools
+description: "look_up_people, plan_meeting and cancel_meeting - nothing that books (design_chat.md I3)."
+payload: {}

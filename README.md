@@ -63,6 +63,21 @@ To keep a scripted run from stopping at that question, settle it on the command 
 make plan-meeting ARGS='... --lunch "a hot soup"'   # or --no-lunch
 ```
 
+The place can be described instead of named — `--place "somewhere quiet"` in place of `--at yuma`.
+`@FacilityManager`, the only agent that sees the locations and their descriptions, chooses one
+before the slot search, and the slot question names the place and why, so approving the time
+approves the place.
+
+## The team you talk to
+
+A second team, `meeting-planner-chat`, arranges a meeting from a conversation. It is the same team
+with one agent in front: `@Intake`, an LLM agent that holds the conversation, looks people up by
+name through `@Scheduler`, and makes **one** call to the team — the same typed
+`PlanMeetingRequest` the form sends. The coordinator is unchanged in code; it is configured to
+treat `@Intake` as its human, and `@Intake` relays its questions and results. There is no way to
+approve a time in the conversation: the slot question is answered on its card, as on the form.
+The specialists are the form team's own catalog entries, by reference. See `design_chat.md`.
+
 It also runs as a container, reaching the MCP servers over the compose network instead of
 `localhost`:
 
@@ -103,19 +118,20 @@ it from nginx on <http://localhost:8300>; `make gui-dev` runs it from Vite on
 <http://localhost:5173> against the same server. Both origins are already in the server's
 `CORS_ORIGINS`.
 
-Four screens:
+Five screens:
 
 | screen | what it does |
 |---|---|
 | **Platform** | the three services, polled every ten seconds. `up` / `degraded` / `unreachable` are kept apart: a 503 and a silence have different causes |
 | **Plan a meeting** | the form, then the two gates as they arrive — the slots as radio buttons (the candidates travel with the question), lunch as free text, because `@Catering` holds the menu and is the only agent that should read the words — then the booked meeting |
+| **Talk to the planner** | a conversation with `@Intake`: names and a description of the place are enough. The slot question appears inline as a card and is only ever answered there; typing a choice into the conversation is understood and authorises nothing. Then the booked meeting |
 | **Meetings** | one row per team run, read from each coordinator's snapshot: the meeting, booking and order ids that nothing else links together, and what it is waiting for. A meeting can be **cancelled** here — the cancel goes to the team that made it, revived if it has stopped, and releases the lunch order, the room and the meeting. A meeting waiting at a gate offers **Resume**, whether or not its team is still running. There is no edit: to change a meeting you cancel it and plan a new one |
 | **Trace** | every message, live, with a *framework events* toggle. Off, it is twenty rows that read like a story. On, it is the actor system starting up, receiving and processing — the "show me what happens at the framework level" view. Each row carries a one-line summary of what the message actually said; clicking it opens the whole payload, as readable fields or as the raw envelope. A run that has finished can be re-read from the server, so a trace outlives the socket that carried it |
 
 TypeScript, MUI, TanStack Query, React Router, and about forty lines of WebSocket. The API base is
 baked in at build time (`VITE_API_BASE`), because Vite inlines it and the browser runs on the host.
 
-One socket serves all four screens: the server replays from cursor zero on connect, so a second
+One socket serves all five screens: the server replays from cursor zero on connect, so a second
 subscriber would be a second full history.
 
 ## The framework's own console
@@ -149,7 +165,7 @@ meeting-planner/
 ├── design_gui.md              # Design of the team server + browser client
 ├── design_cancel.md           # Design of cancelling a meeting (built)
 ├── design_durability.md       # The team is the meeting: a durable coordinator, no plan store (built)
-├── design_chat.md             # Talking to the team in free text (proposal)
+├── design_chat.md             # Talking to the team in free text: @Intake (built)
 ├── pyproject.toml             # uv workspace root (shared dev tooling config)
 ├── docker-compose.yml         # Runs all three services together
 ├── Makefile                   # Shortcuts for common dev tasks (see `make help`)

@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 import { useState } from "react";
 import {
+  CHAT_NAMESPACE,
   isDomainEvent,
   PLAN_COMPLETED,
   shortName,
@@ -31,6 +32,11 @@ export default function PlanPage() {
   const [day, setDay] = useState(TODAY_PLUS_A_YEAR);
   const [duration, setDuration] = useState(60);
   const [location, setLocation] = useState("yuma");
+  // A place can be named by id or described in words; the team chooses from
+  // a description (design_chat.md §13.1). One field at a time, so the request
+  // always carries exactly one of the two.
+  const [describe, setDescribe] = useState(false);
+  const [placeWish, setPlaceWish] = useState("somewhere in nature");
 
   const submit = () =>
     team.start({
@@ -41,12 +47,16 @@ export default function PlanPage() {
         .filter(Boolean),
       day,
       duration_minutes: duration,
-      location_id: location,
+      location_id: describe ? "" : location,
+      location_wish: describe ? placeWish : "",
     });
 
   const plan = team.outcome?.plan as MeetingPlan | undefined;
   const succeeded = team.outcome?.__model__ === PLAN_COMPLETED;
-  const working = Boolean(team.teamId) && !team.pending && !team.outcome;
+  // The provider holds one team at a time; a conversation belongs on its own
+  // page, so here it reads as "nothing planned from the form yet".
+  const watching = team.teamId !== null && team.namespace !== CHAT_NAMESPACE;
+  const working = watching && !team.pending && !team.outcome;
 
   return (
     <Box>
@@ -54,7 +64,7 @@ export default function PlanPage() {
         Plan a meeting
       </Typography>
 
-      {!team.teamId && (
+      {!watching && (
         <Card variant="outlined">
           <CardContent>
             <Stack spacing={2}>
@@ -83,12 +93,27 @@ export default function PlanPage() {
                   value={duration}
                   onChange={(event) => setDuration(Number(event.target.value))}
                 />
-                <TextField
-                  label="Location"
-                  value={location}
-                  onChange={(event) => setLocation(event.target.value)}
-                />
+                {describe ? (
+                  <TextField
+                    label="Describe the place"
+                    helperText="The team chooses a location that fits"
+                    value={placeWish}
+                    onChange={(event) => setPlaceWish(event.target.value)}
+                    sx={{ flexGrow: 1 }}
+                  />
+                ) : (
+                  <TextField
+                    label="Location"
+                    value={location}
+                    onChange={(event) => setLocation(event.target.value)}
+                  />
+                )}
               </Stack>
+              <Box>
+                <Button size="small" onClick={() => setDescribe(!describe)}>
+                  {describe ? "Name a location instead" : "Describe the place instead"}
+                </Button>
+              </Box>
               <Box>
                 <Button variant="contained" onClick={submit} disabled={team.starting}>
                   Ask the team
@@ -105,7 +130,7 @@ export default function PlanPage() {
         </Alert>
       )}
 
-      {team.teamId && (
+      {watching && (
         <Stack spacing={2} sx={{ mt: 2 }}>
           <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
             <Chip
@@ -158,11 +183,11 @@ function lastStep(events: ReturnType<typeof useTeam>["events"]): string {
   return `${from} → ${to}: ${shortName(latest.message?.__model__)}`;
 }
 
-function PlanSummary({ plan }: { plan: MeetingPlan }) {
+export function PlanSummary({ plan }: { plan: MeetingPlan }) {
   const rows: [string, string][] = [
     ["When", `${plan.day} ${plan.proposed_start?.slice(0, 5)}–${plan.proposed_end?.slice(0, 5)}`],
     ["Who", plan.participant_emails.join(", ")],
-    ["Room", `${plan.room_code ?? "—"} at ${plan.location_id}`],
+    ["Room", `${plan.room_code ?? "—"} at ${plan.location_name || plan.location_id}`],
     ["Lunch", plan.lunch_summary || "none"],
   ];
 

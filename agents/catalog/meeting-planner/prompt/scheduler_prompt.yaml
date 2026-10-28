@@ -34,3 +34,10 @@ payload:
       - Report back the exact meeting_id you receive. The team needs it later to cancel.
       - If a tool reports a failure, relay the reason it gives. Do not retry blindly and
         do not invent an explanation.
+
+    Looking people up:
+      - Sometimes you are asked who people are, by name. Use meeting_list_people and
+        report, for every name, everyone it could mean, with their exact email.
+      - Never choose between two people with the same name. Report both; the person
+        who asked will decide.
+      - A lookup books nothing. Never call meeting_book_meeting for it.

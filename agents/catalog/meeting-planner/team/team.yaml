@@ -56,6 +56,10 @@ payload:
     - __type__: meeting_agents.messages.PlanCompleted
     - __type__: meeting_agents.messages.PlanFailed
     - __type__: meeting_agents.messages.PlanCancelled
+    - __type__: meeting_agents.messages.FindLocationAssignment
+    - __type__: meeting_agents.messages.LocationFound
+    - __type__: meeting_agents.messages.FindPeopleAssignment
+    - __type__: meeting_agents.messages.PeopleFound
     - __type__: meeting_agents.messages.FindSlotsAssignment
     - __type__: meeting_agents.messages.SlotsFound
     - __type__: meeting_agents.messages.BookMeetingAssignment

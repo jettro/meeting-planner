@@ -1,0 +1,75 @@
+id: team
+kind: team
+namespace: meeting-planner-chat
+user_id: anonymous
+model_type: akgentic.team.TeamCard
+description: "The meeting-planner chat team: @Intake in front of the form team's agents."
+payload:
+  name: meeting-planner-chat
+  description: >-
+    Arranges a meeting from a conversation. @Intake listens and makes one typed
+    request; the deterministic coordinator books it, exactly as the form team
+    does. Each specialist still reaches exactly one service.
+  welcome_message: "Tell me what meeting you would like - who, when, and what kind of place."
+
+  # Who creates whom. The human proxy is the entry point; @Intake sits between
+  # it and the coordinator, which treats @Intake as its human (design_chat.md
+  # I2). Everything below the coordinator is the form team's, by reference -
+  # one definition of each specialist, so the two teams cannot drift.
+  entry_point:
+    card:
+      __ref__: meeting-planner.human
+    headcount: 1
+    members:
+      - card:
+          __ref__: intake
+        headcount: 1
+        members:
+          - card:
+              __ref__: coordinator
+            headcount: 1
+            members:
+              - card:
+                  __ref__: meeting-planner.scheduler
+                headcount: 1
+                members: []
+              - card:
+                  __ref__: meeting-planner.facility_manager
+                headcount: 1
+                members:
+                  - card:
+                      __ref__: meeting-planner.catering
+                    headcount: 1
+                    members: []
+  members: []
+
+  # Free text first: it is what this team is for, and the default for any
+  # client that does not say otherwise - the framework console included.
+  message_types:
+    - __type__: akgentic.agent.messages.AgentMessage
+    - __type__: meeting_agents.messages.PlanMeetingRequest
+    - __type__: meeting_agents.messages.SlotApprovalDecision
+    - __type__: meeting_agents.messages.SlotApprovalRequest
+    - __type__: meeting_agents.messages.LunchApprovalDecision
+    - __type__: meeting_agents.messages.LunchApprovalRequest
+    - __type__: meeting_agents.messages.CancelPlanRequest
+    - __type__: meeting_agents.messages.PlanCompleted
+    - __type__: meeting_agents.messages.PlanFailed
+    - __type__: meeting_agents.messages.PlanCancelled
+    - __type__: meeting_agents.messages.FindLocationAssignment
+    - __type__: meeting_agents.messages.LocationFound
+    - __type__: meeting_agents.messages.FindPeopleAssignment
+    - __type__: meeting_agents.messages.PeopleFound
+    - __type__: meeting_agents.messages.FindSlotsAssignment
+    - __type__: meeting_agents.messages.SlotsFound
+    - __type__: meeting_agents.messages.BookMeetingAssignment
+    - __type__: meeting_agents.messages.MeetingBooked
+    - __type__: meeting_agents.messages.BookFacilitiesAssignment
+    - __type__: meeting_agents.messages.FacilitiesBooked
+    - __type__: meeting_agents.messages.OrderLunchAssignment
+    - __type__: meeting_agents.messages.LunchOrdered
+    - __type__: meeting_agents.messages.AssignmentFailed
+    - __type__: meeting_agents.messages.CancelAssignment
+    - __type__: meeting_agents.messages.Cancelled
+
+  agent_profiles: []

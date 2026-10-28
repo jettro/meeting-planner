@@ -20,7 +20,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from akgentic.catalog import Catalog, YamlEntryRepository, resolve_env_vars
+from akgentic.catalog import Catalog, YamlEntryRepository, resolve_env_vars, set_allowed_prefixes
 from akgentic.team import TeamCard
 from pydantic import BaseModel
 
@@ -62,8 +62,16 @@ def resolve_env_in_place(obj: Any) -> None:
             resolve_env_in_place(item)
 
 
+#: The packages whose classes a catalog entry may name as its `model_type`.
+#: `akgentic.` is always allowed; ours is needed once a card names one of our
+#: own tool cards (`meeting_agents.intake.IntakeTools`). The server sets the
+#: same list through `catalog_model_type_prefixes`.
+MODEL_TYPE_PREFIXES = ["meeting_agents."]
+
+
 def build_catalog(settings: Settings) -> Catalog:
     """A catalog reading the YAML namespace directories under `catalog_path`."""
+    set_allowed_prefixes(MODEL_TYPE_PREFIXES)
     root = Path(settings.catalog_path)
     if not root.is_dir():
         raise FileNotFoundError(f"catalog directory not found: {root.resolve()}")

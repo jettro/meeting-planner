@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Link, MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import ChatPage from "./pages/ChatPage";
 import MeetingsPage from "./pages/MeetingsPage";
 import PlanPage from "./pages/PlanPage";
 import PlatformPage from "./pages/PlatformPage";
@@ -24,6 +25,7 @@ const client = new QueryClient();
 const TABS = [
   { path: "/", label: "Platform" },
   { path: "/plan", label: "Plan a meeting" },
+  { path: "/chat", label: "Talk to the planner" },
   { path: "/meetings", label: "Meetings" },
   { path: "/trace", label: "Trace" },
 ];
@@ -54,6 +56,7 @@ function Shell() {
         <Routes>
           <Route path="/" element={<PlatformPage />} />
           <Route path="/plan" element={<PlanPage />} />
+          <Route path="/chat" element={<ChatPage />} />
           <Route path="/meetings" element={<MeetingsPage />} />
           <Route path="/trace" element={<TracePage />} />
           <Route path="/trace/:teamId" element={<TracePage />} />

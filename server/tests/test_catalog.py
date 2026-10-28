@@ -126,3 +126,24 @@ def test_a_missing_variable_is_loud(settings, monkeypatch):
 
     with pytest.raises(Exception, match="MEETING_MCP_URL"):
         EnvResolvingCatalog(repository=YamlEntryRepository(root=settings.catalog_path)).load_team(NAMESPACE)
+
+
+def test_the_chat_team_loads_through_the_team_service(env, settings):
+    """The chat namespace names one of our own tool cards as a `model_type`
+    (`meeting_agents.intake.IntakeTools`) and refers to the form team's agents
+    across namespaces. Both only work as the server wires them - the allowlist
+    is applied by the app factory, not by `wire_community` - so it is loaded
+    through the composed app, the way `POST /teams` will load it."""
+    from akgentic.infra.server import state_keys
+    from meeting_server.app import create_meeting_app
+
+    app = create_meeting_app(settings)
+    services = state_keys.SERVICES.require(app)
+    try:
+        resolved = services.team_service.resolve_team_metadata("meeting-planner-chat")
+
+        names = [m.card.config.name for m in resolved.team_card.entry_point.members]
+        assert names == ["@Intake"]
+        assert placeholders(resolved.team_card) == []
+    finally:
+        services.actor_system.shutdown()
