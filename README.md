@@ -143,6 +143,7 @@ meeting-planner/
 ├── design.md                 # Analysis of the old project + rewrite decisions
 ├── design_akgents.md          # Design of the agent team (Akgents)
 ├── design_gui.md              # Design of the team server + browser client
+├── design_changes.md          # Design of changing an existing plan (proposed)
 ├── pyproject.toml             # uv workspace root (shared dev tooling config)
 ├── docker-compose.yml         # Runs all three services together
 ├── Makefile                   # Shortcuts for common dev tasks (see `make help`)
