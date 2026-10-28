@@ -463,13 +463,12 @@ The **MeetingPlan** aggregate:
 `cancel_meeting`. Each is already roughly idempotent (nomnom returns `success:false` on double
 cancel; the other two 404). Partial failure must surface to the human, not be swallowed.
 
-**Change location** → rebook lunch. Agreed rule: a nomnom order is tied to a **location**
-(e.g. `yuma`), not a room code, so swapping `room-a → room-b` *within* one location leaves the
-lunch order valid and must **not** trigger a rebook. Only a change of *location* cancels and
-re-places the order.
+**Change location** → **dropped.** This was once going to rebook lunch when a plan moved to another
+location. There is no change feature at all now (see `design_cancel.md`): if a meeting is wrong you
+cancel it and plan a new one, so nothing ever moves. `relocation_compensations()` has been deleted.
 
-Both flows are **deferred to iteration 2** (see §7.1) — but the plan store is designed now so that
-iteration 1 already records everything they will need.
+The cancellation saga is **built** (2026-10-29). §7 D10 records the one place the implementation
+departs from the first sketch.
 
 ---
 
@@ -503,11 +502,12 @@ Found while walking the scenario. None are blockers, but they shape the work.
 | D2 | **`@Catering` nested under `@FacilityManager`** | The facility manager owns the room+lunch bundle; the human never sees where lunch comes from |
 | D3 | **`@PlanRepository` actor** owns the MeetingPlan store | Single-owner actor needs no lock; keeps business data separate from team event history |
 | D4 | **Approve the proposed time slot only** | One gate, before anything is written; room and lunch then proceed automatically |
-| D5 | **Only a *location* change rebooks lunch** | A nomnom order is tied to a location, not a room code |
+| D5 | ~~Only a *location* change rebooks lunch~~ — **withdrawn**: there is no change feature (`design_cancel.md`) | Nothing moves location, so the rule has nothing to govern |
 | D6 | **OpenAI**, default model `gpt-6-luna` | Small/fast tier is enough for the three specialists; the coordinator uses no model at all |
 | D7 | **CLI runner in a 4th container**, MCP via compose service names | Consistent with the rest of the project; `akgentic-infra` deferred but **not** foreclosed — see §4.2 |
 | D8 | **Add `find_common_slots` first**, then the happy path | Turns fallible LLM arithmetic into one deterministic call (G1) |
 | D9 | **A second gate: lunch, described in free text** | A person wants a say in lunch, but not a menu — see §7.7 |
+| D10 | **A cancellation follows the same hierarchy as a booking**, rather than the coordinator addressing each specialist directly | Keeps D1 *and* D2: `@Coordinator` sends both the order and the room release to `@FacilityManager`, which releases the room itself and forwards the order to its child `@Catering`. The coordinator still decides *which* releases happen and in what order — only the delivery follows the team's shape |
 
 ### 7.1 Still to settle, and what is deferred
 
@@ -518,8 +518,8 @@ Tuesday with lunch"*. **Agreed:** iteration 1's CLI takes a **typed `PlanMeeting
 with *"a message is an assignment"*. Free-text intake becomes an optional later addition (either a
 small intake LLM step or an LLM coordinator), without disturbing the saga design.
 
-**Deferred to iteration 2:** the cancellation and location-change sagas (§5.1). The plan store is
-designed for them now; the handlers come later.
+**Built in iteration 2:** the cancellation saga (§5.1). The location-change saga was dropped
+rather than built. The plan store was designed for both; cancellation needed nothing added to it.
 
 **Deferred but explicitly planned** (not "maybe"): `akgentic-infra` as a service + the Angular
 frontend, and free-format human input. §4.2 lists the rules that keep both reachable without a
@@ -621,8 +621,9 @@ data; translate, don't adjudicate, at the edge that faces the agent.
 **5. `compensated` was a lie.** `PlanFailed` reported the undo steps a failed
 plan *needs* under a field named `compensated`, which reads as "already undone".
 A live failure reported `cancel_meeting` for meeting 1 and the meeting was still
-there afterwards — correctly, since running compensations is iteration 2, but
-nobody reading the message would know. Renamed to `outstanding`.
+there afterwards — correctly, since `PlanFailed` reports the outstanding steps
+rather than running them, but nobody reading the message would know. Renamed to
+`outstanding`. (It still only reports: see `design_cancel.md` §8.)
 
 **6. An approval without a slot was read as a refusal.** A client that got the
 field name wrong had its plan silently cancelled and was told it had not been
@@ -789,7 +790,7 @@ summary travels back `OrderedLunch` → `LunchOrdered` → `FacilitiesBooked` �
 - 2026-10-26: Step 2 — created the `agents/` workspace package (`meeting_agents`) with the
   `MeetingPlan` aggregate, a `PlanStore` protocol with in-memory and atomic-JSON implementations,
   and env-driven `Settings`. Status is **derived** from which ids are present, so it cannot drift;
-  `compensations()` and `relocation_compensations()` return the undo steps as ordered plain data,
+  `compensations()` returns the undo steps as ordered plain data,
   keeping the saga out of a model's hands and testable without any actor or LLM. 23 tests.
   Verified the framework assumptions against the installed packages — see §2.3.
 - 2026-10-26: Step 3 — the three specialist agents are now defined in **catalog YAML**, not Python:

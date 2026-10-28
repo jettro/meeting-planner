@@ -37,6 +37,7 @@ from akgentic.core.messages import Message
 from meeting_agents.answers import interpret_lunch_answer, interpret_slot_answer
 from meeting_agents.messages import (
     LunchApprovalRequest,
+    PlanCancelled,
     PlanCompleted,
     PlanFailed,
     SlotApprovalRequest,
@@ -123,6 +124,12 @@ class ChannelHuman(HumanProxy):
     def receiveMsg_PlanFailed(  # noqa: N802
         self, message: PlanFailed, sender: ActorAddress
     ) -> None:
+        self._relay(message)
+
+    def receiveMsg_PlanCancelled(  # noqa: N802
+        self, message: PlanCancelled, sender: ActorAddress
+    ) -> None:
+        """Everything the plan held has been released, or named as still held."""
         self._relay(message)
 
     def _relay(self, message: Message) -> None:

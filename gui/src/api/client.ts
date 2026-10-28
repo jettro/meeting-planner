@@ -26,6 +26,7 @@ export const SLOT_QUESTION = "meeting_agents.messages.SlotApprovalRequest";
 export const LUNCH_QUESTION = "meeting_agents.messages.LunchApprovalRequest";
 export const PLAN_COMPLETED = "meeting_agents.messages.PlanCompleted";
 export const PLAN_FAILED = "meeting_agents.messages.PlanFailed";
+export const PLAN_CANCELLED = "meeting_agents.messages.PlanCancelled";
 
 export interface ActorRef {
   name?: string;
@@ -111,6 +112,17 @@ export interface PlanRequest {
   location_id: string;
 }
 
+/**
+ * What any run is about. A plan being cancelled describes its run the same way
+ * the request that created it does, so a list of runs stays readable whichever
+ * kind it is - and nothing has to be maintained, because both are facts that
+ * were settled before the run started.
+ */
+export type RunSubject = Pick<
+  MeetingPlan,
+  "title" | "day" | "location_id" | "participant_emails"
+>;
+
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE}${path}`, {
     ...init,
@@ -156,16 +168,16 @@ export const api = {
    * `metadata_type` declares. It is the request rather than the outcome, so it
    * can be set here, once, and never maintained (`team_metadata.py`).
    */
-  createTeam: (request: PlanRequest) =>
+  createTeam: (subject: RunSubject) =>
     call<{ team_id: string }>("/teams", {
       method: "POST",
       body: JSON.stringify({
         catalog_namespace: TEAM_NAMESPACE,
         metadata: {
-          title: request.title,
-          day: request.day,
-          location_id: request.location_id,
-          participants: request.participant_emails.length,
+          title: subject.title,
+          day: subject.day,
+          location_id: subject.location_id,
+          participants: subject.participant_emails.length,
         },
       }),
     }),
@@ -191,6 +203,25 @@ export const api = {
     call<null>(`/teams/${teamId}/human-input`, {
       method: "POST",
       body: JSON.stringify({ content, message_id: messageId }),
+    }),
+
+  /**
+   * Call a meeting off. Everything the plan booked is released.
+   *
+   * The team is a new one, and it is normal for it to know nothing about the
+   * plan: the coordinator loads it from the repository. There is no update in
+   * this system, so this message carries no options - to change a meeting you
+   * cancel it and plan another.
+   */
+  cancelPlan: (teamId: string, planId: string) =>
+    call<null>(`/teams/${teamId}/message/from/${HUMAN}/to/${COORDINATOR}`, {
+      method: "POST",
+      body: JSON.stringify({
+        message: {
+          __model__: "meeting_agents.messages.CancelPlanRequest",
+          plan_id: planId,
+        },
+      }),
     }),
 
   stopTeam: (teamId: string) =>

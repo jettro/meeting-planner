@@ -5,9 +5,12 @@ import {
   Chip,
   CircularProgress,
   Dialog,
+  DialogActions,
   DialogContent,
+  DialogContentText,
   DialogTitle,
   Divider,
+  LinearProgress,
   Stack,
   Typography,
 } from "@mui/material";
@@ -16,6 +19,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, type MeetingPlan } from "../api/client";
+import { useCancelPlan } from "../hooks/useCancelPlan";
 
 /**
  * Every plan the team has made, including the ones nobody is watching.
@@ -24,11 +28,14 @@ import { api, type MeetingPlan } from "../api/client";
  * stream: once a team has stopped there is no actor left to ask, and a history
  * that only works while a team is alive is not a history.
  *
- * Read-only, deliberately. Every change to a plan has compensations attached
- * to it, so every change goes through the agents.
+ * One thing can be done to a plan from here, and it is not an edit. There is
+ * no way to change a meeting in this system: a meeting that is wrong is
+ * cancelled, which releases everything it holds, and a new one is planned.
  */
 export default function PlansPage() {
   const [selected, setSelected] = useState<MeetingPlan | null>(null);
+  const [confirming, setConfirming] = useState<MeetingPlan | null>(null);
+  const cancellation = useCancelPlan();
   const { data, isLoading, error } = useQuery({
     queryKey: ["plans"],
     queryFn: api.plans,
@@ -89,7 +96,24 @@ export default function PlansPage() {
         />
       )}
 
-      <PlanDialog plan={selected} onClose={() => setSelected(null)} />
+      <PlanDialog
+        plan={selected}
+        onClose={() => setSelected(null)}
+        onCancelMeeting={(plan) => {
+          setSelected(null);
+          cancellation.reset();
+          setConfirming(plan);
+        }}
+      />
+
+      <CancelDialog
+        plan={confirming}
+        cancellation={cancellation}
+        onClose={() => {
+          setConfirming(null);
+          cancellation.reset();
+        }}
+      />
     </Box>
   );
 }
@@ -108,7 +132,15 @@ function StatusChip({ status }: { status: string }) {
   return <Chip size="small" label={status.replace("_", " ")} color={COLOURS[status] ?? "default"} />;
 }
 
-function PlanDialog({ plan, onClose }: { plan: MeetingPlan | null; onClose: () => void }) {
+function PlanDialog({
+  plan,
+  onClose,
+  onCancelMeeting,
+}: {
+  plan: MeetingPlan | null;
+  onClose: () => void;
+  onCancelMeeting: (plan: MeetingPlan) => void;
+}) {
   const navigate = useNavigate();
   if (!plan) return null;
 
@@ -160,8 +192,8 @@ function PlanDialog({ plan, onClose }: { plan: MeetingPlan | null; onClose: () =
           Runs
         </Typography>
         <Typography variant="body2" color="text.secondary" gutterBottom>
-          One team plans one meeting, so a plan that is changed later has more than one.
-          Each still has its full trace on the server.
+          One team plans one meeting, so a plan that is cancelled later has a second run —
+          the team that released it. Each still has its full trace on the server.
         </Typography>
         <Stack spacing={1} sx={{ mt: 1 }}>
           {plan.team_ids.length === 0 && (
@@ -185,6 +217,147 @@ function PlanDialog({ plan, onClose }: { plan: MeetingPlan | null; onClose: () =
           ))}
         </Stack>
       </DialogContent>
+      <Divider />
+      <DialogActions sx={{ px: 3, py: 2 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1 }}>
+          A meeting cannot be changed, only called off and planned again.
+        </Typography>
+        <Button onClick={onClose}>Close</Button>
+        <Button
+          color="error"
+          variant="outlined"
+          disabled={plan.cancelled}
+          onClick={() => onCancelMeeting(plan)}
+        >
+          Cancel meeting
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+/** What this plan is holding, in words somebody can check before saying yes. */
+function heldBy(plan: MeetingPlan): string[] {
+  const held: string[] = [];
+  if (plan.order_id) {
+    held.push(plan.lunch_summary ? `the lunch order (${plan.lunch_summary})` : "the lunch order");
+  }
+  if (plan.booking_id !== null) {
+    held.push(`the room ${plan.room_code ?? ""} at ${plan.location_id}`.replace("  ", " "));
+  }
+  if (plan.meeting_id !== null) {
+    held.push(`the meeting in ${plan.participant_emails.length} agendas`);
+  }
+  return held;
+}
+
+/**
+ * The confirmation, and then the run.
+ *
+ * The question is asked here rather than by the team, because the browser is
+ * already holding the plan and can therefore answer it alone: nothing the
+ * agents know would make this list any more accurate. The gates in front of
+ * booking are the other way round - they need an answer the client does not
+ * have (design_cancel.md §3).
+ */
+function CancelDialog({
+  plan,
+  cancellation,
+  onClose,
+}: {
+  plan: MeetingPlan | null;
+  cancellation: ReturnType<typeof useCancelPlan>;
+  onClose: () => void;
+}) {
+  const navigate = useNavigate();
+  if (!plan) return null;
+
+  const held = heldBy(plan);
+  const failures = (cancellation.outcome?.failures as string[] | undefined) ?? [];
+  const done = Boolean(cancellation.outcome);
+
+  return (
+    <Dialog open fullWidth maxWidth="sm" onClose={cancellation.running ? undefined : onClose}>
+      <DialogTitle>Cancel “{plan.title}”?</DialogTitle>
+      <DialogContent>
+        {!done && (
+          <>
+            <DialogContentText>
+              {held.length > 0
+                ? "This releases everything the meeting holds:"
+                : "Nothing has been booked for this meeting yet, so there is nothing to release."}
+            </DialogContentText>
+            <Stack component="ul" spacing={0.5} sx={{ mt: 1, pl: 3 }}>
+              {held.map((item) => (
+                <Typography component="li" variant="body2" key={item}>
+                  {item}
+                </Typography>
+              ))}
+            </Stack>
+            <DialogContentText sx={{ mt: 2 }}>
+              It cannot be undone. To meet anyway, plan a new meeting.
+            </DialogContentText>
+          </>
+        )}
+
+        {cancellation.running && (
+          <Box sx={{ mt: 3 }}>
+            <LinearProgress />
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Releasing them one at a time, in the order the services expect.
+            </Typography>
+          </Box>
+        )}
+
+        {cancellation.error && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {cancellation.error}
+          </Alert>
+        )}
+
+        {done && failures.length === 0 && (
+          <Alert severity="success">The meeting is cancelled and everything was released.</Alert>
+        )}
+
+        {done && failures.length > 0 && (
+          <Alert severity="warning">
+            <Typography variant="body2" gutterBottom>
+              The meeting is cancelled, but something is still held. These need releasing by hand:
+            </Typography>
+            <Stack component="ul" spacing={0.5} sx={{ pl: 2, m: 0 }}>
+              {failures.map((line) => (
+                <Typography component="li" variant="body2" key={line} sx={{ fontFamily: "monospace" }}>
+                  {line}
+                </Typography>
+              ))}
+            </Stack>
+          </Alert>
+        )}
+      </DialogContent>
+      <DialogActions sx={{ px: 3, py: 2 }}>
+        {cancellation.teamId && (
+          <Button
+            size="small"
+            sx={{ mr: "auto" }}
+            onClick={() => navigate(`/trace/${cancellation.teamId}`)}
+          >
+            Watch the trace
+          </Button>
+        )}
+        <Button onClick={onClose} disabled={cancellation.running}>
+          {done ? "Close" : "Keep it"}
+        </Button>
+        {!done && (
+          <Button
+            color="error"
+            variant="contained"
+            disabled={cancellation.running}
+            onClick={() => void cancellation.run(plan)}
+          >
+            Cancel the meeting
+          </Button>
+        )}
+      </DialogActions>
     </Dialog>
   );
 }

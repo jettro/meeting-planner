@@ -28,11 +28,16 @@ from meeting_agents.messages import (
     AssignmentFailed,
     BookFacilitiesAssignment,
     BookMeetingAssignment,
+    CancelAssignment,
+    Cancelled,
+    CancelPlanRequest,
     FacilitiesBooked,
     FindSlotsAssignment,
+    LoadPlan,
     LunchApprovalDecision,
     LunchApprovalRequest,
     MeetingBooked,
+    PlanCancelled,
     PlanCompleted,
     PlanFailed,
     PlanMeetingRequest,
@@ -43,7 +48,7 @@ from meeting_agents.messages import (
     SlotApprovalRequest,
     SlotsFound,
 )
-from meeting_agents.plan import MeetingPlan
+from meeting_agents.plan import Compensation, CompensationStep, MeetingPlan
 
 logger = logging.getLogger(__name__)
 
@@ -77,10 +82,34 @@ class CoordinatorState(BaseState):
     #: A request that settled it up front never reaches the gate, which is what
     #: keeps a scripted run from blocking on a question (D9).
     awaiting_lunch: list[str] = []
+    #: Cancellations in flight: the steps still to run, head first. The head is
+    #: the one that has been sent and is being waited on, so arrival of its
+    #: `Cancelled` pops it and sends the next. Empty list means the last step
+    #: has come back and the plan can be closed.
+    cancelling: dict[str, list[Compensation]] = {}
+    #: What went wrong while cancelling, one readable line per failed step.
+    #: Kept here rather than on the plan: the plan records what was *booked*,
+    #: and this is the report of one attempt to undo it.
+    cancel_failures: dict[str, list[str]] = {}
+    #: Plans asked to be cancelled whose contents are still being fetched. A
+    #: plan is normally cancelled from a team that never made it, so there is
+    #: usually nothing in `plans` to cancel until the repository answers.
+    loading_to_cancel: list[str] = []
+    #: Cancelled plans not yet known to be stored, with the failures to report
+    #: once they are. Same rule as `awaiting_durability`: the human hears
+    #: "cancelled" only when the store says so, because a browser that reloads
+    #: the list on that word must not find the plan still confirmed.
+    awaiting_cancel_durability: dict[str, list[str]] = {}
 
 
 class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
-    """Sequences the saga: slots -> approval -> meeting -> room -> lunch."""
+    """Sequences the saga: slots -> approval -> meeting -> room -> lunch.
+
+    And the other direction: a cancellation releases the lunch, the room and
+    the meeting, in that order. There is no third thing - this system has no
+    way to *change* a plan, by decision. A meeting that is wrong is cancelled
+    and a new one is planned.
+    """
 
     def on_start(self) -> None:
         self.init_state(CoordinatorState())
@@ -95,11 +124,21 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
 
     def _remember(self, plan: MeetingPlan) -> None:
         """Update the working copy and ask the repository to persist it."""
-        plans = {**self.state.plans, plan.plan_id: plan}
-        self.init_state(self.state.model_copy(update={"plans": plans}))
+        self._hold(plan)
         repository = self._member(self.config.repository_name)
         if repository is not None:
             self.send(repository, SavePlan(plan=plan))
+
+    def _hold(self, plan: MeetingPlan) -> None:
+        """Update the working copy only.
+
+        Separate from `_remember` because a plan that has just been *read* is
+        already stored, and saving it again would be a write that says nothing
+        - and would add this team to its list of runs before the team has done
+        anything.
+        """
+        plans = {**self.state.plans, plan.plan_id: plan}
+        self.init_state(self.state.model_copy(update={"plans": plans}))
 
     def _stop_awaiting_lunch(self, plan_id: str) -> None:
         remaining = [p for p in self.state.awaiting_lunch if p != plan_id]
@@ -114,9 +153,10 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
     def _fail(self, plan: MeetingPlan, reason: str) -> None:
         """Report failure with the undo steps this plan would need.
 
-        The steps are computed and reported but not yet dispatched: running
-        compensations is iteration 2 (§7.1). Reporting them now means a failure
-        is never silent about what it left behind.
+        The steps are reported, not run. A cancellation is something the human
+        asks for (`CancelPlanRequest`), and a failure that quietly released
+        three bookings on its own would hide the thing worth seeing - the mess
+        a half-finished saga leaves behind, and then the undoing of it.
         """
         logger.warning("[%s] plan %s failed: %s", self.config.name, plan.plan_id, reason)
         human = self._member(self.config.human_name)
@@ -207,6 +247,31 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
         self._remember(plan)
         self._book_the_meeting(plan)
 
+    def receiveMsg_CancelPlanRequest(  # noqa: N802
+        self, message: CancelPlanRequest, sender: ActorAddress
+    ) -> None:
+        """Call the meeting off, releasing everything it holds.
+
+        The plan is almost never one this coordinator made - a cancellation
+        arrives days later, in a new team, because the team that booked it is
+        long stopped and its coordinator kept nothing anyway. So the ordinary
+        path is to ask @PlanRepository for it and continue when it answers.
+        """
+        plan = self.state.plans.get(message.plan_id)
+        if plan is not None:
+            self._start_cancelling(plan)
+            return
+
+        repository = self._member(self.config.repository_name)
+        if repository is None:
+            return
+        self.init_state(
+            self.state.model_copy(
+                update={"loading_to_cancel": [*self.state.loading_to_cancel, message.plan_id]}
+            )
+        )
+        self.send(repository, LoadPlan(plan_id=message.plan_id))
+
     # -- saga steps -------------------------------------------------------
 
     def _ask_about_lunch(self, plan: MeetingPlan) -> None:
@@ -248,6 +313,132 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
                 slot=ProposedSlot(start=plan.proposed_start, end=plan.proposed_end),
             ),
         )
+
+    # -- cancelling -------------------------------------------------------
+
+    def _start_cancelling(self, plan: MeetingPlan) -> None:
+        """Begin releasing everything this plan holds, one step at a time.
+
+        A plan that is already cancelled is answered immediately rather than
+        run again. Cancelling twice would try to release ids the services have
+        already let go, which reads as a failure and would make a correct,
+        harmless repeat look like a problem.
+        """
+        self._hold(plan)
+        if plan.cancelled:
+            self._report_cancelled(plan, [])
+            return
+
+        steps = plan.compensations()
+        self.init_state(
+            self.state.model_copy(
+                update={
+                    "cancelling": {**self.state.cancelling, plan.plan_id: steps},
+                    "cancel_failures": {**self.state.cancel_failures, plan.plan_id: []},
+                }
+            )
+        )
+        logger.info("[%s] cancelling plan %s: %d step(s)", self.config.name, plan.plan_id, len(steps))
+        self._run_next_cancellation(plan.plan_id)
+
+    def _run_next_cancellation(self, plan_id: str) -> None:
+        """Send the step at the head of the queue, or finish.
+
+        One at a time, and in `compensations()` order - reverse booking order,
+        which is the order the services expect and the only order in which a
+        partial result can be described as a sentence.
+        """
+        steps = self.state.cancelling.get(plan_id, [])
+        if not steps:
+            self._finish_cancelling(plan_id)
+            return
+
+        step = steps[0]
+        member = self._member(self._owner_of(step.step))
+        if member is None:
+            self._record_cancel_failure(plan_id, step, "nobody on the team can reach that service")
+            self._pop_cancellation(plan_id)
+            self._run_next_cancellation(plan_id)
+            return
+
+        self.send(
+            member,
+            CancelAssignment(plan_id=plan_id, step=step.step, reference=step.reference),
+        )
+
+    def _owner_of(self, step: CompensationStep) -> str:
+        """Which member to ask. Lunch goes through @FacilityManager (D2)."""
+        if step is CompensationStep.CANCEL_MEETING:
+            return self.config.scheduler_name
+        return self.config.facility_name
+
+    def _pop_cancellation(self, plan_id: str) -> None:
+        remaining = self.state.cancelling.get(plan_id, [])[1:]
+        self.init_state(
+            self.state.model_copy(update={"cancelling": {**self.state.cancelling, plan_id: remaining}})
+        )
+
+    def _record_cancel_failure(self, plan_id: str, step: Compensation, reason: str) -> None:
+        line = f"{step.step.value} {step.reference}: {reason or 'the service refused'}"
+        logger.warning("[%s] %s", self.config.name, line)
+        failures = [*self.state.cancel_failures.get(plan_id, []), line]
+        self.init_state(
+            self.state.model_copy(
+                update={"cancel_failures": {**self.state.cancel_failures, plan_id: failures}}
+            )
+        )
+
+    def _finish_cancelling(self, plan_id: str) -> None:
+        """Mark the plan cancelled, store it, and report once it is stored.
+
+        The ids stay on the plan. It is the record of what was booked, and a
+        reference that could not be released is the one thing a person will
+        need to chase by hand.
+        """
+        plan = self._plan(plan_id)
+        if plan is None:
+            return
+
+        failures = self.state.cancel_failures.get(plan_id, [])
+        self.init_state(
+            self.state.model_copy(
+                update={
+                    "cancelling": {k: v for k, v in self.state.cancelling.items() if k != plan_id},
+                    "cancel_failures": {
+                        k: v for k, v in self.state.cancel_failures.items() if k != plan_id
+                    },
+                    "awaiting_cancel_durability": {
+                        **self.state.awaiting_cancel_durability,
+                        plan_id: failures,
+                    },
+                }
+            )
+        )
+        self._remember(plan.model_copy(update={"cancelled": True}))
+
+    def _report_cancelled(self, plan: MeetingPlan, failures: list[str]) -> None:
+        human = self._member(self.config.human_name)
+        if human is not None:
+            self.send(human, PlanCancelled(plan=plan, failures=failures))
+
+    def receiveMsg_Cancelled(  # noqa: N802
+        self, message: Cancelled, sender: ActorAddress
+    ) -> None:
+        """One release came back. Record it and move on, success or not.
+
+        A failed step does not stop the run. One stale reference - a room
+        somebody already released by hand - must not strand the other two.
+        """
+        steps = self.state.cancelling.get(message.plan_id)
+        if not steps:
+            logger.error("[%s] unexpected %s for %s", self.config.name, message.step, message.plan_id)
+            return
+
+        if not message.succeeded:
+            self._record_cancel_failure(message.plan_id, steps[0], message.reason)
+
+        self._pop_cancellation(message.plan_id)
+        self._run_next_cancellation(message.plan_id)
 
     # -- specialists -> coordinator ---------------------------------------
 
@@ -353,19 +544,49 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
     def receiveMsg_PlanSnapshot(  # noqa: N802
         self, message: PlanSnapshot, sender: ActorAddress
     ) -> None:
-        """@PlanRepository confirming a write.
+        """@PlanRepository answering, about a load or a write.
 
-        Every save is acknowledged, so most of these are routine. The one that
-        matters is the save of a *finished* plan - that is the moment the
-        result became durable, and so the moment it is honest to report it.
-
-        The check is on the snapshot's own status rather than on the plan id
-        alone, and deliberately so: acknowledgements of the earlier saves are
+        Three things arrive here and they are told apart by what the snapshot
+        says, never by arrival order - acknowledgements of earlier saves are
         still in flight when the last one is sent, and a plan id matches all of
-        them. The derived status is what distinguishes the final write from its
-        predecessors, which makes the correlation self-evident rather than
-        dependent on arrival order.
+        them:
+
+        * a plan that was *loaded* in order to be cancelled, which is the only
+          case this coordinator asked a question rather than made a statement;
+        * the write of a *cancelled* plan, which is when it becomes honest to
+          say the meeting is off;
+        * the write of a *finished* plan, which is when it becomes honest to
+          say it is booked.
+
+        Everything else is a routine acknowledgement and is ignored.
         """
+        if message.plan_id in self.state.loading_to_cancel:
+            remaining = [p for p in self.state.loading_to_cancel if p != message.plan_id]
+            self.init_state(self.state.model_copy(update={"loading_to_cancel": remaining}))
+            if message.plan is None:
+                logger.error("[%s] cannot cancel unknown plan %s", self.config.name, message.plan_id)
+                return
+            self._start_cancelling(message.plan)
+            return
+
+        if message.plan is not None and message.plan.cancelled:
+            failures = self.state.awaiting_cancel_durability.get(message.plan_id)
+            if failures is None:
+                return
+            self.init_state(
+                self.state.model_copy(
+                    update={
+                        "awaiting_cancel_durability": {
+                            k: v
+                            for k, v in self.state.awaiting_cancel_durability.items()
+                            if k != message.plan_id
+                        }
+                    }
+                )
+            )
+            self._report_cancelled(message.plan, failures)
+            return
+
         if message.plan is None or not message.plan.is_complete:
             return
         if message.plan_id not in self.state.awaiting_durability:

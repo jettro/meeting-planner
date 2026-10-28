@@ -1,6 +1,8 @@
 # Cancelling a meeting — design
 
-Status: **proposed**. Nothing here is built yet.
+Status: **built** (2026-10-29). Verified end to end against the running stack:
+the meeting, the booking and the order were really gone from the three
+services, and the release has its own trace.
 
 This document replaces two earlier drafts, both of which designed a way to
 *change* a plan: the first by mutating it inside the team that made it, the
@@ -46,10 +48,11 @@ never be reached.
 ## 2. The vocabulary
 
 ```
-CancelPlanRequest(plan_id)                     @Human       -> @Coordinator
-CancelAssignment(plan_id, step, reference)     @Coordinator -> one specialist
-Cancelled(plan_id, step, succeeded, reason)    specialist   -> @Coordinator
-PlanCancelled(plan)                            @Coordinator -> @Human
+CancelPlanRequest(plan_id)                     @Human           -> @Coordinator
+CancelAssignment(plan_id, step, reference)     @Coordinator     -> @Scheduler or @FacilityManager
+CancelAssignment(plan_id, step, reference)     @FacilityManager -> @Catering
+Cancelled(plan_id, step, succeeded, reason)    specialist       -> its parent
+PlanCancelled(plan, failures)                  @Coordinator     -> @Human
 ```
 
 Four messages. `CancelAssignment` carries a `CompensationStep`, which names the
@@ -58,10 +61,26 @@ one agent that reaches it. **The one-service rule (D1) is untouched**:
 `@Scheduler` cancels meetings, `@FacilityManager` cancels room bookings,
 `@Catering` cancels orders, each on the service it already talks to.
 
+**A cancellation travels the same hierarchy a booking does** (D10). The first
+sketch had the coordinator address all three specialists directly, which would
+have broken **D2 — lunch is the facility manager's business** — and gone around
+the team's own shape, since `@Catering` is a child of `@FacilityManager`. So
+the coordinator sends both the order and the room release to
+`@FacilityManager`: it releases the room itself, forwards the order to
+`@Catering`, and passes the reply back up. The forwarder keeps no state — the
+message carries the plan and the step. The coordinator still decides *which*
+releases happen and in what order; only the delivery follows the hierarchy.
+
 `Cancelled` carries `succeeded` and `reason` for the same reason every other
 specialist result does: a specialist that could not cancel something needs a
 truthful way to say so. Inventing success here is worse than elsewhere — it
 would leave a real booking behind a plan that claims to have released it.
+
+**A release never answers with `AssignmentFailed`.** Every other assignment may
+fail the plan; this one may not. The coordinator is running a list and needs an
+answer for every entry or the list stalls, so the shared `release()` helper
+catches the exception and turns it into `Cancelled(succeeded=False)`. A release
+that could not be done is a line in a report, not a failure of the plan.
 
 ## 3. No gate
 
@@ -98,6 +117,21 @@ cancelling: dict[str, list[Compensation]]
 somebody already released by hand — must not strand the other two. The failure
 is reported at the end and the next step goes out.
 
+**`PlanCancelled` waits for the write.** Found by a test that failed for the
+right reason: the store still read `cancelled=False` when the report arrived,
+because the `SavePlan` and the report were concurrent. The browser refetches
+`/plans` the moment it sees that word, so it could be told "cancelled" and then
+shown `CONFIRMED`. The report is now sent only once `@PlanRepository` has
+acknowledged the write — the same gate completion already used. "Cancelled"
+means cancelled *and* stored.
+
+**Cancelling a cancelled plan is harmless.** It short-circuits and reports
+immediately, with no steps and no failures. A repeat must not look like three
+failures against ids that are already gone.
+
+**A cancellation runs in a new team** that loads the plan from the repository,
+because `@Coordinator` is not durable — see Appendix A.
+
 ## 5. What the plan ends up saying
 
 The plan keeps its ids. It is a record of what was booked, and erasing them
@@ -119,19 +153,49 @@ second place to keep in step for no new behaviour.
   team-lifecycle call. To plan a different meeting, the human uses **Plan
   another**, which is what that button already does.
 
-## 7. Order of work
+## 7. What was built
 
 1. `CancelPlanRequest` / `CancelAssignment` / `Cancelled` / `PlanCancelled` in
-   `messages.py` and in the team card's `message_types`; a `CancelOut`
+   `messages.py` and in the team card's `message_types`; a `ReleasedBooking`
    structured output beside the other specialist results.
-2. One `receiveMsg_CancelAssignment` per specialist — three small handlers,
-   each calling the one `cancel_*` tool it owns.
-3. The coordinator: the queue, the serial driver, `cancelled = True`,
-   `PlanCancelled`. Delete `relocation_compensations()` and its tests.
-4. The server endpoint and `client.ts`.
+2. One `receiveMsg_CancelAssignment` per specialist over a shared `release()`,
+   plus the `@FacilityManager` forwarder that D10 calls for.
+3. The coordinator: the queue, the serial driver, `cancelled = True`, the
+   durability gate, `PlanCancelled`. `relocation_compensations()` and its tests
+   deleted.
+4. `client.ts` — no server endpoint was needed. A cancellation is a typed
+   message to `@Coordinator`, so the framework's own message route carries it,
+   exactly as planning does.
 5. The button, the confirmation, the chip.
 
-Steps 1–3 are testable without the stack, as the saga tests already are.
+Steps 1–3 are tested without the stack: `test_cancel.py` drives the saga
+against stub specialists (order, failure tolerance, durability, idempotence,
+unknown plan, nothing-booked), and three tests in `test_specialists.py` run the
+**real** agents with only the model replaced, which is what proves the
+`@FacilityManager` → `@Catering` hop rather than assuming it.
+
+The stored trace of a real cancellation, which is the shape above:
+
+```
+@Human            -> @Coordinator      CancelPlanRequest
+@Coordinator      -> @PlanRepository   LoadPlan
+@PlanRepository   -> @Coordinator      PlanSnapshot
+@Coordinator      -> @FacilityManager  CancelAssignment  cancel_order
+@FacilityManager  -> @Catering         CancelAssignment  cancel_order
+@Catering         -> @FacilityManager  Cancelled         cancel_order         ok
+@FacilityManager  -> @Coordinator      Cancelled         cancel_order         ok
+@Coordinator      -> @FacilityManager  CancelAssignment  cancel_room_booking
+@FacilityManager  -> @Coordinator      Cancelled         cancel_room_booking  ok
+@Coordinator      -> @Scheduler        CancelAssignment  cancel_meeting
+@Scheduler        -> @Coordinator      Cancelled         cancel_meeting       ok
+@Coordinator      -> @PlanRepository   SavePlan
+@PlanRepository   -> @Coordinator      PlanSnapshot
+@Coordinator      -> @Human            PlanCancelled
+```
+
+Afterwards the meeting, the booking and the order were gone from the three
+services, the plan read `CANCELLED` with its ids intact, and it listed **two**
+runs — the one that booked it and the one that released it.
 
 ## 8. Open questions
 

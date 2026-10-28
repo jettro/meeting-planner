@@ -70,8 +70,8 @@ class MeetingPlan(BaseModel):
     duration_minutes: int = Field(default=60, gt=0, le=480)
     location_id: str
     with_lunch: bool = True
-    #: What the human asked for, in their own words. Kept on the plan so a
-    #: relocation rebooks the lunch they wanted rather than a fresh guess (D5).
+    #: What the human asked for, in their own words. Kept on the plan so the
+    #: record says what was wanted, not only what arrived (D5).
     lunch_wish: str = ""
 
     # Filled in by @Scheduler, then approved by the human.
@@ -134,20 +134,4 @@ class MeetingPlan(BaseModel):
             )
         if self.meeting_id is not None:
             steps.append(Compensation(step=CompensationStep.CANCEL_MEETING, reference=str(self.meeting_id)))
-        return steps
-
-    def relocation_compensations(self, new_location_id: str) -> list[Compensation]:
-        """The undo steps needed when the meeting moves to `new_location_id`.
-
-        A lunch order is tied to a *location*, not a room code, so moving between
-        rooms within one location leaves the order valid and returns no steps for
-        it. Only a genuine change of location invalidates lunch.
-        """
-        steps: list[Compensation] = []
-        if new_location_id != self.location_id and self.order_id is not None:
-            steps.append(Compensation(step=CompensationStep.CANCEL_ORDER, reference=self.order_id))
-        if self.booking_id is not None:
-            steps.append(
-                Compensation(step=CompensationStep.CANCEL_ROOM_BOOKING, reference=str(self.booking_id))
-            )
         return steps

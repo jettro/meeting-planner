@@ -32,6 +32,8 @@ from meeting_agents.messages import (
     AssignmentFailed,
     BookFacilitiesAssignment,
     BookMeetingAssignment,
+    CancelAssignment,
+    Cancelled,
     FacilitiesBooked,
     FindSlotsAssignment,
     LunchOrdered,
@@ -46,8 +48,10 @@ from meeting_agents.outputs import (
     ClockError,
     FoundSlots,
     OrderedLunch,
+    ReleasedBooking,
     parse_clock,
 )
+from meeting_agents.plan import CompensationStep
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +85,32 @@ class SpecialistAgent(BaseAgent):
     def fail(self, plan_id: str, reason: str, recipient: ActorAddress | None) -> None:
         if recipient is not None:
             self.send(recipient, AssignmentFailed(plan_id=plan_id, reason=reason))
+
+    def release(self, message: CancelAssignment, sender: ActorAddress) -> None:
+        """Run one cancellation and answer, whatever happened.
+
+        Unlike every booking handler, this one never reports `AssignmentFailed`:
+        a cancellation that could not be done is not a failure of the plan, it
+        is one line in the report of how the cancellation went. The caller is
+        running a list and must get an answer for each entry, or the list
+        stops.
+        """
+        try:
+            released = self.act(message, ReleasedBooking)
+        except Exception as exc:  # noqa: BLE001 - a cancel run fails like any other
+            logger.error("[%s] could not cancel %s: %s", self.config.name, message.reference, exc)
+            logger.debug("[%s] could not cancel", self.config.name, exc_info=True)
+            released = ReleasedBooking(succeeded=False, reason=f"{type(exc).__name__}: {exc}")
+
+        self.send(
+            sender,
+            Cancelled(
+                plan_id=message.plan_id,
+                step=message.step,
+                succeeded=released.succeeded,
+                reason=released.reason,
+            ),
+        )
 
 
 MAX_CANDIDATES = 3
@@ -161,6 +191,12 @@ class Scheduler(SpecialistAgent):
             return
 
         self.send(sender, MeetingBooked(plan_id=message.plan_id, meeting_id=booked.meeting_id))
+
+    def receiveMsg_CancelAssignment(  # noqa: N802
+        self, message: CancelAssignment, sender: ActorAddress
+    ) -> None:
+        """Take the meeting back out of everybody's agenda."""
+        self.release(message, sender)
 
 
 class FacilityManagerConfig(AgentConfig):
@@ -279,6 +315,49 @@ class FacilityManager(SpecialistAgent, Akgent[FacilityManagerConfig, AgentState]
         coordinator = self.get_team_member(self.config.coordinator_name)
         self.fail(message.plan_id, f"{message.reason}{detail}", coordinator)
 
+    def receiveMsg_CancelAssignment(  # noqa: N802
+        self, message: CancelAssignment, sender: ActorAddress
+    ) -> None:
+        """Release a room, or have @Catering release a lunch order.
+
+        Both arrive here because the coordinator asked for *facilities* to be
+        released and does not deal in lunch (D2). Which of the two this is, is
+        decided by the step, and the step is also the name of the tool - so a
+        room is released here and an order is passed to the agent that can see
+        the nomnom service.
+        """
+        if message.step is not CompensationStep.CANCEL_ORDER:
+            self.release(message, sender)
+            return
+
+        catering = self.get_team_member(self.config.catering_name)
+        if catering is None:
+            self.send(
+                sender,
+                Cancelled(
+                    plan_id=message.plan_id,
+                    step=message.step,
+                    succeeded=False,
+                    reason=f"no {self.config.catering_name} on the team",
+                ),
+            )
+            return
+        self.send(catering, message)
+
+    def receiveMsg_Cancelled(  # noqa: N802
+        self, message: Cancelled, sender: ActorAddress
+    ) -> None:
+        """@Catering is done with the order; pass the answer on unchanged.
+
+        Nothing is remembered between the two halves: the message carries the
+        plan and the step, so forwarding is all there is to do.
+        """
+        coordinator = self.get_team_member(self.config.coordinator_name)
+        if coordinator is None:
+            logger.error("[%s] no %s to report to", self.config.name, self.config.coordinator_name)
+            return
+        self.send(coordinator, message)
+
     def _take_pending(self, plan_id: str) -> PendingFacilities | None:
         room = self._pending.pop(plan_id, None)
         if room is None:
@@ -307,3 +386,9 @@ class Catering(SpecialistAgent):
                 summary=ordered.summary,
             ),
         )
+
+    def receiveMsg_CancelAssignment(  # noqa: N802
+        self, message: CancelAssignment, sender: ActorAddress
+    ) -> None:
+        """Cancel the order. The answer goes back to @FacilityManager, who asked."""
+        self.release(message, sender)

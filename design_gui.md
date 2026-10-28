@@ -288,6 +288,9 @@ server really does own execution.
 | G17 | **The console is configured by a mounted file, not a build argument** | Upstream reads `config.json` over its baked-in defaults before rendering, so the backend changes without a rebuild. Our own SPA cannot do this — Vite inlines `import.meta.env` (G11) — and the difference is upstream's design, not an inconsistency |
 | G18 | **A team's metadata is the request, not the outcome** | Everything in `MeetingTeamMetadata` is known when the team is created, so it is written once in the same call and never maintained. The outcome changes constantly and already has a home — `MeetingPlan`, reached from a plan rather than from a run |
 | G19 | **`title`, `day` and `location_id` are indexed; `participants` is not** | Filtering is an anchored prefix match. On text that is a useful "starts with"; on a count it matches by digit, so a filter of `1` would return 1, 10 and 12 |
+| G20 | **The cancel confirmation is a browser dialog, not a human gate** | The SPA already holds the plan, so it can name what is about to be released without a round trip. The slot and lunch gates are different: they need an answer the client does not have, and the answer changes what gets booked. A confirmation only decides whether the message is sent at all |
+| G21 | **Cancelling is a typed message, so it needed no endpoint** | `POST /teams/{id}/message/from/@Human/to/@Coordinator` with a `CancelPlanRequest` is the same route planning uses. Adding `POST /plans/{id}/cancel` would have put a second way to start a run beside the framework's own |
+| G22 | **A cancelled plan stays in the list, with its ids** | It is the record of what was booked, and this is a demo of a saga undoing itself — hiding the result would hide the point |
 
 ### 8.1 There is no `ServerUserProxy`, and that is the better answer
 
@@ -366,6 +369,15 @@ whole §1 feature and it cost one `useState`.
 
 ## 10. Changelog
 
+- 2026-10-29: **A meeting can be cancelled**, which releases the lunch order, the room and the
+  meeting — see `design_cancel.md`. There is deliberately no edit: two earlier designs for
+  *changing* a plan were written and both dropped. The Plans dialog gains a Cancel button and a
+  confirmation that names what will go, in words (G20); the plan stays in the list with a
+  `CANCELLED` chip and its ids (G22). It needed no new server route — a cancellation is a typed
+  message on the framework's own message endpoint (G21) — and no new plan field, since
+  `cancelled` already derives the status. The release happens in a second team, which is why a
+  cancelled plan now shows **two** runs, each with its own trace.
+
 - 2026-10-28: Gave a team run something to say about itself. Every row in the console's team list
   read `meeting-planner`, so the only way to tell two runs apart was the minute they started.
   `MeetingTeamMetadata` (G18) is declared as the card's `metadata_type` and sent by the browser
@@ -387,7 +399,8 @@ whole §1 feature and it cost one `useState`.
   and a finished run at `/trace/<team>`. The link is new: `MeetingPlan.team_ids`, stamped by
   `@PlanRepository` (G12). Exposing `status` as a `computed_field` (G14) broke event persistence
   in exactly the way §8.2 did — see §8.4. Changing a plan is still not possible; the compensations
-  are computed but nothing executes them.
+  are computed but nothing executes them. *(Superseded 2026-10-29: they execute now, and there is
+  still no change feature — there is cancel instead.)*
 
 - 2026-10-27: The trace shows message *contents*, not just types. Each row carries a one-line
   summary of the payload and opens a dialog with the whole thing — **Fields** (the payload with

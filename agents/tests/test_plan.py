@@ -71,21 +71,6 @@ def test_a_draft_plan_has_nothing_to_compensate():
     assert make_plan().compensations() == []
 
 
-def test_moving_rooms_within_a_location_keeps_the_lunch_order():
-    plan = make_plan(meeting_id=12, booking_id=8, room_code="room-a", order_id="abc-123")
-    steps = plan.relocation_compensations("yuma")
-    assert [c.step for c in steps] == [CompensationStep.CANCEL_ROOM_BOOKING]
-
-
-def test_moving_to_another_location_rebooks_the_lunch():
-    plan = make_plan(meeting_id=12, booking_id=8, room_code="room-a", order_id="abc-123")
-    steps = plan.relocation_compensations("amsterdam")
-    assert [c.step for c in steps] == [
-        CompensationStep.CANCEL_ORDER,
-        CompensationStep.CANCEL_ROOM_BOOKING,
-    ]
-
-
 def test_plan_ids_are_unique():
     assert make_plan().plan_id != make_plan().plan_id
 

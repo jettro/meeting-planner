@@ -81,11 +81,12 @@ The same team also runs behind HTTP, for clients that are not a terminal. `make 
 | route | what it answers |
 |---|---|
 | `GET /platform/health` | all three services at once, probed concurrently — `up`, `degraded` (it answered, badly) or `unreachable` (it did not answer) |
-| `GET /plans`, `GET /plans/{id}` | the plans the team has made, readable after the team has stopped. Read-only: every change to a plan has compensations attached, so every change goes through the agents |
+| `GET /plans`, `GET /plans/{id}` | the plans the team has made, readable after the team has stopped. Read-only: a plan is only ever written by the agents, and cancelling one has to release three bookings, so it goes through the team too |
 
 Everything else is the framework's: `POST /teams` creates a team from the catalog,
 `POST /teams/{id}/message/from/@Human/to/@Coordinator` starts a plan with a typed
-`PlanMeetingRequest`, `GET /teams/{id}/events` (or `WS /ws/{id}`) is the trace, and
+`PlanMeetingRequest` — or cancels one with a `CancelPlanRequest`, which is why cancelling
+needs no endpoint of its own — `GET /teams/{id}/events` (or `WS /ws/{id}`) is the trace, and
 `POST /teams/{id}/human-input` answers a gate with plain text.
 
 Both human gates work over HTTP: the answer is read against the question it refers to by
@@ -105,7 +106,7 @@ Four screens:
 |---|---|
 | **Platform** | the three services, polled every ten seconds. `up` / `degraded` / `unreachable` are kept apart: a 503 and a silence have different causes |
 | **Plan a meeting** | the form, then the two gates as they arrive — the slots as radio buttons (the candidates travel with the question), lunch as free text, because `@Catering` holds the menu and is the only agent that should read the words — then the booked meeting |
-| **Plans** | every plan the team has made, with the meeting, booking and order ids that nothing else links together, and the runs that touched it. Read-only for now: there is no way yet to change a plan that exists |
+| **Plans** | every plan the team has made, with the meeting, booking and order ids that nothing else links together, and the runs that touched it. A plan can be **cancelled** here, which releases the lunch order, the room and the meeting. There is no edit: to change a meeting you cancel it and plan a new one |
 | **Trace** | every message, live, with a *framework events* toggle. Off, it is twenty rows that read like a story. On, it is the actor system starting up, receiving and processing — the "show me what happens at the framework level" view. Each row carries a one-line summary of what the message actually said; clicking it opens the whole payload, as readable fields or as the raw envelope. A run that has finished can be re-read from the server, so a trace outlives the socket that carried it |
 
 TypeScript, MUI, TanStack Query, React Router, and about forty lines of WebSocket. The API base is
@@ -143,7 +144,7 @@ meeting-planner/
 ├── design.md                 # Analysis of the old project + rewrite decisions
 ├── design_akgents.md          # Design of the agent team (Akgents)
 ├── design_gui.md              # Design of the team server + browser client
-├── design_cancel.md           # Design of cancelling a meeting (proposed)
+├── design_cancel.md           # Design of cancelling a meeting (built)
 ├── pyproject.toml             # uv workspace root (shared dev tooling config)
 ├── docker-compose.yml         # Runs all three services together
 ├── Makefile                   # Shortcuts for common dev tasks (see `make help`)

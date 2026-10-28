@@ -102,3 +102,16 @@ class OrderedLunch(BaseModel):
         ),
     )
     reason: str = Field(default="", description="If succeeded is false, why not.")
+
+
+class ReleasedBooking(BaseModel):
+    """Any specialist's answer to 'cancel this'.
+
+    No id comes back from a cancellation, so this is the one result whose only
+    content is whether it worked. `succeeded` is false for a reference the
+    service does not recognise, which is a normal thing to meet when undoing a
+    plan somebody has already been editing by hand.
+    """
+
+    succeeded: bool = Field(description="True only if the tool reported the booking was cancelled.")
+    reason: str = Field(default="", description="If succeeded is false, exactly what the tool said.")

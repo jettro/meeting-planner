@@ -22,6 +22,8 @@ from akgentic.team import TeamCard, TeamCardMember, TeamFactory
 from meeting_agents.coordinator import Coordinator, CoordinatorConfig
 from meeting_agents.messages import (
     MESSAGE_TYPES,
+    CancelPlanRequest,
+    PlanCancelled,
     PlanCompleted,
     PlanFailed,
     PlanMeetingRequest,
@@ -29,7 +31,14 @@ from meeting_agents.messages import (
     SlotApprovalDecision,
     SlotApprovalRequest,
 )
-from meeting_agents.outputs import BookedMeeting, BookedRoom, FoundSlots, OrderedLunch, SlotOut
+from meeting_agents.outputs import (
+    BookedMeeting,
+    BookedRoom,
+    FoundSlots,
+    OrderedLunch,
+    ReleasedBooking,
+    SlotOut,
+)
 from meeting_agents.plan import PlanStatus
 from meeting_agents.plan_repository import PlanRepository, PlanRepositoryConfig
 from meeting_agents.specialists import (
@@ -117,6 +126,9 @@ class RecordingHuman(UserProxy):
         Inbox.messages.put(message)
 
     def receiveMsg_PlanFailed(self, message, sender) -> None:  # noqa: N802
+        Inbox.messages.put(message)
+
+    def receiveMsg_PlanCancelled(self, message, sender) -> None:  # noqa: N802
         Inbox.messages.put(message)
 
 
@@ -399,3 +411,67 @@ def test_later_windows_are_used_when_the_first_is_too_short():
 
 def test_no_windows_means_no_slots():
     assert meeting_slots([], 60) == []
+
+
+def book_then_cancel(team, *releases):
+    """Run a plan to CONFIRMED with the real agents, then call it off."""
+    Script.give(FoundSlots, good_slots())
+    Script.give(BookedMeeting, BookedMeeting(succeeded=True, meeting_id=MEETING_ID))
+    Script.give(BookedRoom, BookedRoom(succeeded=True, room_code=ROOM_CODE, booking_id=BOOKING_ID))
+    Script.give(OrderedLunch, OrderedLunch(succeeded=True, order_id=ORDER_ID))
+    run_to_completion(team)
+    plan = Inbox.expect(PlanCompleted).plan
+
+    Script.give(ReleasedBooking, *releases)
+    Script.prompts.clear()
+    team.send_from_to("@Human", "@Coordinator", CancelPlanRequest(plan_id=plan.plan_id))
+    return Inbox.expect(PlanCancelled)
+
+
+def test_the_whole_team_cancels_a_plan(team):
+    """The real agents again, including the hop the coordinator cannot make.
+
+    @Catering is the only agent that can reach the nomnom service, and the
+    coordinator may not address it (D2) - so a released order proves the
+    assignment travelled through @FacilityManager and the answer came back.
+    """
+    released = [ReleasedBooking(succeeded=True) for _ in range(3)]
+    cancelled = book_then_cancel(team, *released)
+
+    assert cancelled.failures == []
+    assert cancelled.plan.status is PlanStatus.CANCELLED
+    assert any(ORDER_ID in prompt for prompt in Script.prompts)
+    assert any(str(BOOKING_ID) in prompt for prompt in Script.prompts)
+    assert any(str(MEETING_ID) in prompt for prompt in Script.prompts)
+
+
+def test_a_cancellation_the_tool_refused_is_named_and_the_rest_still_run(team):
+    cancelled = book_then_cancel(
+        team,
+        ReleasedBooking(succeeded=True),
+        ReleasedBooking(succeeded=False, reason="booking 7 does not exist"),
+        ReleasedBooking(succeeded=True),
+    )
+
+    assert len(cancelled.failures) == 1
+    assert "does not exist" in cancelled.failures[0]
+    assert cancelled.plan.status is PlanStatus.CANCELLED
+    assert any(str(MEETING_ID) in prompt for prompt in Script.prompts)
+
+
+def test_a_cancel_run_that_raises_becomes_a_named_failure(team):
+    """Two answers for three steps: the last model call blows up.
+
+    A booking handler turns that into `AssignmentFailed` and stops. A cancel
+    handler must not - an exception here is one line of the report, and the
+    list it belongs to has already finished.
+    """
+    cancelled = book_then_cancel(
+        team,
+        ReleasedBooking(succeeded=True),
+        ReleasedBooking(succeeded=True),
+    )
+
+    assert len(cancelled.failures) == 1
+    assert "cancel_meeting" in cancelled.failures[0]
+    assert cancelled.plan.status is PlanStatus.CANCELLED

@@ -24,7 +24,7 @@ from datetime import date, time
 from akgentic.core.messages import Message
 from pydantic import BaseModel, Field, model_validator
 
-from meeting_agents.plan import Compensation, MeetingPlan
+from meeting_agents.plan import Compensation, CompensationStep, MeetingPlan
 
 
 class ProposedSlot(BaseModel):
@@ -126,6 +126,21 @@ class LunchApprovalDecision(Message):
         return self
 
 
+class CancelPlanRequest(Message):
+    """Call the whole thing off.
+
+    There is no update in this system: a meeting that is wrong is cancelled and
+    a new one is planned. So this message takes no arguments beyond the plan -
+    there is nothing to choose, and everything the plan booked is released.
+
+    It usually names a plan this team has never seen, which is the normal case
+    rather than an error: a plan is cancelled long after the team that made it
+    has stopped, from a new team that loads it out of the repository.
+    """
+
+    plan_id: str
+
+
 # --------------------------------------------------------------------------
 # @Coordinator -> human
 # --------------------------------------------------------------------------
@@ -182,10 +197,25 @@ class PlanFailed(Message):
     plan: MeetingPlan
     reason: str
     #: What is still booked and needs undoing - *not* what has been undone.
-    #: Running these is iteration 2 (§7.1); until then a failure at least says
-    #: plainly what it left behind. A live run read the old name, `compensated`,
-    #: as "already cancelled" and trusted a meeting to be gone when it was not.
+    #: These are reported rather than run: releasing them is what a
+    #: `CancelPlanRequest` does, and it is the human who asks. A live run read
+    #: the old name, `compensated`, as "already cancelled" and trusted a
+    #: meeting to be gone when it was not.
     outstanding: list[Compensation] = Field(default_factory=list)
+
+
+class PlanCancelled(Message):
+    """Everything that could be released has been.
+
+    `failures` is empty on a clean cancellation. When it is not, the plan is
+    still cancelled - the intent was carried out as far as the services allowed
+    - but something is left behind, and saying so here is the only honest
+    option. The plan keeps its ids either way, so there is always something to
+    chase it with.
+    """
+
+    plan: MeetingPlan
+    failures: list[str] = Field(default_factory=list)
 
 
 # --------------------------------------------------------------------------
@@ -322,6 +352,43 @@ class AssignmentFailed(Message):
     reason: str
 
 
+class CancelAssignment(Message):
+    """Release one booking. The step names the tool, and so names the service.
+
+    This is the only assignment whose recipient is derived rather than decided:
+    `step` is the name of the `cancel_*` tool, exactly one agent can reach it,
+    and the coordinator looks that agent up. Lunch is routed through
+    @FacilityManager even so, because the coordinator does not deal in lunch
+    (D2) - it asks for facilities to be released and does not learn how.
+    """
+
+    plan_id: str
+    step: CompensationStep
+    reference: str
+
+    def rendering(self) -> str:
+        return (
+            f"Cancel the booking with id {self.reference}, using your "
+            f"{self.step.value} tool and that id exactly. Report whether the "
+            "tool confirmed the cancellation. If it did not, report what it "
+            "said - do not try a different id and do not try again."
+        )
+
+
+class Cancelled(Message):
+    """Any specialist -> its requester, once a release has been attempted.
+
+    Sent whether or not it worked. A cancellation that silently failed is the
+    worst outcome available - a plan that claims to have let a room go while
+    the room is still held - so there is no path here that answers nothing.
+    """
+
+    plan_id: str
+    step: CompensationStep
+    succeeded: bool
+    reason: str = ""
+
+
 # --------------------------------------------------------------------------
 # @PlanRepository
 # --------------------------------------------------------------------------
@@ -354,8 +421,10 @@ MESSAGE_TYPES: list[type] = [
     SlotApprovalRequest,
     LunchApprovalDecision,
     LunchApprovalRequest,
+    CancelPlanRequest,
     PlanCompleted,
     PlanFailed,
+    PlanCancelled,
     FindSlotsAssignment,
     SlotsFound,
     BookMeetingAssignment,
@@ -365,6 +434,8 @@ MESSAGE_TYPES: list[type] = [
     OrderLunchAssignment,
     LunchOrdered,
     AssignmentFailed,
+    CancelAssignment,
+    Cancelled,
     SavePlan,
     LoadPlan,
     PlanSnapshot,
