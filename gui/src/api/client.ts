@@ -59,6 +59,10 @@ export interface TeamSummary {
   name: string;
   status: "running" | "stopped" | string;
   created_at: string;
+  /** What the run was asked to do (`MeetingTeamMetadata`), set when it was created. */
+  metadata: { title?: string; day?: string; location_id?: string; participants?: number } | null;
+  /** Which team card the run was made from - our namespace, or someone else's. */
+  catalog_namespace: string | null;
 }
 
 export interface TeamEvent {
@@ -110,8 +114,33 @@ export interface MeetingPlan {
   cancelled: boolean;
   /** Derived on the server from which ids are present - never sent back. */
   status: string;
-  /** The team runs that touched this plan, oldest first. */
-  team_ids: string[];
+}
+
+/**
+ * The coordinator's state: the meeting's only record (design_durability.md R2).
+ *
+ * Read from the snapshot the framework persists, so it is there whether or
+ * not the team is still running - which is what makes a list of teams as good
+ * as the list of plans it replaced.
+ */
+export interface CoordinatorState {
+  plan: MeetingPlan | null;
+  candidates: ProposedSlot[];
+  awaiting_lunch: boolean;
+  failure: string;
+  cancelling: unknown[];
+  cancel_failures: string[];
+}
+
+/**
+ * The next move is the human's: a gate is open (R6). The same rule as
+ * `CoordinatorState.waiting_for_the_human` on the server - and deliberately
+ * nothing about whether the team is alive, because a stopped team is revived
+ * by the answer and its coordinator remembers what it asked.
+ */
+export function waitingForTheHuman(state: CoordinatorState): boolean {
+  if (!state.plan || state.plan.cancelled || state.failure) return false;
+  return state.candidates.length > 0 || state.awaiting_lunch;
 }
 
 export interface ServiceHealth {
@@ -163,9 +192,18 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   platformHealth: () => call<PlatformHealth>("/platform/health"),
 
-  plans: () => call<MeetingPlan[]>("/plans"),
-
-  plan: (planId: string) => call<MeetingPlan>(`/plans/${planId}`),
+  /**
+   * A team's meeting, read from its coordinator's persisted state.
+   *
+   * `null` for a team whose coordinator has no snapshot yet - created, but
+   * never asked for anything - which the Meetings screen leaves out.
+   */
+  coordinatorState: async (teamId: string): Promise<CoordinatorState | null> => {
+    const body = await call<{ states: { name: string | null; state: CoordinatorState }[] }>(
+      `/teams/${teamId}/agent-states`,
+    );
+    return body.states.find((snapshot) => snapshot.name === COORDINATOR)?.state ?? null;
+  },
 
   /**
    * The stored trace of a team that has already finished.
@@ -185,7 +223,7 @@ export const api = {
   /**
    * Create the team that will run one plan.
    *
-   * The metadata is what makes a list of runs readable - in our Plans screen,
+   * The metadata is what makes a list of runs readable - in our Meetings screen,
    * and in the framework's own console, which renders whatever the team's
    * `metadata_type` declares. It is the request rather than the outcome, so it
    * can be set here, once, and never maintained (`team_metadata.py`).
@@ -230,10 +268,11 @@ export const api = {
   /**
    * Call a meeting off. Everything the plan booked is released.
    *
-   * The team is a new one, and it is normal for it to know nothing about the
-   * plan: the coordinator loads it from the repository. There is no update in
-   * this system, so this message carries no options - to change a meeting you
-   * cancel it and plan another.
+   * Sent to the team that made the meeting, because that team *is* the
+   * meeting: its coordinator holds the only record of what was booked. A
+   * stopped team is revived by the server to receive it (R4). There is no
+   * update in this system, so this message carries no options - to change a
+   * meeting you cancel it and plan another.
    */
   cancelPlan: (teamId: string, planId: string) =>
     call<null>(`/teams/${teamId}/message/from/${HUMAN}/to/${COORDINATOR}`, {
@@ -246,21 +285,27 @@ export const api = {
       }),
     }),
 
-  stopTeam: async (teamId: string): Promise<void> => {
-    const response = await fetch(`${BASE}/teams/${teamId}/stop`, { method: "POST" });
-    // 409 is "it is already stopped", which is the outcome being asked for.
-    // It is also the likeliest answer in practice: the framework idle-stops
-    // teams on its own, so any liveness the browser read a moment ago may
-    // already be out of date by the time somebody clicks.
-    if (!response.ok && response.status !== 409) {
-      throw new Error((await response.text()) || `${response.status} ${response.statusText}`);
-    }
-  },
-
   /** Every run the server knows about, newest state included. */
   listTeams: async (): Promise<TeamSummary[]> => {
     const body = await call<{ teams: TeamSummary[] }>("/teams");
     return body.teams;
+  },
+
+  /**
+   * Bring a stopped team back before watching it.
+   *
+   * Delivering a message revives a stopped team on its own, and its
+   * coordinator comes back knowing what it was waiting for - but a socket
+   * opened on a stopped team only starts streaming when the team is restored
+   * through *this* route, which is the one that wakes waiting sockets. So a
+   * screen that wants to watch a stopped run asks for it here first. 409 means
+   * it is already running, which is the outcome being asked for.
+   */
+  restoreTeam: async (teamId: string): Promise<void> => {
+    const response = await fetch(`${BASE}/teams/${teamId}/restore`, { method: "POST" });
+    if (!response.ok && response.status !== 409) {
+      throw new Error((await response.text()) || `${response.status} ${response.statusText}`);
+    }
   },
 };
 

@@ -43,7 +43,7 @@ def resolve_env_in_place(obj: Any) -> None:
     """Walk a hydrated model and replace every `${VAR}` it carries.
 
     Done after hydration rather than on the raw YAML so that it reaches values
-    wherever they ended up - a tool's bearer token, a repository's store path -
+    wherever they ended up - a tool's URL, its bearer token -
     without this module needing to know the shape of each card.
     """
     if isinstance(obj, BaseModel):

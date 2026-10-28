@@ -41,6 +41,14 @@ in the image. Change it and reload the browser; there is no build step.
 The full key list is in upstream's README. To see what a running container
 actually resolved, open <http://localhost:8400/config.json>.
 
+## Cancel before you delete
+
+A team run *is* its meeting: the coordinator's state is the only record of which meeting, room
+booking and lunch order belong together (`design_durability.md`). The framework serves
+`DELETE /teams/{id}`, and anything that calls it - this console included, if it offers it -
+forgets that record while the three bookings stay in the services with nothing left to link
+them. Cancel the meeting from our Meetings screen first; then delete the run if you want it gone.
+
 ## Upgrading
 
 Change `AKGENTIC_CONSOLE_REF` in `.env` (or the default in `docker-compose.yml`)

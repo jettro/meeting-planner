@@ -17,7 +17,8 @@ payload:
     __type__: meeting_agents.team_metadata.MeetingTeamMetadata
 
   # Who creates whom. The human proxy is the entry point and spawns the
-  # coordinator; the coordinator spawns the agents it gives assignments to;
+  # coordinator; the coordinator spawns the agents it gives assignments to,
+  # and its own state is the meeting's record (design_durability.md);
   # @Catering sits under @FacilityManager because lunch is the facility
   # manager's business, not the coordinator's (D2).
   entry_point:
@@ -29,10 +30,6 @@ payload:
           __ref__: coordinator
         headcount: 1
         members:
-          - card:
-              __ref__: plan_repository
-            headcount: 1
-            members: []
           - card:
               __ref__: scheduler
             headcount: 1
@@ -70,8 +67,5 @@ payload:
     - __type__: meeting_agents.messages.AssignmentFailed
     - __type__: meeting_agents.messages.CancelAssignment
     - __type__: meeting_agents.messages.Cancelled
-    - __type__: meeting_agents.messages.SavePlan
-    - __type__: meeting_agents.messages.LoadPlan
-    - __type__: meeting_agents.messages.PlanSnapshot
 
   agent_profiles: []

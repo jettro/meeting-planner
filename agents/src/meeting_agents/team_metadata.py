@@ -8,8 +8,8 @@ This is deliberately the **request**, not the outcome. Every field is known at
 the moment the team is created and never changes, which is what lets it be set
 once, in the same call that creates the team, with nothing to keep in sync
 afterwards. The outcome - which room, which slot, whether lunch was ordered -
-lives in `MeetingPlan`, is rewritten repeatedly as the saga proceeds, and is
-reached from a plan rather than from a run (`MeetingPlan.team_ids`).
+lives in the coordinator's state, is rewritten repeatedly as the saga
+proceeds, and is read from the team's agent-state snapshot.
 
 Three fields are indexed, which is what makes them filterable. The framework
 flattens them into `"key|value"` entries matched by anchored prefix, so a

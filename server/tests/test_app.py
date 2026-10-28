@@ -3,7 +3,7 @@
 The framework warns that a client must splice into `server_modules` rather
 than retype the community composition, because a retyped copy drifts silently
 at the next upgrade. These tests are the alarm for that drift: they assert the
-stock routes the SPA depends on are still there, alongside the two we add.
+stock routes the SPA depends on are still there, alongside the one we add.
 """
 
 from __future__ import annotations
@@ -15,9 +15,14 @@ from meeting_server.app import create_meeting_app
 from meeting_server.settings import ServerSettings
 
 #: The stock routes the browser uses. Not the whole surface - just the ones a
-#: plan cannot be made without.
+#: meeting cannot be made, listed or cancelled without. The last two are the
+#: Meetings screen: there is no plan store, so a list of meetings is a list of
+#: teams plus each coordinator's snapshot (design_durability.md R7).
 REQUIRED = {
     "POST /teams",
+    "GET /teams",
+    "GET /teams/{team_id}/agent-states",
+    "POST /teams/{team_id}/restore",
     "GET /teams/{team_id}/events",
     "POST /teams/{team_id}/human-input",
     "POST /teams/{team_id}/message/from/{sender_name}/to/{recipient_name}",
@@ -32,7 +37,6 @@ def app(tmp_path):
             catalog_path="agents/catalog",
             event_store_path=tmp_path / "events",
             workspaces_root=tmp_path / "workspaces",
-            plan_store_path=tmp_path / "plans.json",
             cors_origins=["http://localhost:5173"],
         )
     )
@@ -54,16 +58,21 @@ def test_the_stock_team_routes_survive_the_splice(app):
     assert REQUIRED <= routes(app)
 
 
-def test_our_routes_are_mounted(app):
-    assert {"GET /platform/health", "GET /plans", "GET /plans/{plan_id}"} <= routes(app)
+def test_our_route_is_mounted(app):
+    assert "GET /platform/health" in routes(app)
 
 
-def test_the_plans_route_answers(app):
-    """Not a smoke test of FastAPI: it proves the route is reachable without a
-    principal. The community tier runs on `NoAuth`, and a 401 here would mean
-    the SPA needs a login screen nobody designed."""
+def test_there_is_no_plan_store_to_read(app):
+    """R3: the coordinator's state is the record, so `/plans` is gone."""
+    assert not {route for route in routes(app) if " /plans" in route}
+
+
+def test_the_list_of_teams_answers(app):
+    """Not a smoke test of FastAPI: it proves the route the Meetings screen
+    reads is reachable without a principal. The community tier runs on
+    `NoAuth`, and a 401 here would mean the SPA needs a login screen nobody
+    designed."""
     with TestClient(app) as client:
-        response = client.get("/plans")
+        response = client.get("/teams")
 
     assert response.status_code == 200
-    assert response.json() == []

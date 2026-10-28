@@ -1,8 +1,9 @@
 """What the server needs to know that the framework does not configure.
 
 `CommunitySettings` covers the server itself. These are the two things that are
-ours: where the three services live (so the browser can be told whether they
-are up) and where plans are stored.
+ours: where the three services live, so the browser can be told whether they
+are up. There is no plan store: a meeting's record is its team's coordinator
+state, kept by the framework's own event store (design_durability.md).
 """
 
 from __future__ import annotations
@@ -35,7 +36,6 @@ class ServerSettings(BaseModel):
     catalog_path: Path = Field(default=Path("catalog"))
     event_store_path: Path = Field(default=Path("data/events"))
     workspaces_root: Path = Field(default=Path("data/workspaces"))
-    plan_store_path: Path = Field(default=Path("data/plans.json"))
 
     #: Where the SPA is served from. The browser is a second origin by
     #: construction (G2), so this is not optional extra hardening.
@@ -57,7 +57,6 @@ class ServerSettings(BaseModel):
             catalog_path=Path(_env("CATALOG_PATH", "catalog")),
             event_store_path=Path(_env("EVENT_STORE_PATH", "data/events")),
             workspaces_root=Path(_env("WORKSPACES_ROOT", "data/workspaces")),
-            plan_store_path=Path(_env("PLAN_STORE_PATH", "data/plans.json")),
             cors_origins=[
                 origin.strip()
                 for origin in _env("CORS_ORIGINS", "http://localhost:5173").split(",")

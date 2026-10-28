@@ -18,10 +18,8 @@ CATALOG_ROOT = Path(__file__).resolve().parents[1] / "catalog"
 
 
 @pytest.fixture
-def settings(tmp_path: Path) -> Settings:
-    return Settings.from_env().model_copy(
-        update={"catalog_path": CATALOG_ROOT, "plan_store_path": tmp_path / "plans.json"}
-    )
+def settings() -> Settings:
+    return Settings.from_env().model_copy(update={"catalog_path": CATALOG_ROOT})
 
 
 @pytest.fixture
@@ -48,7 +46,6 @@ def test_every_member_is_present(card: TeamCard):
     assert set(by_name(card)) == {
         "@Human",
         "@Coordinator",
-        "@PlanRepository",
         "@Scheduler",
         "@FacilityManager",
         "@Catering",
@@ -82,21 +79,19 @@ def test_catering_reports_to_the_facility_manager(card: TeamCard):
 def test_coordinator_spawns_the_agents_it_assigns_work_to(card: TeamCard):
     coordinator = by_name(card)["@Coordinator"]
     assert set(m.card.config.name for m in coordinator.members) == {
-        "@PlanRepository",
         "@Scheduler",
         "@FacilityManager",
     }
 
 
-@pytest.mark.parametrize("name", ["@Coordinator", "@PlanRepository"])
-def test_deterministic_agents_cannot_reach_any_service(card: TeamCard, name: str):
+def test_the_coordinator_cannot_reach_any_service(card: TeamCard):
     """The strongest form of the isolation guarantee.
 
-    These two have no `tools` field at all - not an empty one - because their
-    config type is not `AgentConfig`. There is no configuration mistake that
-    could give either of them an MCP server.
+    The coordinator has no `tools` field at all - not an empty one - because
+    its config type is not `AgentConfig`. There is no configuration mistake
+    that could give it an MCP server.
     """
-    config = by_name(card)[name].card.config
+    config = by_name(card)["@Coordinator"].card.config
     assert not hasattr(config, "tools")
     assert not hasattr(config, "model_cfg")
 
@@ -124,11 +119,6 @@ def test_specialist_urls_are_resolved_and_distinct(card: TeamCard):
     assert len(set(urls)) == 3
 
 
-def test_plan_store_path_is_resolved(card: TeamCard, settings: Settings):
-    repository = by_name(card)["@PlanRepository"].card.config
-    assert repository.store_path == str(settings.plan_store_path)
-
-
 def test_message_types_match_the_declared_vocabulary(card: TeamCard):
     """The team may only exchange messages it declares."""
     assert set(card.message_types) == set(MESSAGE_TYPES)
@@ -154,6 +144,6 @@ def test_the_filterable_fields_are_the_ones_worth_filtering(card: TeamCard):
 def test_missing_env_var_fails_loudly(settings: Settings, monkeypatch):
     """A missing variable must name itself, not surface as a connection error."""
     monkeypatch.delenv("MEETING_MCP_URL", raising=False)
-    monkeypatch.setattr(Settings, "as_catalog_env", lambda self: {"PLAN_STORE_PATH": "x.json"})
+    monkeypatch.setattr(Settings, "as_catalog_env", lambda self: {})
     with pytest.raises(OSError, match="MEETING_MCP_URL"):
         load_team_card(settings)

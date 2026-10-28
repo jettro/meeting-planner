@@ -10,7 +10,7 @@ The shape of every handler is the same, and deliberately so:
 
 The model is given a message to reason about and a type to answer in. It never
 decides *who* to tell, and it never writes to the plan: the handler sends the
-reply and @PlanRepository does the writing. A model that could not do its job
+reply and @Coordinator records the result in its state. A model that could not do its job
 says so through `succeeded`, and the handler turns that into an
 `AssignmentFailed` - so a failure is reported as a failure rather than as a
 plausible-looking id.
@@ -232,7 +232,7 @@ class FacilityManager(SpecialistAgent, Akgent[FacilityManagerConfig, AgentState]
         # subclass would silently drop the system prompt. This is in-flight
         # bookkeeping for the seconds between booking a room and hearing back
         # about lunch - it is not part of the agent's replayable state, and the
-        # durable record of a plan belongs to @PlanRepository regardless.
+        # durable record of a plan belongs to @Coordinator's state regardless.
         self._pending: dict[str, PendingFacilities] = {}
 
     def receiveMsg_BookFacilitiesAssignment(  # noqa: N802

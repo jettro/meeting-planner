@@ -7,7 +7,8 @@ and puts a **React single-page app** in front of it.
 > **The one sentence to keep:** *the server owns execution; the client observes it and sends
 > requests.* Everything below follows from it.
 
-**Status:** proposal. Nothing is built yet. §8 lists the decisions still open.
+**Status:** built (see the changelog). G12, G23 and G25 are superseded by `design_durability.md`,
+and the Plans screen and `/plans` are replaced by a Meetings screen that lists teams.
 
 ---
 
@@ -280,7 +281,7 @@ server really does own execution.
 | G9 | **The team being watched lives in memory, not in the URL** | A reload loses the socket anyway, and a shareable link to a team waiting on *this* browser is a trap. `MemoryRouter` says so out loud |
 | G10 | **No forms library** | React Hook Form + Zod was planned; five fields and two gates did not earn a dependency. Minimal custom JavaScript cuts both ways |
 | G11 | **The API base is a build argument, not a runtime variable** | Vite inlines `import.meta.env`. The browser runs on the host, so the default is the host's port mapping, never a compose service name |
-| G12 | **A plan records the team runs that touched it** | `MeetingPlan.team_ids`, stamped by `@PlanRepository` because it is the only writer. One team plans one meeting, so a plan changed later has several runs and its trace is all of them |
+| G12 | ~~**A plan records the team runs that touched it**~~ — **withdrawn**: one team is one meeting, cancellation included (`design_durability.md` R2, R4) | `MeetingPlan.team_ids`, stamped by `@PlanRepository` because it is the only writer. One team plans one meeting, so a plan changed later has several runs and its trace is all of them |
 | G13 | **One Trace screen, two sources** | `/trace` is the live socket, `/trace/<team>` is a stored run fetched once. A second screen would have duplicated every column and both toggles to show the same thing |
 | G14 | **`status` is a `computed_field`** | The browser should not re-derive what the domain already knows. Derived stays derived: it serialises out and is never read in — see §8.4 for what that cost |
 | G15 | **Two clients, not one** | Our SPA is about the *meeting* and is the demo. Upstream's console is about the *team* — hierarchy, prompts, token spend — and is the instrument. Merging them would mean building the second badly |
@@ -291,9 +292,9 @@ server really does own execution.
 | G20 | **The cancel confirmation is a browser dialog, not a human gate** | The SPA already holds the plan, so it can name what is about to be released without a round trip. The slot and lunch gates are different: they need an answer the client does not have, and the answer changes what gets booked. A confirmation only decides whether the message is sent at all |
 | G21 | **Cancelling is a typed message, so it needed no endpoint** | `POST /teams/{id}/message/from/@Human/to/@Coordinator` with a `CancelPlanRequest` is the same route planning uses. Adding `POST /plans/{id}/cancel` would have put a second way to start a run beside the framework's own |
 | G22 | **A cancelled plan stays in the list, with its ids** | It is the record of what was booked, and this is a demo of a saga undoing itself — hiding the result would hide the point |
-| G23 | **An unfinished plan is offered Resume or Cancel by *team liveness*, never by its status** | The framework idle-stops a team an hour after its last message. Alive means parked at a gate and still answerable; stopped means the coordinator's in-memory state is gone and the plan can never be finished, so releasing what it booked is all that is left |
+| G23 | ~~**An unfinished plan is offered Resume or Cancel by *team liveness*, never by its status**~~ — **superseded** by `design_durability.md` R6: Resume is offered by what the coordinator waits for, because a durable coordinator survives a stopped team | The framework idle-stops a team an hour after its last message. Alive means parked at a gate and still answerable; stopped means the coordinator's in-memory state is gone and the plan can never be finished, so releasing what it booked is all that is left |
 | G24 | **Which gate is open is read from the trace, not from what the browser typed** | A decision carries the question's `id` as its `parent_id`, so a run resumed in another tab shows the gate that is genuinely still open instead of re-asking a settled one |
-| G25 | **Cancelling stops every run on the plan first** | `PlanStore.save` is a blind replace, and a live team would otherwise save its stale copy over the cancellation — leaving a plan that reads CONFIRMED with bookings that no longer exist. `stop` is synchronous, so after it returns the old team cannot write. 409 means already stopped, which is the outcome wanted |
+| G25 | ~~**Cancelling stops every run on the plan first**~~ — **superseded** by `design_durability.md` R5: one team owns the meeting, and a late booking is released on arrival | `PlanStore.save` is a blind replace, and a live team would otherwise save its stale copy over the cancellation — leaving a plan that reads CONFIRMED with bookings that no longer exist. `stop` is synchronous, so after it returns the old team cannot write. 409 means already stopped, which is the outcome wanted |
 
 ### 8.1 There is no `ServerUserProxy`, and that is the better answer
 

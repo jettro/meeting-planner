@@ -15,43 +15,82 @@ import {
   Typography,
 } from "@mui/material";
 import { DataGrid, type GridColDef } from "@mui/x-data-grid";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, type MeetingPlan } from "../api/client";
+import {
+  api,
+  TEAM_NAMESPACE,
+  waitingForTheHuman,
+  type CoordinatorState,
+  type MeetingPlan,
+} from "../api/client";
 import { useCancelPlan } from "../hooks/useCancelPlan";
-import { useLiveRuns } from "../hooks/useLiveRuns";
 import { useTeam } from "../TeamContext";
 
+/** One team run, and the meeting it arranged. One team is one meeting. */
+interface Meeting {
+  teamId: string;
+  createdAt: string;
+  state: CoordinatorState;
+  plan: MeetingPlan;
+}
+
 /**
- * Every plan the team has made, including the ones nobody is watching.
+ * Every meeting the team has arranged, including the ones nobody is watching.
  *
- * This reads the agents' own store through `GET /plans` rather than the event
- * stream: once a team has stopped there is no actor left to ask, and a history
- * that only works while a team is alive is not a history.
+ * There is no plan store behind this (design_durability.md R3, R7). One team
+ * arranges one meeting, and its coordinator's state is the only record of it,
+ * so the list of meetings is the list of teams: `GET /teams` for the runs, and
+ * each run's coordinator snapshot for what came of it. The framework persists
+ * that snapshot and serves it after the team has stopped, which is what makes
+ * this a history rather than a view of whatever happens to be running.
  *
- * One thing can be done to a plan from here, and it is not an edit. There is
- * no way to change a meeting in this system: a meeting that is wrong is
+ * One thing can be done to a meeting from here, and it is not an edit. There
+ * is no way to change a meeting in this system: a meeting that is wrong is
  * cancelled, which releases everything it holds, and a new one is planned.
  *
- * An unfinished plan is offered something else first. Whether it can be
- * carried to the end depends on one thing - whether the team that was running
- * it is still alive - because the coordinator keeps its state in memory and
- * is not durable. Alive means it is parked at a gate and the answer is still
- * wanted: that one is resumed. Stopped means nobody can ever finish it, and
- * releasing whatever it booked is the only thing left.
+ * A meeting whose coordinator is waiting at a gate is offered Resume first.
+ * Whether its team is still alive does not matter: answering the gate revives
+ * it, and the coordinator comes back knowing what it asked (R6).
  */
-export default function PlansPage() {
-  const [selected, setSelected] = useState<MeetingPlan | null>(null);
-  const [confirming, setConfirming] = useState<MeetingPlan | null>(null);
+export default function MeetingsPage() {
+  const [selected, setSelected] = useState<Meeting | null>(null);
+  const [confirming, setConfirming] = useState<Meeting | null>(null);
   const cancellation = useCancelPlan();
-  const liveRunFor = useLiveRuns();
   const team = useTeam();
   const navigate = useNavigate();
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["plans"],
-    queryFn: api.plans,
+  const teams = useQuery({
+    queryKey: ["teams"],
+    queryFn: api.listTeams,
+    refetchInterval: 30_000,
   });
+
+  // Ours only, newest first. The server also holds runs of any other team card
+  // loaded into it, and those have no coordinator of ours to read.
+  const runs = (teams.data ?? [])
+    .filter((run) => run.catalog_namespace === TEAM_NAMESPACE)
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+
+  // One snapshot per run. Fine for a demo with tens of runs; a server-side
+  // join is the remedy if it ever is not.
+  const states = useQueries({
+    queries: runs.map((run) => ({
+      queryKey: ["coordinator", run.team_id],
+      queryFn: () => api.coordinatorState(run.team_id),
+    })),
+  });
+
+  // A run whose coordinator was never asked for anything has no meeting, so
+  // there is nothing to list.
+  const meetings: Meeting[] = runs.flatMap((run, index) => {
+    const state = states[index]?.data;
+    return state?.plan
+      ? [{ teamId: run.team_id, createdAt: run.created_at, state, plan: state.plan }]
+      : [];
+  });
+  const isLoading = teams.isLoading || states.some((query) => query.isLoading);
+  const error = teams.error ?? states.find((query) => query.error)?.error ?? null;
 
   const columns: GridColDef[] = [
     { field: "title", headerName: "Title", flex: 1, minWidth: 180 },
@@ -62,38 +101,51 @@ export default function PlansPage() {
     {
       field: "status",
       headerName: "Status",
-      width: 170,
+      width: 190,
       renderCell: (cell) => <StatusChip status={String(cell.value)} />,
+    },
+    {
+      field: "waiting",
+      headerName: "",
+      width: 120,
+      renderCell: (cell) =>
+        cell.value ? <Chip size="small" variant="outlined" color="warning" label="your turn" /> : null,
     },
   ];
 
-  const rows = (data ?? []).map((plan) => ({
-    id: plan.plan_id,
-    title: plan.title,
-    day: plan.day,
-    time: plan.proposed_start
-      ? `${plan.proposed_start.slice(0, 5)}–${plan.proposed_end?.slice(0, 5)}`
-      : "—",
-    where: plan.room_code ? `${plan.room_code} at ${plan.location_id}` : plan.location_id,
-    people: plan.participant_emails.length,
-    status: plan.status,
-    plan,
-  }));
+  const rows = meetings.map((meeting) => {
+    const { plan } = meeting;
+    return {
+      id: meeting.teamId,
+      title: plan.title,
+      day: plan.day,
+      time: plan.proposed_start
+        ? `${plan.proposed_start.slice(0, 5)}–${plan.proposed_end?.slice(0, 5)}`
+        : "—",
+      where: plan.room_code ? `${plan.room_code} at ${plan.location_id}` : plan.location_id,
+      people: plan.participant_emails.length,
+      // A failure is not a status the plan derives - it lives beside the plan
+      // in the coordinator's state - so the row says it in so many words.
+      status: meeting.state.failure && !plan.cancelled ? "FAILED" : plan.status,
+      waiting: waitingForTheHuman(meeting.state),
+      meeting,
+    };
+  });
 
   return (
     <Box>
       <Typography variant="h5" gutterBottom>
-        Plans
+        Meetings
       </Typography>
 
       {isLoading && <CircularProgress />}
       {error && <Alert severity="error">{(error as Error).message}</Alert>}
 
-      {data && data.length === 0 && (
-        <Alert severity="info">No plans yet. Ask the team for a meeting first.</Alert>
+      {!isLoading && meetings.length === 0 && (
+        <Alert severity="info">No meetings yet. Ask the team for one first.</Alert>
       )}
 
-      {data && data.length > 0 && (
+      {meetings.length > 0 && (
         <DataGrid
           rows={rows}
           columns={columns}
@@ -101,32 +153,32 @@ export default function PlansPage() {
           autoHeight
           disableRowSelectionOnClick
           hideFooterSelectedRowCount
-          onRowClick={(row) => setSelected(row.row.plan as MeetingPlan)}
+          onRowClick={(row) => setSelected(row.row.meeting as Meeting)}
           sx={{ "& .MuiDataGrid-row": { cursor: "pointer" } }}
           initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
           pageSizeOptions={[25, 50, 100]}
         />
       )}
 
-      <PlanDialog
-        plan={selected}
-        liveRun={selected ? liveRunFor(selected.team_ids) : null}
+      <MeetingDialog
+        meeting={selected}
         onClose={() => setSelected(null)}
-        onResume={(teamId) => {
+        onResume={async (teamId) => {
           setSelected(null);
+          // A stopped team has to be restored before its stream will play.
+          await api.restoreTeam(teamId);
           team.attach(teamId);
           navigate("/plan");
         }}
-        onCancelMeeting={(plan) => {
+        onCancelMeeting={(meeting) => {
           setSelected(null);
           cancellation.reset();
-          setConfirming(plan);
+          setConfirming(meeting);
         }}
       />
 
       <CancelDialog
-        plan={confirming}
-        liveRun={confirming ? liveRunFor(confirming.team_ids) : null}
+        meeting={confirming}
         cancellation={cancellation}
         onClose={() => {
           setConfirming(null);
@@ -145,32 +197,31 @@ const COLOURS: Record<string, "default" | "info" | "success" | "warning" | "erro
   ROOM_BOOKED: "info",
   CONFIRMED: "success",
   CANCELLED: "error",
+  FAILED: "error",
 };
 
 function StatusChip({ status }: { status: string }) {
-  return <Chip size="small" label={status.replace("_", " ")} color={COLOURS[status] ?? "default"} />;
+  return <Chip size="small" label={status.replaceAll("_", " ")} color={COLOURS[status] ?? "default"} />;
 }
 
-function PlanDialog({
-  plan,
-  liveRun,
+function MeetingDialog({
+  meeting,
   onClose,
   onResume,
   onCancelMeeting,
 }: {
-  plan: MeetingPlan | null;
-  liveRun: string | null;
+  meeting: Meeting | null;
   onClose: () => void;
   onResume: (teamId: string) => void;
-  onCancelMeeting: (plan: MeetingPlan) => void;
+  onCancelMeeting: (meeting: Meeting) => void;
 }) {
   const navigate = useNavigate();
-  if (!plan) return null;
+  if (!meeting) return null;
+  const { plan, state } = meeting;
 
-  // Only an unfinished plan can be resumed, and only while its team is still
-  // alive to be resumed into.
-  const unfinished = plan.status !== "CONFIRMED" && plan.status !== "CANCELLED";
-  const resumeTeam = unfinished && !plan.cancelled ? liveRun : null;
+  // Resumed by what the coordinator is waiting for, not by whether its team is
+  // alive (R6): a stopped team is revived by the answer.
+  const resumable = waitingForTheHuman(state);
 
   const rows: [string, string][] = [
     ["Day", plan.day],
@@ -216,53 +267,64 @@ function PlanDialog({
         </Typography>
         <Fields rows={references} mono />
 
+        {state.failure && !plan.cancelled && (
+          <Alert severity="error" sx={{ mt: 3 }}>
+            It could not be arranged: {state.failure}
+          </Alert>
+        )}
+
+        {state.cancel_failures.length > 0 && (
+          <Alert severity="warning" sx={{ mt: 3 }}>
+            <Typography variant="body2" gutterBottom>
+              Cancelled, but something is still held and needs releasing by hand:
+            </Typography>
+            <Stack component="ul" spacing={0.5} sx={{ pl: 2, m: 0 }}>
+              {state.cancel_failures.map((line) => (
+                <Typography component="li" variant="body2" key={line} sx={{ fontFamily: "monospace" }}>
+                  {line}
+                </Typography>
+              ))}
+            </Stack>
+          </Alert>
+        )}
+
         <Typography variant="subtitle2" sx={{ mt: 3 }}>
-          Runs
+          The run
         </Typography>
         <Typography variant="body2" color="text.secondary" gutterBottom>
-          One team plans one meeting, so a plan that is cancelled later has a second run —
-          the team that released it. Each still has its full trace on the server.
+          One team arranges one meeting, and cancels it too - so everything that happened to
+          this meeting is in one trace.
         </Typography>
-        <Stack spacing={1} sx={{ mt: 1 }}>
-          {plan.team_ids.length === 0 && (
-            <Typography variant="body2">
-              This plan predates run tracking, so its trace cannot be found.
-            </Typography>
-          )}
-          {plan.team_ids.map((teamId, index) => (
-            <Button
-              key={teamId}
-              variant="outlined"
-              size="small"
-              sx={{ justifyContent: "space-between", textTransform: "none" }}
-              onClick={() => navigate(`/trace/${teamId}`)}
-            >
-              <span>Run {index + 1}</span>
-              <Box component="span" sx={{ fontFamily: "monospace", fontSize: 12 }}>
-                {teamId}
-              </Box>
-            </Button>
-          ))}
-        </Stack>
+        <Button
+          variant="outlined"
+          size="small"
+          sx={{ mt: 1, justifyContent: "space-between", textTransform: "none", width: "100%" }}
+          onClick={() => navigate(`/trace/${meeting.teamId}`)}
+        >
+          <span>Open the trace</span>
+          <Box component="span" sx={{ fontFamily: "monospace", fontSize: 12 }}>
+            {meeting.teamId}
+          </Box>
+        </Button>
       </DialogContent>
       <Divider />
       <DialogActions sx={{ px: 3, py: 2 }}>
         <Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1 }}>
-          {resumeTeam
-            ? "This meeting is unfinished and its team is still waiting."
+          {resumable
+            ? "This meeting is waiting for your answer."
             : "A meeting cannot be changed, only called off and planned again."}
         </Typography>
         <Button onClick={onClose}>Close</Button>
         <Button
           color="error"
-          variant={resumeTeam ? "text" : "outlined"}
+          variant={resumable ? "text" : "outlined"}
           disabled={plan.cancelled}
-          onClick={() => onCancelMeeting(plan)}
+          onClick={() => onCancelMeeting(meeting)}
         >
-          {resumeTeam ? "Stop and cancel" : "Cancel meeting"}
+          Cancel meeting
         </Button>
-        {resumeTeam && (
-          <Button variant="contained" onClick={() => onResume(resumeTeam)}>
+        {resumable && (
+          <Button variant="contained" onClick={() => onResume(meeting.teamId)}>
             Resume
           </Button>
         )}
@@ -296,18 +358,17 @@ function heldBy(plan: MeetingPlan): string[] {
  * have (design_cancel.md §3).
  */
 function CancelDialog({
-  plan,
-  liveRun,
+  meeting,
   cancellation,
   onClose,
 }: {
-  plan: MeetingPlan | null;
-  liveRun: string | null;
+  meeting: Meeting | null;
   cancellation: ReturnType<typeof useCancelPlan>;
   onClose: () => void;
 }) {
   const navigate = useNavigate();
-  if (!plan) return null;
+  if (!meeting) return null;
+  const { plan } = meeting;
 
   const held = heldBy(plan);
   const failures = (cancellation.outcome?.failures as string[] | undefined) ?? [];
@@ -334,11 +395,10 @@ function CancelDialog({
             <DialogContentText sx={{ mt: 2 }}>
               It cannot be undone. To meet anyway, plan a new meeting.
             </DialogContentText>
-            {liveRun && (
-              <Alert severity="warning" sx={{ mt: 2 }}>
-                This meeting is still being planned. Its team will be stopped
-                first, so nothing it was in the middle of can book anything
-                after the release.
+            {!plan.cancelled && plan.status !== "CONFIRMED" && (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                This meeting is still being arranged. Anything its team books
+                after this is released as soon as it lands.
               </Alert>
             )}
           </>
@@ -396,7 +456,7 @@ function CancelDialog({
             color="error"
             variant="contained"
             disabled={cancellation.running}
-            onClick={() => void cancellation.run(plan)}
+            onClick={() => void cancellation.run(meeting.teamId, plan)}
           >
             Cancel the meeting
           </Button>

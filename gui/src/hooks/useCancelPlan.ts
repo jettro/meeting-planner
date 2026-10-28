@@ -10,25 +10,20 @@ import {
 import { useTeamStream } from "./useTeamStream";
 
 /**
- * Calling a meeting off, as a run the browser can watch.
+ * Calling a meeting off, watched on the stream of the team that made it.
  *
- * A cancellation is a team run like any other - it has a trace, it appears in
- * the console, and it is added to the plan's list of runs by the repository
- * that stores the result. So it is driven the same way a plan is: create a
- * team, send one typed message, and read the answer off the stream.
+ * The cancellation goes to the meeting's own team (design_durability.md R4):
+ * its coordinator holds the only record of what was booked, so nothing has to
+ * be loaded and no second team is created. The server revives the team if it
+ * has stopped. The booking and its undoing end up in one trace.
  *
- * It asks no questions, which is the whole difference. There is no gate to
- * answer, because there is nothing left to decide once the human has said yes.
+ * There is nothing to stop first, either. The old design stopped every live
+ * run before cancelling because two teams could write the same plan; now one
+ * team owns it, and a booking still in flight when the cancel arrives is
+ * released by the coordinator when it lands (R5).
  *
- * ## Any live run is stopped first, and that is not politeness
- *
- * `PlanStore.save` is a blind replace - last write wins, no version check -
- * and a cancellation runs in a *second* team while the first may still be
- * holding the plan in memory. Release the room, and a team that is still
- * going books the lunch and saves its own copy over the top: the plan reads
- * CONFIRMED again, with a meeting that no longer exists and an order nothing
- * references. Stopping is synchronous, so once it returns the old team cannot
- * write at all. That is what makes this safe rather than merely likely.
+ * It asks no questions. There is no gate to answer, because there is nothing
+ * left to decide once the human has said yes.
  */
 export function useCancelPlan() {
   const [teamId, setTeamId] = useState<string | null>(null);
@@ -37,6 +32,9 @@ export function useCancelPlan() {
   const { events } = useTeamStream(teamId);
   const queryClient = useQueryClient();
 
+  // The stream replays the team's whole history, but a meeting is cancelled
+  // once - the button goes once it is - so the first report on it is the
+  // answer. A booking released late (R5) reports again, after it.
   const outcome = useMemo<DomainMessage | null>(
     () =>
       events
@@ -46,30 +44,25 @@ export function useCancelPlan() {
     [events],
   );
 
-  // The grid is reading the store, and the store has only now changed. The
-  // agents report a cancellation after the write, so by the time this fires
-  // there is a cancelled plan to re-read.
+  // The coordinator reports after its state records the cancellation (R8), so
+  // by the time this fires there is a cancelled meeting to re-read.
   useEffect(() => {
     if (outcome) {
-      void queryClient.invalidateQueries({ queryKey: ["plans"] });
       void queryClient.invalidateQueries({ queryKey: ["teams"] });
+      void queryClient.invalidateQueries({ queryKey: ["coordinator"] });
     }
   }, [outcome, queryClient]);
 
-  const run = useCallback(async (plan: MeetingPlan) => {
+  const run = useCallback(async (meetingTeamId: string, plan: MeetingPlan) => {
     setStarting(true);
     setError(null);
-    setTeamId(null);
     try {
-      // Every run that touched this plan, not just the one that looked alive
-      // a moment ago: liveness is polled, and stopping something already
-      // stopped is free.
-      for (const previous of plan.team_ids) {
-        await api.stopTeam(previous);
-      }
-      const team = await api.createTeam(plan);
-      setTeamId(team.team_id);
-      await api.cancelPlan(team.team_id, plan.plan_id);
+      // Restored before the socket opens: a socket on a stopped team waits
+      // for a restore, and the cancel alone would revive the team without
+      // waking it. The stream replays from the start, so nothing is missed.
+      await api.restoreTeam(meetingTeamId);
+      setTeamId(meetingTeamId);
+      await api.cancelPlan(meetingTeamId, plan.plan_id);
     } catch (problem) {
       setError(problem instanceof Error ? problem.message : String(problem));
     } finally {

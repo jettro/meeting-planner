@@ -30,7 +30,7 @@ import { useTeam } from "../TeamContext";
  * whole thing.
  *
  * Two sources, one screen. Without a team in the URL this is the live stream
- * of the plan being watched. With one - how the plans screen links here - it
+ * of the plan being watched. With one - how the Meetings screen links here - it
  * is that run's stored trace, fetched once, because the events outlive both
  * the socket and the team that produced them.
  */
@@ -81,7 +81,7 @@ export default function TracePage() {
     return (
       <Alert severity="info">
         No team yet. Start a plan and the conversation shows up here as it happens, or
-        open one from <Link to="/plans">Plans</Link>.
+        open one from <Link to="/meetings">Meetings</Link>.
       </Alert>
     );
   }

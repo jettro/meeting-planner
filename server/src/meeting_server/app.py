@@ -1,4 +1,9 @@
-"""Composing the server: the community tier, plus the two things we add.
+"""Composing the server: the community tier, plus the one thing we add.
+
+That one thing is `/platform/health`. There used to be a second, `/plans`, read
+from a plan store of our own; it went when the coordinator's state became the
+meeting's record (design_durability.md R3, R7). The browser now lists teams
+and reads each coordinator's snapshot through the framework's own routes.
 
 The assembly follows the framework's own instructions rather than inventing a
 parallel one. `server_modules` is spliced into, never retyped - a retyped copy
@@ -25,10 +30,8 @@ from akgentic.infra.server.app import server_modules
 from fastapi import FastAPI
 from meeting_agents.bootstrap import apply_env
 from meeting_agents.settings import Settings as AgentSettings
-from meeting_agents.store import JsonPlanStore
 
 from meeting_server.catalog import EnvResolvingCatalog
-from meeting_server.plans import PlansModule
 from meeting_server.platform import PlatformModule
 from meeting_server.settings import ServerSettings
 from meeting_server.yaml_types import install_yaml_representers
@@ -74,17 +77,15 @@ def create_meeting_app(settings: ServerSettings | None = None) -> FastAPI:
     services = wire_community(infra_settings)
     services.catalog = EnvResolvingCatalog(repository=YamlEntryRepository(root=infra_settings.catalog_path))
 
-    store = JsonPlanStore(settings.plan_store_path)
     modules = [
         *server_modules(services, infra_settings),
         PlatformModule(settings),
-        PlansModule(store),
     ]
     logger.info(
-        "serving team namespace '%s' from %s, plans in %s",
+        "serving team namespace '%s' from %s, events in %s",
         NAMESPACE,
         settings.catalog_path,
-        settings.plan_store_path,
+        settings.event_store_path,
     )
     return create_app(services, infra_settings, modules=modules)
 

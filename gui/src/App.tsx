@@ -12,8 +12,8 @@ import {
 } from "@mui/material";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Link, MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import MeetingsPage from "./pages/MeetingsPage";
 import PlanPage from "./pages/PlanPage";
-import PlansPage from "./pages/PlansPage";
 import PlatformPage from "./pages/PlatformPage";
 import TracePage from "./pages/TracePage";
 import { TeamProvider } from "./TeamContext";
@@ -24,15 +24,15 @@ const client = new QueryClient();
 const TABS = [
   { path: "/", label: "Platform" },
   { path: "/plan", label: "Plan a meeting" },
-  { path: "/plans", label: "Plans" },
+  { path: "/meetings", label: "Meetings" },
   { path: "/trace", label: "Trace" },
 ];
 
 function Shell() {
   const { pathname } = useLocation();
   // `/trace/<team>` is still the Trace tab, so a path segment below a tab
-  // counts as that tab - but only on a segment boundary, or `/plan` would
-  // swallow `/plans`.
+  // counts as that tab - but only on a segment boundary, so `/plan` and a
+  // longer path that merely starts with it are never confused.
   const current =
     TABS.map((tab) => tab.path).find(
       (path) => path !== "/" && (pathname === path || pathname.startsWith(`${path}/`)),
@@ -54,7 +54,7 @@ function Shell() {
         <Routes>
           <Route path="/" element={<PlatformPage />} />
           <Route path="/plan" element={<PlanPage />} />
-          <Route path="/plans" element={<PlansPage />} />
+          <Route path="/meetings" element={<MeetingsPage />} />
           <Route path="/trace" element={<TracePage />} />
           <Route path="/trace/:teamId" element={<TracePage />} />
         </Routes>

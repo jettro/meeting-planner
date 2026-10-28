@@ -442,6 +442,9 @@ longer exists. The cancellation fan-out is therefore a **deterministic handler o
 explicitly. The specialists still own the MCP calls (isolation is preserved) — but *which* calls
 happen, and in what order, is decided in code, not in a prompt.
 
+*(Superseded by `design_durability.md`: the coordinator's durable state now remembers the links,
+and `@PlanRepository` is gone. The reasoning below is why the links matter at all, and still holds.)*
+
 **(b) `@PlanRepository` remembers the links.** Nothing in our services records that
 *meeting 12 ↔ room booking 8 ↔ order abc-123*; each only knows its own id. One actor owns that
 store, every read/write goes through it as a message, so it needs no lock and every access is
@@ -500,7 +503,7 @@ Found while walking the scenario. None are blockers, but they shape the work.
 |---|---|---|
 | D1 | **Deterministic `Akgent` coordinator**, LLM `BaseAgent` specialists | Keeps routing and irreversible writes out of a model's hands (§1.3) |
 | D2 | **`@Catering` nested under `@FacilityManager`** | The facility manager owns the room+lunch bundle; the human never sees where lunch comes from |
-| D3 | **`@PlanRepository` actor** owns the MeetingPlan store | Single-owner actor needs no lock; keeps business data separate from team event history |
+| D3 | ~~**`@PlanRepository` actor** owns the MeetingPlan store~~ — **withdrawn** (`design_durability.md` R3): the coordinator's durable state is the record | Single-owner actor needs no lock; keeps business data separate from team event history |
 | D4 | **Approve the proposed time slot only** | One gate, before anything is written; room and lunch then proceed automatically |
 | D5 | ~~Only a *location* change rebooks lunch~~ — **withdrawn**: there is no change feature (`design_cancel.md`) | Nothing moves location, so the rule has nothing to govern |
 | D6 | **OpenAI**, default model `gpt-6-luna` | Small/fast tier is enough for the three specialists; the coordinator uses no model at all |
@@ -560,6 +563,10 @@ Each of these was checked against the installed packages, not assumed:
   static method.
 
 ### 7.3 Durability before notification (decided while implementing)
+
+*(The rule stands; the mechanism changed. There is no repository to acknowledge a write any more:
+the coordinator records a change in its state before it sends the message that reports it, and
+the orchestrator handles one agent's telemetry in order — `design_durability.md` R8.)*
 
 The first version of the coordinator told the human a plan was complete and
 asked the repository to store it in the same breath. Those are two mailboxes, so

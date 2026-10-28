@@ -1,5 +1,10 @@
 # Cancelling a meeting — design
 
+> **Partly superseded by `design_durability.md`** (2026-10-28). The coordinator is durable now and
+> its state is the meeting's only record, so a cancellation goes to the team that made the meeting
+> rather than to a new one, there is no plan store, and nothing is stopped first. The release saga
+> itself (§1, §2, §4's ordering and failure rules) is unchanged.
+
 Status: **built** (2026-10-29). Verified end to end against the running stack:
 the meeting, the booking and the order were really gone from the three
 services, and the release has its own trace.
@@ -129,6 +134,7 @@ means cancelled *and* stored.
 immediately, with no steps and no failures. A repeat must not look like three
 failures against ids that are already gone.
 
+*(Superseded by `design_durability.md` R4: the cancel now goes to the meeting's own team.)*
 **A cancellation runs in a new team** that loads the plan from the repository,
 because `@Coordinator` is not durable — see Appendix A.
 
@@ -236,6 +242,9 @@ re-asking one that was settled.
 
 ### 8.2 Cancelling stops the live team first, and that is not politeness
 
+*(Superseded by `design_durability.md` R5: with one team owning the meeting there is no second
+writer to stop; a booking that lands after a cancel is released on arrival.)*
+
 `PlanStore.save` is a blind replace — last write wins, no version check — and
 a cancellation runs in a *second* team while the first may still hold the plan
 in memory. Release the room, and a team that is still going books the lunch
@@ -283,6 +292,10 @@ them are facts about the framework that will matter again.
   `BaseAgent.__init__` (`agent/agent.py:277`), the LLM agent. Our deterministic
   agents never do. Measured: a finished team's state directory holds three
   files, the three specialists, and nothing else.
+
+*(Correction, `design_durability.md` §1: the conclusion below was a measurement of our code, not
+of the framework. `init_state` keeps an observer but never creates one, and our coordinator never
+attached one. With the observer attached, the coordinator is restored like any other agent.)*
 
 **The last one is the one to remember.** Our deterministic agents are not
 durable, by construction. Anything that must survive a restart belongs in the

@@ -59,7 +59,6 @@ run-nomnom-mcp: ## Run nomnom-service's MCP server locally with uv (http://local
 # `uv run --env-file`, so these override .env without editing it. The API key
 # comes from .env and is never echoed here.
 AGENT_HOST_ENV := CATALOG_PATH=agents/catalog \
-                  PLAN_STORE_PATH=data/plans.json \
                   PYDANTIC_AI_NO_BANNER=1 \
                   MEETING_MCP_URL=http://localhost:8101/mcp \
                   LOCATION_MCP_URL=http://localhost:8102/mcp \
@@ -129,10 +128,11 @@ clean: ## Stop containers and remove volumes (destroys SQLite data!)
 
 # Everything the running system has ever written lives in one of three places:
 # the named volumes, the SQLite files a local `make run-*` leaves in the repo
-# root, and the agents' plan store. Wiping only the volumes leaves a stale
+# root, and `data/` - the event store of a host-run server, which is where
+# every meeting's record lives. Wiping only the volumes leaves a stale
 # local database behind, which is confusing precisely when you are trying to
 # start clean. The seed data comes back by itself on the next start.
-reset: clean ## Wipe ALL data (volumes, local *.db, plan store); stack stays down
+reset: clean ## Wipe ALL data (volumes, local *.db, event store); stack stays down
 	rm -f meeting.db location.db nomnom.db
 	rm -f $(foreach s,$(SERVICES),services/$(s)/*.db)
 	rm -rf data

@@ -29,7 +29,6 @@ RUN uv sync --frozen --no-dev --package meeting-server
 COPY agents/catalog ./catalog
 
 ENV CATALOG_PATH=/app/catalog
-ENV PLAN_STORE_PATH=/data/plans.json
 ENV EVENT_STORE_PATH=/data/events
 ENV WORKSPACES_ROOT=/data/workspaces
 VOLUME ["/data"]

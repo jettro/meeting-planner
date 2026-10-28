@@ -17,4 +17,3 @@ payload:
     human_name: "@Human"
     scheduler_name: "@Scheduler"
     facility_name: "@FacilityManager"
-    repository_name: "@PlanRepository"

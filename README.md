@@ -32,6 +32,8 @@ APIs (the MCP endpoints use a lightweight per-service API key instead, see `desi
 defined in catalog YAML under `agents/catalog/`:
 
 - `@Coordinator` — deterministic; drives the booking saga and is the only agent the human talks to.
+  Its state is the meeting's only record — which meeting, room booking and lunch order belong
+  together — snapshotted by the framework and restored with the team (`design_durability.md`).
 - `@Scheduler` — finds slots both people are free, and books the meeting.
 - `@FacilityManager` — books the room, and delegates lunch to `@Catering`.
 - `@Catering` — orders the food.
@@ -76,18 +78,19 @@ It is not a server: one run plans one meeting and exits, so it sits behind a com
 
 The same team also runs behind HTTP, for clients that are not a terminal. `make up` starts it on
 <http://localhost:8200>; `make run-server` runs it on the host instead. It is the community tier of
-`akgentic-infra` with two routes of our own spliced in:
+`akgentic-infra` with one route of our own spliced in:
 
 | route | what it answers |
 |---|---|
 | `GET /platform/health` | all three services at once, probed concurrently — `up`, `degraded` (it answered, badly) or `unreachable` (it did not answer) |
-| `GET /plans`, `GET /plans/{id}` | the plans the team has made, readable after the team has stopped. Read-only: a plan is only ever written by the agents, and cancelling one has to release three bookings, so it goes through the team too |
 
 Everything else is the framework's: `POST /teams` creates a team from the catalog,
 `POST /teams/{id}/message/from/@Human/to/@Coordinator` starts a plan with a typed
 `PlanMeetingRequest` — or cancels one with a `CancelPlanRequest`, which is why cancelling
-needs no endpoint of its own — `GET /teams/{id}/events` (or `WS /ws/{id}`) is the trace, and
-`POST /teams/{id}/human-input` answers a gate with plain text.
+needs no endpoint of its own — `GET /teams/{id}/events` (or `WS /ws/{id}`) is the trace,
+`POST /teams/{id}/human-input` answers a gate with plain text, and `GET /teams` plus
+`GET /teams/{id}/agent-states` are the list of meetings: one team arranges one meeting, so there
+is no plan store of our own to read.
 
 Both human gates work over HTTP: the answer is read against the question it refers to by
 `ChannelHuman.process_human_input`, using the same `answers.py` the terminal uses. A browser can
@@ -106,7 +109,7 @@ Four screens:
 |---|---|
 | **Platform** | the three services, polled every ten seconds. `up` / `degraded` / `unreachable` are kept apart: a 503 and a silence have different causes |
 | **Plan a meeting** | the form, then the two gates as they arrive — the slots as radio buttons (the candidates travel with the question), lunch as free text, because `@Catering` holds the menu and is the only agent that should read the words — then the booked meeting |
-| **Plans** | every plan the team has made, with the meeting, booking and order ids that nothing else links together, and the runs that touched it. A plan can be **cancelled** here, which releases the lunch order, the room and the meeting. An unfinished plan whose team is still alive offers **Resume** instead — it is parked at a gate waiting to be answered. There is no edit: to change a meeting you cancel it and plan a new one |
+| **Meetings** | one row per team run, read from each coordinator's snapshot: the meeting, booking and order ids that nothing else links together, and what it is waiting for. A meeting can be **cancelled** here — the cancel goes to the team that made it, revived if it has stopped, and releases the lunch order, the room and the meeting. A meeting waiting at a gate offers **Resume**, whether or not its team is still running. There is no edit: to change a meeting you cancel it and plan a new one |
 | **Trace** | every message, live, with a *framework events* toggle. Off, it is twenty rows that read like a story. On, it is the actor system starting up, receiving and processing — the "show me what happens at the framework level" view. Each row carries a one-line summary of what the message actually said; clicking it opens the whole payload, as readable fields or as the raw envelope. A run that has finished can be re-read from the server, so a trace outlives the socket that carried it |
 
 TypeScript, MUI, TanStack Query, React Router, and about forty lines of WebSocket. The API base is
@@ -145,17 +148,19 @@ meeting-planner/
 ├── design_akgents.md          # Design of the agent team (Akgents)
 ├── design_gui.md              # Design of the team server + browser client
 ├── design_cancel.md           # Design of cancelling a meeting (built)
+├── design_durability.md       # The team is the meeting: a durable coordinator, no plan store (built)
+├── design_chat.md             # Talking to the team in free text (proposal)
 ├── pyproject.toml             # uv workspace root (shared dev tooling config)
 ├── docker-compose.yml         # Runs all three services together
 ├── Makefile                   # Shortcuts for common dev tasks (see `make help`)
 ├── agents/                    # The Akgents team + CLI runner
 │   ├── Dockerfile
 │   ├── catalog/               # Team, agent, tool, model and prompt YAML
-│   ├── src/meeting_agents/    # Coordinator, specialists, messages, plan store, CLI
+│   ├── src/meeting_agents/    # Coordinator, specialists, messages, plan, CLI
 │   └── tests/
 ├── server/                    # The same team, served over HTTP (akgentic-infra)
 │   ├── Dockerfile
-│   ├── src/meeting_server/    # app, catalog, platform health, plans, yaml types
+│   ├── src/meeting_server/    # app, catalog, platform health, yaml types
 │   └── tests/
 ├── gui/                       # React SPA (Vite + MUI), served by nginx
 │   ├── Dockerfile
@@ -247,7 +252,7 @@ Run `make help` for the full list. Highlights:
 | `make build`        | `docker compose build`                                       |
 | `make up` / `down`  | start/stop the full stack (containers only; volumes kept)    |
 | `make clean`        | stop the stack **and delete** the SQLite data volumes         |
-| `make reset`        | wipe **all** data: volumes, stray local `*.db`, the plan store |
+| `make reset`        | wipe **all** data: volumes, stray local `*.db`, a host run's event store |
 
 ## Development notes
 

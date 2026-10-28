@@ -143,8 +143,6 @@ services:
         condition: service_healthy
       nomnom-service:
         condition: service_healthy
-    volumes:
-      - agents-data:/data
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       AGENT_MODEL: ${AGENT_MODEL:-gpt-6-luna}
@@ -161,4 +159,3 @@ volumes:
   location-data:
   nomnom-data:
   server-data:
-  agents-data:

@@ -5,7 +5,7 @@ really is thin: it renders, it asks, it sends - no decisions about meetings.
 Second, the approval loop, because a human answering "3" or "n" or "banana" is
 the one place a person touches this system.
 
-The last test drives `converse` over the real coordinator and repository with
+The last test drives `converse` over the real coordinator with
 stub specialists, so the client is exercised against the actual saga rather
 than against a mock of it.
 """
@@ -44,7 +44,6 @@ from meeting_agents.messages import (
     SlotApprovalRequest,
     SlotsFound,
 )
-from meeting_agents.plan_repository import PlanRepository, PlanRepositoryConfig
 
 DAY = date(2031, 9, 15)
 MORNING = ProposedSlot(start=time(9, 0), end=time(10, 0))
@@ -297,8 +296,8 @@ def member(agent_class, config, children=None) -> TeamCardMember:
 
 
 @pytest.fixture
-def live_team(tmp_path):
-    """The real @Coordinator and @PlanRepository behind the real @Human."""
+def live_team():
+    """The real @Coordinator behind the real @Human."""
     previous = get_channel()
     channel = QueueChannel()
     set_channel(channel)
@@ -314,13 +313,6 @@ def live_team(tmp_path):
                     Coordinator,
                     CoordinatorConfig(),
                     [
-                        member(
-                            PlanRepository,
-                            PlanRepositoryConfig(
-                                store_class="meeting_agents.store.JsonPlanStore",
-                                store_path=str(tmp_path / "plans.json"),
-                            ),
-                        ),
                         member(StubScheduler, BaseConfig(name="@Scheduler", role="Scheduler")),
                         member(
                             StubFacilityManager,

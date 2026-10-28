@@ -96,7 +96,3 @@ def test_status_cannot_be_set_from_outside():
         status=PlanStatus.CONFIRMED,  # type: ignore[call-arg]
     )
     assert plan.status is PlanStatus.DRAFT
-
-
-def test_a_new_plan_has_no_team_runs_yet():
-    assert make_plan().team_ids == []

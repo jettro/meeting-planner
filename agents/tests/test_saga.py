@@ -1,7 +1,7 @@
 """The booking saga, run end to end in a real actor system.
 
-The specialists are stubs here, and that is the point: @Coordinator and
-@PlanRepository contain no judgement, so the whole flow - slots, approval,
+The specialists are stubs here, and that is the point: @Coordinator contains
+no judgement, so the whole flow - slots, approval,
 meeting, room, lunch - must be reproducible without a model, a network call or
 an API key. If this test ever needs an LLM, something that should be
 deterministic has stopped being deterministic.
@@ -27,7 +27,7 @@ from akgentic.core import (
     UserProxy,
 )
 from akgentic.team import TeamCard, TeamCardMember, TeamFactory
-from meeting_agents.coordinator import Coordinator, CoordinatorConfig
+from meeting_agents.coordinator import Coordinator, CoordinatorConfig, CoordinatorState
 from meeting_agents.messages import (
     MESSAGE_TYPES,
     BookFacilitiesAssignment,
@@ -46,7 +46,6 @@ from meeting_agents.messages import (
     SlotsFound,
 )
 from meeting_agents.plan import PlanStatus
-from meeting_agents.plan_repository import PlanRepository, PlanRepositoryConfig
 
 DAY = date(2031, 9, 15)
 SLOT = ProposedSlot(start=time(10, 0), end=time(11, 0))
@@ -148,7 +147,7 @@ def member(agent_class, config, children=None) -> TeamCardMember:
     )
 
 
-def build_card(store_path, scheduler_class=StubScheduler) -> TeamCard:
+def build_card(scheduler_class=StubScheduler) -> TeamCard:
     return TeamCard(
         name="saga-test",
         entry_point=member(
@@ -159,13 +158,6 @@ def build_card(store_path, scheduler_class=StubScheduler) -> TeamCard:
                     Coordinator,
                     CoordinatorConfig(),
                     [
-                        member(
-                            PlanRepository,
-                            PlanRepositoryConfig(
-                                store_class="meeting_agents.store.JsonPlanStore",
-                                store_path=str(store_path),
-                            ),
-                        ),
                         member(scheduler_class, BaseConfig(name="@Scheduler", role="Scheduler")),
                         member(
                             StubFacilityManager,
@@ -182,12 +174,23 @@ def build_card(store_path, scheduler_class=StubScheduler) -> TeamCard:
 
 
 @pytest.fixture
-def team(tmp_path):
+def team():
     Inbox.reset()
     system = ActorSystem()
-    runtime = TeamFactory.build(build_card(tmp_path / "plans.json"), system, user_id="test")
+    runtime = TeamFactory.build(build_card(), system, user_id="test")
     yield runtime
     system.shutdown()
+
+
+def coordinator_state(runtime) -> CoordinatorState:
+    """The meeting's record, as the orchestrator holds it for the event store.
+
+    Asked of the orchestrator rather than the actor: that is the copy that is
+    snapshotted, and a question to it is answered after every state change the
+    coordinator told it about before (R8).
+    """
+    coordinator = runtime.addrs["@Coordinator"]
+    return runtime.orchestrator_proxy.get_states()[str(coordinator.agent_id)]
 
 
 def request_meeting(runtime, with_lunch: bool = True, lunch_wish: str | None = "") -> None:
@@ -285,8 +288,8 @@ def test_rejection_books_nothing_and_needs_no_compensation(team):
     assert failed.outstanding == []
 
 
-def test_the_plan_is_persisted_by_the_repository(team, tmp_path):
-    """The store is written by @PlanRepository, so a completed plan is durable."""
+def test_the_coordinator_state_is_the_record(team):
+    """There is no plan store: the snapshotted state says what was booked (R2)."""
     request_meeting(team)
     request = Inbox.expect(SlotApprovalRequest)
     team.send_from_to(
@@ -296,15 +299,13 @@ def test_the_plan_is_persisted_by_the_repository(team, tmp_path):
     )
     completed = Inbox.expect(PlanCompleted)
 
-    from meeting_agents.store import JsonPlanStore
-
-    stored = JsonPlanStore(tmp_path / "plans.json").get(completed.plan.plan_id)
-    assert stored.meeting_id == MEETING_ID
-    assert stored.status is PlanStatus.CONFIRMED
+    recorded = coordinator_state(team).plan
+    assert recorded == completed.plan
+    assert recorded.status is PlanStatus.CONFIRMED
 
 
-def test_the_repository_records_which_team_ran_the_plan(team, tmp_path):
-    """A plan changed later gets several runs, and its trace is all of them."""
+def test_the_record_is_written_before_the_human_is_told(team):
+    """R8: by the time "completed" can be seen, the state already says so."""
     request_meeting(team)
     request = Inbox.expect(SlotApprovalRequest)
     team.send_from_to(
@@ -312,13 +313,70 @@ def test_the_repository_records_which_team_ran_the_plan(team, tmp_path):
         "@Coordinator",
         SlotApprovalDecision(plan_id=request.plan_id, approved=True, slot=SLOT),
     )
-    completed = Inbox.expect(PlanCompleted)
+    Inbox.expect(PlanCompleted)
 
-    from meeting_agents.store import JsonPlanStore
+    assert coordinator_state(team).plan.booking_id == BOOKING_ID
 
-    stored = JsonPlanStore(tmp_path / "plans.json").get(completed.plan.plan_id)
-    # Saved several times over the saga, but one run is one entry.
-    assert len(stored.team_ids) == 1
+
+def test_the_slot_gate_is_recorded_while_it_is_open(team):
+    """What a revived team needs to know to accept the answer it was waiting for."""
+    request_meeting(team)
+    Inbox.expect(SlotApprovalRequest)
+
+    state = coordinator_state(team)
+    assert state.candidates == [SLOT, OTHER_SLOT]
+    assert state.waiting_for_the_human()
+
+
+def test_a_finished_meeting_is_not_waiting_for_anyone(team):
+    request_meeting(team)
+    approve_slot(team, Inbox.expect(SlotApprovalRequest))
+    Inbox.expect(PlanCompleted)
+
+    state = coordinator_state(team)
+    assert state.candidates == []
+    assert not state.waiting_for_the_human()
+
+
+def test_a_refused_slot_is_a_finished_plan_not_an_open_gate(team):
+    """Otherwise a rejected meeting would be offered Resume forever (R6)."""
+    request_meeting(team)
+    request = Inbox.expect(SlotApprovalRequest)
+    team.send_from_to(
+        "@Human",
+        "@Coordinator",
+        SlotApprovalDecision(plan_id=request.plan_id, approved=False),
+    )
+    Inbox.expect(PlanFailed)
+
+    state = coordinator_state(team)
+    assert state.failure == "the proposed time slot was not approved"
+    assert not state.waiting_for_the_human()
+
+
+def test_one_team_arranges_one_meeting(team):
+    """A second request is refused out loud, and the first meeting is untouched."""
+    request_meeting(team)
+    first = Inbox.expect(SlotApprovalRequest)
+
+    request_meeting(team)
+
+    refused = Inbox.expect(PlanFailed)
+    assert "already arranges a meeting" in refused.reason
+    assert coordinator_state(team).plan.plan_id == first.plan_id
+
+
+def test_an_answered_gate_cannot_be_answered_again(team):
+    """A second tab, or a reload, must not book the meeting twice."""
+    request_meeting(team)
+    request = Inbox.expect(SlotApprovalRequest)
+    approve_slot(team, request)
+    Inbox.expect(PlanCompleted)
+
+    approve_slot(team, request)
+
+    with pytest.raises(queue.Empty):
+        Inbox.messages.get(timeout=1.0)
 
 
 def test_an_unknown_plan_id_is_ignored(team):

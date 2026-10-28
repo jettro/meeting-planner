@@ -40,7 +40,6 @@ from meeting_agents.outputs import (
     SlotOut,
 )
 from meeting_agents.plan import PlanStatus
-from meeting_agents.plan_repository import PlanRepository, PlanRepositoryConfig
 from meeting_agents.specialists import (
     MAX_CANDIDATES,
     Catering,
@@ -152,7 +151,7 @@ def specialist_config(name: str, cls=AgentConfig, **extra):
     return cls(name=name, role=name.lstrip("@"), **extra)
 
 
-def build_card(store_path, catering_class=ScriptedCatering) -> TeamCard:
+def build_card(catering_class=ScriptedCatering) -> TeamCard:
     return TeamCard(
         name="specialist-test",
         entry_point=member(
@@ -163,10 +162,6 @@ def build_card(store_path, catering_class=ScriptedCatering) -> TeamCard:
                     Coordinator,
                     CoordinatorConfig(),
                     [
-                        member(
-                            PlanRepository,
-                            PlanRepositoryConfig(store_path=str(store_path)),
-                        ),
                         member(ScriptedScheduler, specialist_config("@Scheduler")),
                         member(
                             ScriptedFacilityManager,
@@ -190,13 +185,13 @@ def _no_real_key(monkeypatch):
 
 
 @pytest.fixture
-def team(tmp_path):
+def team():
     Inbox.reset()
     Script.reset()
     from akgentic.core import ActorSystem
 
     system = ActorSystem()
-    runtime = TeamFactory.build(build_card(tmp_path / "plans.json"), system, user_id="test")
+    runtime = TeamFactory.build(build_card(), system, user_id="test")
     yield runtime
     system.shutdown()
 

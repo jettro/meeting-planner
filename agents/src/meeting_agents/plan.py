@@ -90,12 +90,6 @@ class MeetingPlan(BaseModel):
 
     cancelled: bool = False
 
-    #: The team runs that touched this plan, oldest first. One team plans one
-    #: meeting, so a plan that is later changed has several - and the trace of
-    #: what happened to it is the concatenation of theirs. Stamped by
-    #: `@PlanRepository` on save, because that is the only writer.
-    team_ids: list[str] = Field(default_factory=list)
-
     @computed_field  # type: ignore[prop-decorator]
     @property
     def status(self) -> PlanStatus:

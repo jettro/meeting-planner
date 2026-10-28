@@ -38,7 +38,6 @@ class Settings(BaseModel):
     openai_api_key: str = ""
     model: str = "gpt-6-luna"
 
-    plan_store_path: Path = Field(default=Path("data/plans.json"))
     catalog_path: Path = Field(default=Path("catalog"))
 
     @classmethod
@@ -64,7 +63,6 @@ class Settings(BaseModel):
             ),
             openai_api_key=_env("OPENAI_API_KEY", ""),
             model=_env("AGENT_MODEL", "gpt-6-luna"),
-            plan_store_path=Path(_env("PLAN_STORE_PATH", "data/plans.json")),
             catalog_path=Path(_env("CATALOG_PATH", "catalog")),
         )
 
@@ -77,5 +75,4 @@ class Settings(BaseModel):
             "LOCATION_MCP_API_KEY": self.location_mcp.api_key,
             "NOMNOM_MCP_URL": self.nomnom_mcp.url,
             "NOMNOM_MCP_API_KEY": self.nomnom_mcp.api_key,
-            "PLAN_STORE_PATH": str(self.plan_store_path),
         }

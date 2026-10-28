@@ -133,9 +133,9 @@ class CancelPlanRequest(Message):
     a new one is planned. So this message takes no arguments beyond the plan -
     there is nothing to choose, and everything the plan booked is released.
 
-    It usually names a plan this team has never seen, which is the normal case
-    rather than an error: a plan is cancelled long after the team that made it
-    has stopped, from a new team that loads it out of the repository.
+    It is sent to the team that made the meeting, because that team is the
+    meeting: its coordinator holds the only record of what was booked. A team
+    that has stopped is revived to receive it (`design_durability.md` R4).
     """
 
     plan_id: str
@@ -186,7 +186,11 @@ class LunchApprovalRequest(Message):
 
 
 class PlanCompleted(Message):
-    """The plan reached CONFIRMED. Carries the ids, so a UI can show them."""
+    """The plan reached CONFIRMED. Carries the ids, so a UI can show them.
+
+    Sent only after the coordinator's state records it, so anyone reading the
+    event stream sees this after the snapshot that makes it true (R8).
+    """
 
     plan: MeetingPlan
 
@@ -389,30 +393,6 @@ class Cancelled(Message):
     reason: str = ""
 
 
-# --------------------------------------------------------------------------
-# @PlanRepository
-# --------------------------------------------------------------------------
-
-
-class SavePlan(Message):
-    """Persist the plan. The repository owns the store; nobody else writes."""
-
-    plan: MeetingPlan
-
-
-class LoadPlan(Message):
-    """Fetch a plan by id."""
-
-    plan_id: str
-
-
-class PlanSnapshot(Message):
-    """@PlanRepository -> requester. `plan` is None when the id is unknown."""
-
-    plan_id: str
-    plan: MeetingPlan | None = None
-
-
 #: Every message the team may exchange. `TeamCard.message_types` is a list, so
 #: adding free-text input later is an addition here, not a change anywhere else.
 MESSAGE_TYPES: list[type] = [
@@ -436,7 +416,4 @@ MESSAGE_TYPES: list[type] = [
     AssignmentFailed,
     CancelAssignment,
     Cancelled,
-    SavePlan,
-    LoadPlan,
-    PlanSnapshot,
 ]

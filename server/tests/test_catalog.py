@@ -62,7 +62,6 @@ def settings(tmp_path):
         catalog_path=CATALOG,
         event_store_path=tmp_path / "events",
         workspaces_root=tmp_path / "workspaces",
-        plan_store_path=tmp_path / "plans.json",
     )
 
 
