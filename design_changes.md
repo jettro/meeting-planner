@@ -1,232 +1,300 @@
-# Changing a plan — design
+# Revising a meeting — design
 
-Status: **proposed**. Nothing here is built yet. This document exists to be
-argued with before any of it is.
+Status: **proposed**. Nothing here is built yet.
 
-Everything in it rests on findings from the running system, recorded in §2 so a
-later reader can tell what was measured from what was assumed.
+An earlier draft of this document designed a *mutation*: load a plan, change it
+in place, undo what the change invalidated, all inside the team that made it.
+It was argued down, correctly, in favour of the model below. The findings that
+drove the first draft are kept in Appendix A, because they are the reason this
+one can be confident about what it is *not* doing.
 
 ---
 
-## 1. What we have, and what is missing
+## 1. The model
 
-A plan can be *made*. It cannot be *changed*. The pieces that a change needs
-are unevenly complete:
+**A revision is a new plan that supersedes the old one.** The human asks to
+move Thursday's meeting to Friday; the system makes a *new* plan, books what
+Friday needs, releases what Thursday held, and marks the old plan superseded.
+The old plan survives as a record of what was booked.
 
-| Piece | State |
-|---|---|
-| The three cancel operations on the services | **Done.** `cancel_meeting`, `cancel_room_booking`, `cancel_order` exist as MCP tools, each on the service that owns the thing |
-| Working out what to undo | **Done.** `MeetingPlan.compensations()` and `relocation_compensations()` |
-| Anything that *runs* a compensation | **Missing.** `compensations()` is only ever reported, in `PlanFailed.outstanding` |
-| A message that asks for a change | **Missing** |
-| A coordinator that handles one | **Missing** |
-| A specialist that can cancel | **Missing.** Every specialist handler is a *booking* handler |
-| Reaching an existing plan from a new conversation | **Done.** `LoadPlan` → `PlanSnapshot` |
+A revision runs in a **new team**, like any other plan. One team, one plan, one
+event log — the property the Trace screen is built on stays true.
 
-So the undo logic was written and never wired up. That is the shape of the
-work: mostly wiring, one genuinely new decision (§4).
+### Why this and not a mutation
 
-## 2. What the framework actually does — measured, not assumed
+1. **The saga keeps one shape.** Mutating in place means reschedule re-enters
+   the saga at "find slots", change-room at "book room", change-lunch at "order
+   lunch" — five partial resumptions, hand-written. A revision instead asks one
+   question, "what does this plan still lack?", which is the same question a
+   brand-new plan asks. §4.
+2. **A plan is written as a snapshot**, so changing one in place overwrites
+   what it used to say. In a system whose point is a legible record, losing
+   "what did we have before Friday?" is a real loss.
+3. **No team lifecycle problem.** No restoring a stopped team, no team that was
+   deleted from the console, no two browsers changing one team at once.
 
-The user's instinct was that a change should reuse the same team. Four things
-had to be true for that to be possible, and all four were tested against the
-running stack rather than reasoned about.
+### What it does *not* avoid
 
-**A stopped team can be brought back.** `POST /teams/{id}/restore` answered
-`200` for a team stopped the previous day, and the team came back `running`.
+The old bookings still have to be released. **The compensation runner is still
+the one genuinely missing piece**, and building it is still most of the work.
+This decision changes *when* compensations run and *how they are computed* — not
+whether they are needed.
 
-**Restoring does not re-run anything.** This was the one that could have been
-disqualifying: a replay that re-dispatched the saga would book a second room
-every time anyone looked at an old plan. It does not. `TeamRestorer` replays
-the log through `Orchestrator.restore_message`, which appends to the
-orchestrator's history and notifies subscribers — it never routes a message to
-an agent. Measured: a restored 142-event team was still at 142 events.
+## 2. What a revision inherits
 
-**A restored team routes new messages.** A `LoadPlan` sent to the restored
-team's `@PlanRepository` was received, processed, and answered with a
-`PlanSnapshot` back to `@Coordinator`, appending events 143–148. The team was
-fully alive, MCP connections and all.
+Decided: **a revision carries over what it does not change**, and only the
+difference is cancelled. Changing the sandwich order should not cancel and
+rebook the room.
 
-**But `@Coordinator` comes back empty.** Agent state snapshots are written from
-`StateChangedMessage`, and that message is only ever emitted by an agent whose
-state has an *observer* attached. Exactly one place in the framework attaches
-one: `BaseAgent.__init__` (`agent/agent.py:277`), the LLM agent. Our
-deterministic agents — `@Coordinator`, `@PlanRepository`, `@Human` — never
-attach one, so their state is never snapshotted and never restored. Measured: a
-finished team's state directory holds three files, `@Scheduler`,
-`@FacilityManager` and `@Catering`, and nothing else.
+| Revision | Meeting | Room booking | Lunch order |
+|---|---|---|---|
+| Cancel | release | release | release |
+| Change lunch | keep | keep | release |
+| Change room, same location | keep | release | keep |
+| Change location | keep | release | release |
+| Reschedule | release | release | release |
+| Change participants | release | keep | release |
 
-That last finding is the interesting one, and it is **not** a problem. See §3.
+The reasoning behind each cell, since none of it is obvious:
 
-## 3. Decision: the same team, and the plan store is the memory
+- **The meeting survives a room change** because a meeting lives in the meeting
+  service — people's agendas — and a room lives in the location service. Moving
+  rooms does not change anyone's calendar.
+- **Lunch survives a room change but not a location change**, because an order
+  is tied to a location, not a room code. This is the rule
+  `relocation_compensations()` already encodes; §3 shows it falling out for
+  free.
+- **A reschedule releases everything**, because all three bookings are for a
+  time.
+- **Changing participants** keeps the room (it was big enough and we are not
+  modelling capacity) but rebooks the meeting, whose attendee list changed, and
+  the lunch, whose headcount changed.
 
-**The same team.** A change to a plan is handled by the team that made it:
-restore it, send it the change, stop it again. The alternative — a fresh team
-per change — was the earlier assumption, and the measurements above remove its
-only real justification.
+## 3. The compensation list is a diff
 
-It also gives a better trace. One plan's history stays one team's event log, in
-order, with the change appended after the booking that it changes. Two teams
-would mean two logs and a reader stitching them together.
+This is the part that makes the model pay for itself.
 
-**The plan store is the memory, not the agent.** `@Coordinator` comes back
-with an empty `plans` dict, and we are going to leave it that way.
+The coordinator builds the new plan by **carrying over the references the
+revision keeps and leaving the rest empty**. What must then be cancelled is
+exactly what the old plan holds that the new one does not:
 
-The tempting fix is one line — attach an observer in `on_start` and the
-coordinator's state starts being snapshotted. We should not, for three reasons:
-
-1. **It is already the design.** `CoordinatorState`'s own docstring says "the
-   durable copy belongs to `@PlanRepository`; this is the working copy". A
-   change request that begins by loading the plan is that sentence being true,
-   rather than being a comment above a cache.
-2. **Two durable copies disagree eventually.** A snapshot of the coordinator's
-   working copy and `plans.json` would be written at different moments by
-   different code, and the day they differ, nothing detects it.
-3. **It would snapshot on every state change.** The coordinator calls
-   `init_state` several times per plan; each one would become a write.
-
-So a change begins the way a cold start would: `LoadPlan`, then work from the
-`PlanSnapshot`. This has a property worth naming — **it does not depend on the
-restore having restored anything**. If the framework's snapshot behaviour
-changes, or a plan is changed by something that is not the original team at
-all, the flow is identical.
-
-**Consequence for `team_ids`.** It stays, and it stays a list. Reusing the team
-means the list usually has one entry, and `@PlanRepository` already refuses to
-add a duplicate. It is not wasted: a plan whose original team was deleted must
-be changed by some other team, and then there are two.
-
-## 4. The approval model
-
-Agreed with the user: **one confirmation showing exactly what will be
-cancelled, then execute.** Not the full gate sequence again, and not silent.
-
-The reasoning is that a change is destructive in a way the original booking was
-not. Making a plan only adds; changing one cancels a real room booking and a
-real lunch order, and `cancel_order` is not reversible by re-ordering — it
-produces a new `order_id`. So the human has to see the damage first. But they
-have *already* chosen the change, so asking them to re-approve a slot and a
-lunch is asking a question they have answered.
-
-The confirmation is rendered from `compensations()` — which is why that method
-already returning `Compensation` objects with a step and a reference is useful
-rather than incidental.
-
-**The gates come back only when the change re-opens them.** Rescheduling has to
-propose new slots, so the slot gate applies to the new slot. Changing lunch has
-to ask what kind. The rule: a change re-asks a question only when the change
-invalidates its previous answer.
-
-## 5. The five changes
-
-In the order they should be built, which is also the order of increasing
-difficulty.
-
-| # | Change | Undo | Redo | Gate |
-|---|---|---|---|---|
-| 1 | **Cancel** | everything | nothing | confirmation only |
-| 2 | **Change lunch** | the order | order again | confirmation, then the lunch gate |
-| 3 | **Change room** (same location) | the room booking | book another room | confirmation only — `relocation_compensations` already knows lunch survives |
-| 4 | **Change location** | the booking *and* the order | book and order at the new place | confirmation, then the lunch gate |
-| 5 | **Reschedule** | all three | find slots, approve, rebook | confirmation, then the slot gate, then lunch |
-| 6 | **Change participants** | depends | see below | confirmation |
-
-**Cancel first, on purpose.** It is the only one that is pure undo, so it
-builds the compensation runner — the part that is genuinely missing — with
-nothing else mixed in. Everything after it is "compensate, then do a thing we
-already know how to do".
-
-**Participants is the awkward one** and should be last. Adding someone can
-invalidate the slot (they may be busy) and the lunch (one more portion);
-removing someone changes only the headcount. It is really a conditional
-reschedule, which is why it wants #5 to exist first.
-
-## 6. The vocabulary to add
-
-Six message types, following the existing naming. `message_types` in the team
-card is a list precisely so this is an addition rather than an edit.
-
-```
-ChangePlanRequest(plan_id, change)   @Human       -> @Coordinator
-ChangeApprovalRequest(plan_id, ...)  @Coordinator -> @Human
-ChangeApprovalDecision(plan_id, ...) @Human       -> @Coordinator
-CancelAssignment(plan_id, step, reference)
-                                     @Coordinator -> the specialist that owns it
-Cancelled(plan_id, step, reference)  specialist   -> @Coordinator
-PlanChanged(plan_id, plan)           @Coordinator -> @Human
+```python
+def compensations_against(self, previous: MeetingPlan) -> list[Compensation]:
+    """What `previous` holds that this plan does not inherit."""
 ```
 
-`change` is a tagged union of the five kinds, so one request type covers all of
-them and the coordinator dispatches on the kind. The alternative — five request
-types — spreads one decision across five handlers.
+One method replaces two. `relocation_compensations()` can go: a same-location
+room change carries `order_id` across, so the diff yields nothing for lunch; a
+genuine move cannot carry it, so the diff yields the cancel. Identical answers,
+without a second method that has to be kept in step with the first.
 
-`CancelAssignment` carries a `CompensationStep`, which means the coordinator
-can turn `compensations()` straight into a list of assignments and the routing
-is a lookup from step to owning specialist. **The one-service rule (D1) is
-untouched**: each specialist cancels only on the service it already reaches.
-`@Scheduler` cancels meetings, `@FacilityManager` cancels room bookings,
-`@Catering` cancels orders.
+`compensations()` stays, for an outright cancel — a plan that inherits nothing.
 
-## 7. The flow, for cancel
+Two things fall out that are worth stating:
+
+- **The diff cannot disagree with the plan.** Under a mutation design, "what to
+  undo" was computed from the *kind of change*; here it is computed from the two
+  plans themselves. A revision that forgets to drop a reference cannot ask for
+  a cancellation of something it is still using.
+- **A revision that changes nothing is a no-op**, for free. Every reference
+  carries over, the diff is empty, nothing is cancelled and nothing is booked.
+
+## 4. The saga becomes state-driven
+
+Honesty about the main claim in §1: carrying references over means the new plan
+starts part-booked, so the saga cannot simply start at the beginning. A
+change-room revision arrives with its meeting and its lunch already in hand and
+needs only a room.
+
+But this is **one rule, not five**:
+
+> Do the first thing this plan lacks.
+
+The order is the one the plan's own `status` ladder already describes — slots,
+approval, meeting, room, lunch. A blank plan lacks all of it and starts at
+slots, which is today's behaviour; a change-room plan lacks only a room.
+
+So the work is to replace the coordinator's hard-wired chain (`SlotsFound` →
+book meeting → `MeetingBooked` → book facilities → …) with a `next_step(plan)`
+consulted after each step completes. That is a refactor of the coordinator, and
+it is worth doing regardless: the ladder is currently encoded twice, once in
+`status` and once in the order of the handlers.
+
+One subtlety: `next_step` is **the first missing reference**, not the highest
+one reached. A change-room plan has a meeting and a lunch but no room; a status
+ladder read top-down would call it `SCHEDULED` and then try to order a lunch it
+already has. Write the gap-finder explicitly rather than reusing `status`.
+
+## 5. Ordering: cancel first
+
+Decided: **release the old references, then book the replacements.**
+
+The exposure is a window in which the meeting is not booked anywhere. It is
+accepted because:
+
+- It matches what the human just said. They asked to move the meeting; the old
+  slot being free is the point, not a side effect.
+- Booking first can deadlock against ourselves. A reschedule that keeps the same
+  room competes with our own outstanding booking for it.
+- "Cancel first" releases only **the difference**, not everything. A lunch
+  change never touches the room, so the window only ever covers what is
+  genuinely being replaced.
+
+If a replacement booking then fails, the result is a plan in the same
+half-finished state the existing failure path already handles, and the old plan
+is already superseded. §10 carries the open question of whether that is good
+enough.
+
+## 6. Data model
+
+On `MeetingPlan`:
+
+```python
+supersedes: str | None = None      # the plan this one revises
+superseded_by: str | None = None   # set on the old plan when the new one lands
+```
+
+`superseded_by` is what makes the Plans screen cheap: **a plan is current when
+`superseded_by` is None.** Without it the screen would have to walk the chain.
+
+`PlanStatus` gains `SUPERSEDED`, taking precedence over `CANCELLED` in the
+computed ladder — a superseded plan had references cancelled, but "replaced by a
+newer version" is the more useful thing to say about it.
+
+Note for whoever adds it: a new enum member is safe **only because** the event
+store now has an `Enum` multi-representer. Adding one before that fix would have
+silently dropped every message carrying a plan (`design_gui.md` §8.4).
+
+`team_ids` stays as it is. One plan is still one team, so it is normally one
+entry — it simply no longer has to carry the weight of linking a plan's several
+runs, because a plan no longer has several.
+
+## 7. Vocabulary and flow
 
 ```
-@Human        ChangePlanRequest(plan_id, Cancel)      -> @Coordinator
-@Coordinator  LoadPlan(plan_id)                       -> @PlanRepository
-@PlanRepository  PlanSnapshot(plan)                   -> @Coordinator
-@Coordinator  ChangeApprovalRequest(compensations)    -> @Human
-@Human        ChangeApprovalDecision(approved=true)   -> @Coordinator
-@Coordinator  CancelAssignment(CANCEL_ORDER, ...)     -> @Catering
-@Catering     Cancelled(...)                          -> @Coordinator
-@Coordinator  CancelAssignment(CANCEL_ROOM_BOOKING)   -> @FacilityManager
-@FacilityManager  Cancelled(...)                      -> @Coordinator
-@Coordinator  CancelAssignment(CANCEL_MEETING, ...)   -> @Scheduler
-@Scheduler    Cancelled(...)                          -> @Coordinator
-@Coordinator  SavePlan(plan, cancelled=True)          -> @PlanRepository
-@Coordinator  PlanChanged(plan)                       -> @Human
+RevisePlanRequest(plan_id, revision)   @Human       -> @Coordinator
+ReviseApprovalRequest(plan_id, ...)    @Coordinator -> @Human
+ReviseApprovalDecision(plan_id, ok)    @Human       -> @Coordinator
+CancelAssignment(plan_id, step, ref)   @Coordinator -> the owning specialist
+Cancelled(plan_id, step, ref)          specialist   -> @Coordinator
 ```
 
-**One at a time, in `compensations()` order**, not in parallel. The order is
-reverse booking order and it is the order the services expect; running them
-concurrently would also make a partial failure much harder to describe.
+`revision` is a tagged union of the six kinds, so the coordinator dispatches on
+the kind in one place rather than across six handlers. There is no
+`PlanChanged`: a revision ends in `PlanCompleted` carrying the new plan, like
+any other plan, which is the whole point.
 
-**A compensation that fails must not be silent.** A cancel can legitimately
-fail — a booking already cancelled by someone else. The plan should record what
-was undone and what was not, which is what `PlanFailed.outstanding` was shaped
-for. This needs a decision when we build it, and §9 carries it as an open
-question rather than a guess.
+`CancelAssignment` carries a `CompensationStep`, so routing is a lookup from
+step to the specialist that owns that service. **The one-service rule (D1) is
+untouched** — `@Scheduler` cancels meetings, `@FacilityManager` cancels room
+bookings, `@Catering` cancels orders, each on the service it already reaches.
 
-## 8. What the browser needs
+The flow, for a change of location:
 
-Small, because the Plans screen already lists plans and opens one.
+```
+@Human           RevisePlanRequest(plan, ChangeLocation("yuma-north"))
+@Coordinator     LoadPlan(plan_id)                    -> @PlanRepository
+@PlanRepository  PlanSnapshot(previous)               -> @Coordinator
+@Coordinator     drafts the new plan: meeting carried over, room and lunch empty
+@Coordinator     ReviseApprovalRequest(the diff)      -> @Human
+@Human           ReviseApprovalDecision(approved)     -> @Coordinator
+@Coordinator     CancelAssignment(CANCEL_ORDER)       -> @Catering
+@Coordinator     CancelAssignment(CANCEL_ROOM_BOOKING)-> @FacilityManager
+@Coordinator     SavePlan(previous, superseded_by=new)-> @PlanRepository
+@Coordinator     next_step(new) == book facilities    -> the ordinary saga
+@Coordinator     PlanCompleted(new)                   -> @Human
+```
 
-- A **Change** button on the plan dialog, offering the kinds valid for that
-  plan's status — a cancelled plan offers nothing, a plan without lunch does
-  not offer "change lunch".
-- A **confirmation step** listing what will be cancelled, in words rather than
-  as ids: "the lunch order, the room booking at yuma, and the meeting".
-- Reuse of the **existing gate components** for the gates a change re-opens.
-  `GatePrompt` is already driven by the question that arrives, so a reschedule's
-  slot gate should need no new component.
-- The SPA must **restore the team before sending**, and stop it afterwards.
-  That is two API calls the client does not make today.
+Compensations run **one at a time, in `compensations()` order** — reverse
+booking order, which is the order the services expect, and which makes a partial
+failure describable.
 
-A change produces a second burst of events on the same team, so the Trace
-screen needs nothing: `/trace/<teamId>` already replays a stored run, and the
-change is in the same log.
+The gates still apply where the revision invalidates their answer: a reschedule
+re-opens the slot gate, a lunch change re-opens the lunch gate, a room change
+opens neither. The approval in the middle is separate from both — it confirms
+what will be *released*, which is the thing the human has not yet been shown.
 
-## 9. Open questions
+## 8. The browser
 
-1. **A compensation that fails.** Stop and report, or carry on and report? We
-   favour carry-on-and-report, so one stale booking cannot strand the other two,
-   with the failures on the plan. Not decided.
-2. **Who restores the team** — the browser, with two extra calls, or the server,
-   hiding it behind an endpoint that takes a plan id? The second is nicer for
-   every future client and is a small module next to `PlansModule`.
-3. **A plan whose team is gone.** Deleting a team is possible from the console.
-   Then a change needs a *new* team, which is the case `team_ids` exists for —
-   but it is extra code, and it may be honest to simply refuse at first.
-4. **Concurrent changes.** Two browsers changing one plan. Today nothing stops
-   it. Probably out of scope, but it should be refused rather than ignored.
-5. **Does `with_lunch: false` mean "never" or "not yet"?** Change #2 on a plan
-   that has no lunch is really "add lunch", which the vocabulary above does not
-   distinguish.
+The Plans screen shows **current plans only** — `superseded_by is None` — with
+earlier versions reachable from the plan dialog. A list that accumulated a dead
+row per revision would get less useful the more the system was used.
+
+A revised plan's dialog therefore gains a **History** section beside Runs: the
+chain of plans it replaces, each a link to that plan and to its own trace. The
+trace of "what happened to this meeting over time" is the traces of the chain,
+in order — and each one is still a single clean run.
+
+Also needed: a **Revise** button offering the kinds valid for that plan's status
+(a cancelled plan offers none; a plan without lunch does not offer "change
+lunch"), and a **confirmation** listing what will be released in words rather
+than ids — "the lunch order and the room booking at yuma".
+
+The client needs no team-lifecycle calls at all. It creates a team, as it does
+now.
+
+## 9. Order of work
+
+1. **The compensation runner**, via plain cancel. Pure release, no rebooking, so
+   it builds the missing piece alone: `CancelAssignment` / `Cancelled`, the
+   three specialist handlers, and the serial driver.
+2. **`next_step(plan)`** in the coordinator, replacing the hard-wired chain.
+   Behaviour-neutral for a fresh plan, and provable by the existing tests.
+3. **`compensations_against`**, `supersedes` / `superseded_by`, `SUPERSEDED`.
+4. **Change lunch** — the smallest real revision: one cancel, one rebook, one
+   gate.
+5. **Change room, change location, reschedule** — the same machinery with
+   different inherit rules.
+6. **Change participants** — last, because it is the only one whose inherit
+   rules depend on the data rather than on the kind.
+
+## 10. Open questions
+
+1. **A compensation that fails** — a booking someone else already cancelled.
+   Stop, or carry on and report? We favour carry-on, so one stale reference
+   cannot strand the other two, with the failures recorded on the plan.
+2. **A replacement booking that fails after the old one was released.** The
+   meeting is now booked nowhere and the old plan is superseded. Options: leave
+   it failed and visible, or re-book the original. Re-booking is not reliable —
+   the slot may be gone — so "failed and visible" is probably honest, but it
+   should be a decision rather than a default.
+3. **Does `with_lunch: false` mean "never" or "not yet"?** "Add lunch" to a plan
+   that has none is a revision the table in §2 does not describe.
+4. **Two revisions of one plan at once.** Both would read the same `previous`
+   and both would try to cancel the same references. `superseded_by` makes this
+   detectable — the second revision finds it already set — so it can be refused
+   rather than ignored.
+
+---
+
+## Appendix A: why not mutate in place, in detail
+
+The first draft reused the team that made the plan. Four things had to be true,
+and all four were measured against the running stack. They are recorded because
+they are expensive to re-derive, and because two of them are facts about the
+framework that will matter elsewhere.
+
+- **A stopped team can be restored.** `POST /teams/{id}/restore` returned 200
+  for a team stopped the previous day.
+- **Restoring re-runs nothing.** `TeamRestorer` replays the log through
+  `Orchestrator.restore_message`, which appends to the orchestrator's history
+  and notifies subscribers but **never routes a message to an agent**. A
+  restored 142-event team was still at 142 events. Had this been otherwise,
+  opening an old plan would have booked a second room.
+- **A restored team works.** A `LoadPlan` sent to a restored team's
+  `@PlanRepository` was received, processed, and answered with a `PlanSnapshot`,
+  appending events 143–148. MCP connections and all.
+- **`@Coordinator` comes back empty.** Agent state snapshots are written from
+  `StateChangedMessage`, which is only emitted by an agent whose state has an
+  observer attached — and exactly one place in the framework attaches one:
+  `BaseAgent.__init__` (`agent/agent.py:277`), the LLM agent. Our deterministic
+  agents never do. Measured: a finished team's state directory holds three
+  files, the three specialists, and nothing else.
+
+**The last point is the one to remember.** Our deterministic agents are not
+durable, by construction. Anything that must survive a restart belongs in the
+plan store — which is what `CoordinatorState`'s docstring already says when it
+calls itself the working copy.
+
+It also means this design never depended on the restore behaviour at all: a
+revision loads the plan from the store, which is what a cold start would do.
