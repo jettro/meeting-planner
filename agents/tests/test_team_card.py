@@ -12,6 +12,7 @@ from akgentic.team import TeamCard, TeamCardMember
 from meeting_agents.bootstrap import load_team_card
 from meeting_agents.messages import MESSAGE_TYPES
 from meeting_agents.settings import Settings
+from meeting_agents.team_metadata import MeetingTeamMetadata
 
 CATALOG_ROOT = Path(__file__).resolve().parents[1] / "catalog"
 
@@ -131,6 +132,23 @@ def test_plan_store_path_is_resolved(card: TeamCard, settings: Settings):
 def test_message_types_match_the_declared_vocabulary(card: TeamCard):
     """The team may only exchange messages it declares."""
     assert set(card.message_types) == set(MESSAGE_TYPES)
+
+
+def test_the_card_declares_what_a_run_is_about(card: TeamCard):
+    """Without this the catalog loads happily and every run looks identical.
+
+    `metadata_type` is a type reference in YAML, so a typo in the dotted path is
+    a load error rather than a silent `None` - but a card that simply forgets
+    the field is not an error anywhere, which is what this test is for.
+    """
+    assert card.metadata_type is MeetingTeamMetadata
+
+
+def test_the_filterable_fields_are_the_ones_worth_filtering(card: TeamCard):
+    """A field is filterable only if it is marked indexed, and the mark is easy
+    to drop in a refactor: nothing fails, the field just stops being a filter."""
+    assert card.metadata_type is not None
+    assert card.metadata_type.indexed_fields() == ["title", "day", "location_id"]
 
 
 def test_missing_env_var_fails_loudly(settings: Settings, monkeypatch):

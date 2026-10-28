@@ -286,6 +286,8 @@ server really does own execution.
 | G15 | **Two clients, not one** | Our SPA is about the *meeting* and is the demo. Upstream's console is about the *team* — hierarchy, prompts, token spend — and is the instrument. Merging them would mean building the second badly |
 | G16 | **The console is built from upstream's git URL, never vendored** | A checkout makes every upstream fix a merge, and a fork is the one thing we have no use for. The pin is a full commit SHA in compose; a short SHA is refused by the git build context |
 | G17 | **The console is configured by a mounted file, not a build argument** | Upstream reads `config.json` over its baked-in defaults before rendering, so the backend changes without a rebuild. Our own SPA cannot do this — Vite inlines `import.meta.env` (G11) — and the difference is upstream's design, not an inconsistency |
+| G18 | **A team's metadata is the request, not the outcome** | Everything in `MeetingTeamMetadata` is known when the team is created, so it is written once in the same call and never maintained. The outcome changes constantly and already has a home — `MeetingPlan`, reached from a plan rather than from a run |
+| G19 | **`title`, `day` and `location_id` are indexed; `participants` is not** | Filtering is an anchored prefix match. On text that is a useful "starts with"; on a count it matches by digit, so a filter of `1` would return 1, 10 and 12 |
 
 ### 8.1 There is no `ServerUserProxy`, and that is the better answer
 
@@ -363,6 +365,13 @@ whole §1 feature and it cost one `useState`.
 ---
 
 ## 10. Changelog
+
+- 2026-10-28: Gave a team run something to say about itself. Every row in the console's team list
+  read `meeting-planner`, so the only way to tell two runs apart was the minute they started.
+  `MeetingTeamMetadata` (G18) is declared as the card's `metadata_type` and sent by the browser
+  with `POST /teams`; the console renders it as chips, names the run in its rail, and builds a
+  filter form from whichever fields are marked indexed (G19). No agent, message or handler
+  changed — this is metadata *about* a run, not state *inside* one.
 
 - 2026-10-28: Added the **Akgentic console** on 8400 (G15–G17), upstream's Angular client run
   unmodified. It cost one compose service and one `config.json`, because the server is

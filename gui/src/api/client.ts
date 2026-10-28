@@ -148,10 +148,26 @@ export const api = {
     return body.events.map((entry) => entry.event);
   },
 
-  createTeam: () =>
+  /**
+   * Create the team that will run one plan.
+   *
+   * The metadata is what makes a list of runs readable - in our Plans screen,
+   * and in the framework's own console, which renders whatever the team's
+   * `metadata_type` declares. It is the request rather than the outcome, so it
+   * can be set here, once, and never maintained (`team_metadata.py`).
+   */
+  createTeam: (request: PlanRequest) =>
     call<{ team_id: string }>("/teams", {
       method: "POST",
-      body: JSON.stringify({ catalog_namespace: TEAM_NAMESPACE }),
+      body: JSON.stringify({
+        catalog_namespace: TEAM_NAMESPACE,
+        metadata: {
+          title: request.title,
+          day: request.day,
+          location_id: request.location_id,
+          participants: request.participant_emails.length,
+        },
+      }),
     }),
 
   /**

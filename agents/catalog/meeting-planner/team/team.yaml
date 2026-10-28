@@ -11,6 +11,11 @@ payload:
     the chosen location, and lunch. Each specialist reaches exactly one service.
   welcome_message: "Tell me who should meet, on which day, and where."
 
+  # What a run is about, so a list of runs is readable (team_metadata.py). The
+  # tagged form is a type reference, the same one message_types uses.
+  metadata_type:
+    __type__: meeting_agents.team_metadata.MeetingTeamMetadata
+
   # Who creates whom. The human proxy is the entry point and spawns the
   # coordinator; the coordinator spawns the agents it gives assignments to;
   # @Catering sits under @FacilityManager because lunch is the facility

@@ -88,7 +88,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     setError(null);
     setAnswered([]);
     try {
-      const team = await api.createTeam();
+      const team = await api.createTeam(request);
       // The team exists before the plan is sent, so a failure here still
       // leaves something to look at in the trace.
       setTeamId(team.team_id);

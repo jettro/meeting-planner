@@ -127,6 +127,12 @@ unmodified. There is no checkout in this repository: Docker builds it from the u
 a pinned commit, and the only file we own is `console/config.json`, mounted over the image. See
 `console/README.md`.
 
+A team run carries typed metadata — the meeting it was asked to arrange — declared on the team
+card as `metadata_type` and sent with `POST /teams`. That is what makes a list of runs readable:
+the console shows it as chips, names each run in its rail, and builds a filter form from the fields
+marked indexed. It describes the *request*, which is known at creation and never changes; the
+outcome lives in the plan.
+
 This works at all because our server *is* `akgentic-infra` — `create_app` with two modules added —
 so the console's protocol is already served. Nothing was written to support it.
 
