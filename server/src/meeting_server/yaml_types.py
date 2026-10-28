@@ -1,4 +1,4 @@
-"""One scalar the community event store cannot write by itself.
+"""The scalars the community event store cannot write by itself.
 
 The community tier persists every event with `yaml.safe_dump`, deliberately:
 the safe dumper and the safe loader are the same dialect, so a value that
@@ -23,11 +23,19 @@ Pydantic then charitably interprets 36000 as seconds since midnight and
 produces the right time anyway, which is the worst possible outcome: correct
 by accident, and only for the times whose digits happen to parse. `09:30:00`
 has a leading zero, so it stays a string. Quoting removes the coin toss.
+
+The same failure, a second time: `model_dump()` runs in *python* mode here, so
+an enum stays an enum. `PlanStatus` subclasses `str`, and the safe dumper
+dispatches on exact type - a `str` subclass is not a `str` to it - so every
+message carrying a plan with a status was dropped exactly the way the slots
+were. Enums are handled as a family rather than one by one, because the next
+enum added to the domain should not have to find this out again.
 """
 
 from __future__ import annotations
 
 import datetime
+from enum import Enum
 
 import yaml
 
@@ -37,6 +45,14 @@ def _represent_time(dumper: yaml.SafeDumper, value: datetime.time) -> yaml.Node:
     return dumper.represent_scalar("tag:yaml.org,2002:str", value.isoformat(), style="'")
 
 
+def _represent_enum(dumper: yaml.SafeDumper, value: Enum) -> yaml.Node:
+    """Write any enum as its value, which is what it means outside Python."""
+    return dumper.represent_data(value.value)
+
+
 def install_yaml_representers() -> None:
-    """Make `datetime.time` writable by the safe dumper. Idempotent."""
+    """Make `time` and enums writable by the safe dumper. Idempotent."""
     yaml.SafeDumper.add_representer(datetime.time, _represent_time)
+    # By family: `add_representer` matches the exact type, and every enum in
+    # the domain would otherwise need its own line here.
+    yaml.SafeDumper.add_multi_representer(Enum, _represent_enum)

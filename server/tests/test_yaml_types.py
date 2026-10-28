@@ -9,9 +9,12 @@ had no approval question in it.
 from __future__ import annotations
 
 import datetime
+from enum import Enum
 
+import pytest
 import yaml
 from meeting_agents.messages import ProposedSlot, SlotApprovalRequest
+from meeting_agents.plan import CompensationStep, MeetingPlan, PlanStatus
 from meeting_server.yaml_types import install_yaml_representers
 
 SLOT = ProposedSlot(start=datetime.time(10, 0), end=datetime.time(11, 0))
@@ -66,3 +69,34 @@ def test_a_time_is_quoted_so_yaml_cannot_read_it_as_a_number():
     restored = yaml.safe_load(yaml.safe_dump({"t": datetime.time(10, 0)}))
 
     assert restored["t"] == "10:00:00"
+
+
+def test_pyyaml_does_not_know_a_str_enum_by_itself():
+    """A `str` subclass is not a `str` to the dumper - it dispatches on exact type."""
+    yaml.SafeDumper.yaml_representers.pop(PlanStatus, None)
+    yaml.SafeDumper.yaml_multi_representers.pop(Enum, None)
+    with pytest.raises(yaml.representer.RepresenterError):
+        yaml.safe_dump({"status": PlanStatus.CONFIRMED})
+
+
+def test_a_plan_with_a_status_can_be_written_after_installing():
+    """The second time this bit: `status` became a computed field and vanished."""
+    install_yaml_representers()
+    plan = MeetingPlan(
+        title="Design review",
+        participant_emails=["sanne@rag4p.org"],
+        day=datetime.date(2035, 3, 12),
+        location_id="yuma",
+        meeting_id=12,
+        booking_id=8,
+        order_id="abc-123",
+    )
+    written = yaml.safe_dump(plan.model_dump())
+    assert yaml.safe_load(written)["status"] == "CONFIRMED"
+
+
+def test_an_enum_round_trips_as_its_value():
+    install_yaml_representers()
+    assert yaml.safe_load(yaml.safe_dump({"step": CompensationStep.CANCEL_ORDER})) == {
+        "step": "cancel_order"
+    }

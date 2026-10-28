@@ -303,6 +303,24 @@ def test_the_plan_is_persisted_by_the_repository(team, tmp_path):
     assert stored.status is PlanStatus.CONFIRMED
 
 
+def test_the_repository_records_which_team_ran_the_plan(team, tmp_path):
+    """A plan changed later gets several runs, and its trace is all of them."""
+    request_meeting(team)
+    request = Inbox.expect(SlotApprovalRequest)
+    team.send_from_to(
+        "@Human",
+        "@Coordinator",
+        SlotApprovalDecision(plan_id=request.plan_id, approved=True, slot=SLOT),
+    )
+    completed = Inbox.expect(PlanCompleted)
+
+    from meeting_agents.store import JsonPlanStore
+
+    stored = JsonPlanStore(tmp_path / "plans.json").get(completed.plan.plan_id)
+    # Saved several times over the saga, but one run is one entry.
+    assert len(stored.team_ids) == 1
+
+
 def test_an_unknown_plan_id_is_ignored(team):
     """A stale answer from a reloaded page must not start anything."""
     request_meeting(team)

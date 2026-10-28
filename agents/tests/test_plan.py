@@ -93,3 +93,25 @@ def test_plan_ids_are_unique():
 def test_duration_must_be_positive():
     with pytest.raises(ValueError):
         make_plan(duration_minutes=0)
+
+
+def test_status_is_serialised_for_readers():
+    """A browser reads the plan as JSON and should not re-derive the status."""
+    plan = make_plan(meeting_id=12, booking_id=8, room_code="room-a", order_id="abc-123")
+    assert plan.model_dump()["status"] is PlanStatus.CONFIRMED
+
+
+def test_status_cannot_be_set_from_outside():
+    """Derived means derived: a status in the input is not a status on the plan."""
+    plan = MeetingPlan(
+        title="Design review",
+        participant_emails=["sanne@rag4p.org"],
+        day=date(2035, 3, 12),
+        location_id="yuma",
+        status=PlanStatus.CONFIRMED,  # type: ignore[call-arg]
+    )
+    assert plan.status is PlanStatus.DRAFT
+
+
+def test_a_new_plan_has_no_team_runs_yet():
+    assert make_plan().team_ids == []

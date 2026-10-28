@@ -105,7 +105,8 @@ Three screens:
 |---|---|
 | **Platform** | the three services, polled every ten seconds. `up` / `degraded` / `unreachable` are kept apart: a 503 and a silence have different causes |
 | **Plan a meeting** | the form, then the two gates as they arrive — the slots as radio buttons (the candidates travel with the question), lunch as free text, because `@Catering` holds the menu and is the only agent that should read the words — then the booked meeting |
-| **Trace** | every message, live, with a *framework events* toggle. Off, it is twenty rows that read like a story. On, it is the actor system starting up, receiving and processing — the "show me what happens at the framework level" view. Each row carries a one-line summary of what the message actually said; clicking it opens the whole payload, as readable fields or as the raw envelope |
+| **Plans** | every plan the team has made, with the meeting, booking and order ids that nothing else links together, and the runs that touched it. Read-only for now: there is no way yet to change a plan that exists |
+| **Trace** | every message, live, with a *framework events* toggle. Off, it is twenty rows that read like a story. On, it is the actor system starting up, receiving and processing — the "show me what happens at the framework level" view. Each row carries a one-line summary of what the message actually said; clicking it opens the whole payload, as readable fields or as the raw envelope. A run that has finished can be re-read from the server, so a trace outlives the socket that carried it |
 
 TypeScript, MUI, TanStack Query, React Router, and about forty lines of WebSocket. The API base is
 baked in at build time (`VITE_API_BASE`), because Vite inlines it and the browser runs on the host.

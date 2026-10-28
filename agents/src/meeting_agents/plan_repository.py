@@ -68,8 +68,18 @@ class PlanRepository(Akgent[PlanRepositoryConfig, PlanRepositoryState]):
     def receiveMsg_SavePlan(  # noqa: N802
         self, message: SavePlan, sender: ActorAddress
     ) -> None:
-        """Persist a plan and acknowledge with the stored copy."""
-        stored = self._store.save(message.plan)
+        """Persist a plan and acknowledge with the stored copy.
+
+        The team's own id is stamped on the way through. This is the only
+        writer, so it is the only place that can record which runs touched a
+        plan without every caller having to remember to - and a plan that is
+        changed later needs that list to show what happened to it.
+        """
+        plan = message.plan
+        team_id = str(self.team_id)
+        if team_id not in plan.team_ids:
+            plan = plan.model_copy(update={"team_ids": [*plan.team_ids, team_id]})
+        stored = self._store.save(plan)
         self.init_state(self.state.model_copy(update={"saved": self.state.saved + 1}))
         self.send(sender, PlanSnapshot(plan_id=stored.plan_id, plan=stored))
 

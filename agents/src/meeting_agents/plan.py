@@ -8,7 +8,8 @@ Two deliberate design choices, both from `design_akgents.md`:
 
 * **Status is derived, not stored.** A stored status field drifts from the ids it
   is supposed to summarise. `MeetingPlan.status` is computed from which ids are
-  present, so the two can never disagree.
+  present, so the two can never disagree. It is a `computed_field`, so it is
+  serialised for readers without ever being an input.
 * **Compensations are computed here, not decided by a model.** Handing an LLM the
   `cancel_*` tools and asking it to "also cancel the room and lunch" is not an
   authorization policy. `compensations()` returns the exact undo steps, in the
@@ -21,7 +22,7 @@ import uuid
 from datetime import date, time
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 
 class PlanStatus(str, Enum):
@@ -89,6 +90,13 @@ class MeetingPlan(BaseModel):
 
     cancelled: bool = False
 
+    #: The team runs that touched this plan, oldest first. One team plans one
+    #: meeting, so a plan that is later changed has several - and the trace of
+    #: what happened to it is the concatenation of theirs. Stamped by
+    #: `@PlanRepository` on save, because that is the only writer.
+    team_ids: list[str] = Field(default_factory=list)
+
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def status(self) -> PlanStatus:
         """Derived from the plan's contents, in reverse order of the saga."""

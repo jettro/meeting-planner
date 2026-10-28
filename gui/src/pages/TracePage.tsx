@@ -1,6 +1,7 @@
 import {
   Alert,
   Box,
+  Button,
   Chip,
   FormControlLabel,
   Stack,
@@ -8,8 +9,10 @@ import {
   Typography,
 } from "@mui/material";
 import { DataGrid, type GridColDef } from "@mui/x-data-grid";
+import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { isDomainEvent, shortName, summarise, type TeamEvent } from "../api/client";
+import { Link, useParams } from "react-router-dom";
+import { api, isDomainEvent, shortName, summarise, type TeamEvent } from "../api/client";
 import { EventDetails } from "../components/EventDetails";
 import { useTeam } from "../TeamContext";
 
@@ -25,11 +28,31 @@ import { useTeam } from "../TeamContext";
  * The grid shows a one-line summary of the payload, which is enough to
  * recognise a message but never enough to read one. Clicking a row opens the
  * whole thing.
+ *
+ * Two sources, one screen. Without a team in the URL this is the live stream
+ * of the plan being watched. With one - how the plans screen links here - it
+ * is that run's stored trace, fetched once, because the events outlive both
+ * the socket and the team that produced them.
  */
+/** Stable, so an unfetched replay does not look like new events every render. */
+const NOTHING: TeamEvent[] = [];
+
 export default function TracePage() {
-  const { teamId, events, connected } = useTeam();
+  const { teamId: routeTeamId } = useParams();
+  const live = useTeam();
   const [showFramework, setShowFramework] = useState(false);
   const [selected, setSelected] = useState<TeamEvent | null>(null);
+
+  const replaying = Boolean(routeTeamId) && routeTeamId !== live.teamId;
+  const stored = useQuery({
+    queryKey: ["team-events", routeTeamId],
+    queryFn: () => api.teamEvents(routeTeamId!),
+    enabled: replaying,
+  });
+
+  const teamId = replaying ? routeTeamId! : live.teamId;
+  const events = replaying ? (stored.data ?? NOTHING) : live.events;
+  const connected = !replaying && live.connected;
 
   const rows = useMemo(() => {
     const visible = showFramework ? events : events.filter(isDomainEvent);
@@ -57,7 +80,16 @@ export default function TracePage() {
   if (!teamId) {
     return (
       <Alert severity="info">
-        No team yet. Start a plan and the conversation shows up here as it happens.
+        No team yet. Start a plan and the conversation shows up here as it happens, or
+        open one from <Link to="/plans">Plans</Link>.
+      </Alert>
+    );
+  }
+
+  if (replaying && stored.isError) {
+    return (
+      <Alert severity="error">
+        That run's trace could not be read: {(stored.error as Error).message}
       </Alert>
     );
   }
@@ -71,8 +103,13 @@ export default function TracePage() {
         <Chip
           size="small"
           color={connected ? "success" : "default"}
-          label={connected ? "live" : "disconnected"}
+          label={replaying ? `run ${teamId.slice(0, 8)}` : connected ? "live" : "disconnected"}
         />
+        {replaying && (
+          <Button size="small" component={Link} to="/trace">
+            Back to the live run
+          </Button>
+        )}
         <FormControlLabel
           control={
             <Switch

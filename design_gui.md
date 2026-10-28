@@ -280,6 +280,9 @@ server really does own execution.
 | G9 | **The team being watched lives in memory, not in the URL** | A reload loses the socket anyway, and a shareable link to a team waiting on *this* browser is a trap. `MemoryRouter` says so out loud |
 | G10 | **No forms library** | React Hook Form + Zod was planned; five fields and two gates did not earn a dependency. Minimal custom JavaScript cuts both ways |
 | G11 | **The API base is a build argument, not a runtime variable** | Vite inlines `import.meta.env`. The browser runs on the host, so the default is the host's port mapping, never a compose service name |
+| G12 | **A plan records the team runs that touched it** | `MeetingPlan.team_ids`, stamped by `@PlanRepository` because it is the only writer. One team plans one meeting, so a plan changed later has several runs and its trace is all of them |
+| G13 | **One Trace screen, two sources** | `/trace` is the live socket, `/trace/<team>` is a stored run fetched once. A second screen would have duplicated every column and both toggles to show the same thing |
+| G14 | **`status` is a `computed_field`** | The browser should not re-derive what the domain already knows. Derived stays derived: it serialises out and is never read in — see §8.4 for what that cost |
 
 ### 8.1 There is no `ServerUserProxy`, and that is the better answer
 
@@ -357,6 +360,15 @@ whole §1 feature and it cost one `useState`.
 ---
 
 ## 10. Changelog
+
+- 2026-10-28: Added the **Plans** screen (read-only, G4's deferred half): every plan the team has
+  made, with its derived status, its service references — the meeting/booking/order ids that
+  nothing else in the system links together — and its **runs**. Clicking a run opens that team's
+  stored trace in the Trace tab, which now serves two sources (G13): the live socket at `/trace`
+  and a finished run at `/trace/<team>`. The link is new: `MeetingPlan.team_ids`, stamped by
+  `@PlanRepository` (G12). Exposing `status` as a `computed_field` (G14) broke event persistence
+  in exactly the way §8.2 did — see §8.4. Changing a plan is still not possible; the compensations
+  are computed but nothing executes them.
 
 - 2026-10-27: The trace shows message *contents*, not just types. Each row carries a one-line
   summary of the payload and opens a dialog with the whole thing — **Fields** (the payload with

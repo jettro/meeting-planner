@@ -85,6 +85,10 @@ export interface MeetingPlan {
   order_id: string | null;
   lunch_summary: string;
   cancelled: boolean;
+  /** Derived on the server from which ids are present - never sent back. */
+  status: string;
+  /** The team runs that touched this plan, oldest first. */
+  team_ids: string[];
 }
 
 export interface ServiceHealth {
@@ -126,6 +130,23 @@ export const api = {
   platformHealth: () => call<PlatformHealth>("/platform/health"),
 
   plans: () => call<MeetingPlan[]>("/plans"),
+
+  plan: (planId: string) => call<MeetingPlan>(`/plans/${planId}`),
+
+  /**
+   * The stored trace of a team that has already finished.
+   *
+   * The browser keeps the live stream in memory, but the events outlive it:
+   * the server writes them per team and still serves them after the team has
+   * stopped. The sequence wrapper is dropped here so a replayed trace and a
+   * live one are the same shape to everything downstream.
+   */
+  teamEvents: async (teamId: string): Promise<TeamEvent[]> => {
+    const body = await call<{ events: { event: TeamEvent }[] }>(
+      `/teams/${teamId}/events`,
+    );
+    return body.events.map((entry) => entry.event);
+  },
 
   createTeam: () =>
     call<{ team_id: string }>("/teams", {
