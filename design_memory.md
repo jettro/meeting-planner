@@ -57,7 +57,7 @@ change.
 | 4 | "somewhere quiet for focus" is re-judged each time | Library is proposed first for this group's focus sessions | semantic (place preference) | organiser | before `FindLocationAssignment` | an explicit "always the Library for focus" | when the location changes |
 | 5 | "somewhere sporty" became *Meeting in Nature*, which the person turned down | next time the facility manager says plainly that no location has sports facilities | episodic → procedural | all | before `FindLocationAssignment` | the rejected slot and the cancel, in the trace | when a location with sports facilities appears |
 | 6 | Stand-ups are requested at the 60-minute default | 30 minutes is proposed for this group's stand-ups | semantic (preference) | organiser | before `plan_meeting` | an explicit correction | when the person says so |
-| 7 | "Like last week's design review" means nothing | the earlier meeting's people, place and length are offered | episodic | organiser | on a new finding | the earlier meeting's own record | never — it happened |
+| 7 | "Like last week's design review" means nothing | the earlier meeting's people, place and length are offered — **a later step, see M5** | episodic | organiser | on a new finding | the earlier meeting's own record | never — it happened |
 | 8 | The *meadow* room was too noisy for a workshop | the facility manager avoids it for workshops | episodic → semantic | all | before `FindLocationAssignment` | a person's remark after the meeting | when the room is renovated, or after review |
 | 9 | The menu has only one warm option, so "something warm" is always soup | **nothing to remember** — the menu is authoritative, `@Catering` reads it every time | — | — | — | — | — |
 | 10 | Someone typed a name nobody knows, once | **nothing to remember** — a one-off is not a lesson | — | — | — | — | — |
@@ -67,9 +67,10 @@ What the table shows, before any storage is chosen:
 - **Most of it is facts and preferences** (1, 2, 3, 4, 6), stated by a person, and true until that
   person says otherwise. They need a scope (person or organiser) and a way to be deleted, and
   little else.
-- **Episodes already exist.** Case 7 is a meeting this system booked; its record is a
-  coordinator's state (`design_durability.md` R2). Episodic memory here is an *index* over records
-  we keep anyway, not a second copy of them.
+- **Episodes already exist — and are not needed yet.** Case 7 is a meeting this system booked; its
+  record is a coordinator's state (`design_durability.md` R2). Episodic memory here would be an
+  *index* over records we keep anyway, not a second copy of them. It serves this one case, which
+  nobody has asked for, so it is a later step (M5) — kept in the design, not in the plan.
 - **Lessons are few and need review** (5, 8). They are inferred from outcomes, and one rejection
   does not justify a rule: they start as *proposed*, and a person promotes them.
 - **Two of ten should not be memory at all** (9, 10). Nine is a source that is already correct and
@@ -120,7 +121,7 @@ memory/
 ├── organisers/<id>.md         aliases, groups, defaults, place preferences (1, 2, 4, 6)
 ├── places/<location_id>.md    facts about a location or a room, with validity (8)
 ├── lessons/<agent>.md         procedural lessons, proposed or confirmed (5)
-└── episodes/<yyyy-mm>.md      one line per finished meeting, pointing at its team (7)
+└── episodes/                 reserved for the later step (M5) — not created now
 ```
 
 ### 4.2 One item format: a lesson bound to its situation
@@ -154,7 +155,7 @@ being taken, without relying on a model to remember to look something up.
 | Agent | Moment | What is selected, by what | How it arrives |
 |---|---|---|---|
 | `@Intake` | conversation start | `organisers/<id>.md`: aliases, groups, defaults — confirmed only, bounded | an *always* block on the `LLM_CONTEXT` channel |
-| `@Intake` | a name, a group, "like last time" | `recall(...)` over people, organisers, episodes | a tool, because the trigger is in the words |
+| `@Intake` | a name or a group | `recall(...)` over people and organisers — episodes too, once M5 is taken up | a tool, because the trigger is in the words |
 | `@Intake` | before `plan_meeting` | lunch preferences of the settled participants | folded into the `lunch_wish` it passes on — so `@Catering` needs no change (§9 Q2) |
 | `@FacilityManager` | `FindLocationAssignment` | `places/` and `lessons/facility_manager.md`, confirmed, matched on the wish | appended to the assignment's rendering by the handler, before `act()` |
 | `@Catering`, `@Scheduler` | — | nothing in v1 | — |
@@ -165,17 +166,42 @@ its scope matches, it is `confirmed`, and its `review_when` has not been met; am
 plain matching on `situation` is enough at this size (a handful of files). RAG over the tree
 (`workspace_rag_search`) is available when volume justifies it, not before.
 
-### 4.4 Writing: three paths, three statuses
+### 4.4 Writing: two paths now, a third later
 
 **M4 — what a person said is written at once, as confirmed.** `@Intake` gets `remember(kind,
 scope, situation, text)`. It may only store what the person said in this conversation, with their
 words as the evidence; the tool refuses booking ids, secrets and anything without a scope.
 Correcting the same item again *supersedes* it — the journal keeps the old one.
 
-**M5 — episodes are written by code, not by a model.** When a meeting is confirmed or cancelled,
-one line goes to `episodes/`: title, people, place, day, status, team id. It is an index over the
-coordinator's record, and it needs no judgement — so it is not given any. (Which actor writes it
-without making the coordinator less deterministic is spike item 3.)
+**M5 — episodes are a later step, and when they come, code writes them, not a model.**
+
+*What an episode is.* A remembered event with its outcome — not a rule ("propose the Library") or
+a fact ("Sanne is vegetarian"), but "this happened": *on 15 July Sanne and Daan had a design
+review at Meeting in Nature, 09:00–10:00, with soup, and it went ahead.* The other kinds of memory
+are distilled from experience; an episode is the experience itself, kept so it can be gone back to.
+
+*What it would be for.* Case 7: "the same as last week's design review". The meeting's record
+exists — its coordinator's state, shown on the Meetings screen — but an agent cannot reach it: it
+cannot call the server's routes, and nothing in a team lists *other* teams. An episode would be
+the agent-readable trail to that record.
+
+*Why not now.* It serves one case of ten, and nobody has asked for it. It would be a second copy
+of records we already keep, which can drift from them — the problem `design_durability.md` set out
+to remove. It would quietly accumulate who met whom, and when. And it needs the most new machinery
+of anything here: an actor that writes without making the coordinator less deterministic.
+
+*When it is taken up,* two shapes are on the table, and the first is preferred because it copies
+nothing:
+
+- **read the records** — give `@Intake` a read-only way to find earlier meetings in the
+  coordinators' own snapshots, by people and title;
+- **an index written by code** — when a meeting is confirmed or cancelled, one line in `episodes/`
+  (title, people, place, day, status, team id), written by a small deterministic actor, never by a
+  model, because it needs no judgement.
+
+Until then, the one thing an episode would add to the rest of this design — evidence for a lesson —
+is already covered: an item's `evidence` names the team and message that taught it, which points
+at the real record directly.
 
 **M6 — what an agent inferred is written as proposed, and is never applied until a person promotes
 it.** After a turned-down location or a cancellation with a reason, `@FacilityManager` may write a
@@ -256,7 +282,7 @@ first cases of the evals the README roadmap lists.
 | M2 | **Every item states kind, status, scope, situation, reason, exception, evidence and when to review it** | So code can decide whether it *may* apply before anything decides whether it *helps* |
 | M3 | **Select by scope, status and validity first; similarity second; RAG only when volume needs it** | Relevance is not textual likeness, and a handful of files needs no index |
 | M4 | **What a person said is written at once, as confirmed, by a narrow `remember` tool** | Direct corrections should stop the same mistake at once; a narrow tool keeps ids and secrets out |
-| M5 | **Episodes are written by code, as an index over the meetings' own records** | They need no judgement, and the record already exists |
+| M5 | **Episodes are a later step; when they come, they read the meetings' records or are indexed by code — never written by a model** | One case of ten, not yet asked for; a copy can drift, and it accumulates personal data. Kept in the design so the thought is not lost |
 | M6 | **What an agent inferred is proposed, and never applied until a person promotes it** | An inferred lesson has a different status from a confirmed correction |
 | M7 | **Consolidation — the memory keeper — is phase 3** | Until there is memory to consolidate, it has nothing to do |
 | M8 | **Memory is data, never authority; it cannot pass a gate** | The gates and the one-service rule are what make this team safe |
@@ -296,7 +322,7 @@ would help the form team too, at the cost of changing three messages. *Recommend
 **Q4 — a scratch notebook for `@Intake`?** The harness `Memory` would let it keep free-form notes
 across conversations. Worth it only if the confirmed items prove too rigid for conversation.
 
-**Q5 — retention.** How long an episode, a proposed lesson nobody promoted, or a preference
+**Q5 — retention.** How long a proposed lesson nobody promoted, an episode (once M5 is taken up), or a preference
 nobody used is kept.
 
 ---
@@ -308,17 +334,19 @@ nobody used is kept.
       `WorkspaceTool`'s own callables — and whether those writes are journaled and attributed;
    2. an always block through `get_context_states()` on the `LLM_CONTEXT` channel, and how it
       survives a restore;
-   3. which actor writes episodes without giving the deterministic coordinator a store to talk to
-      (a small deterministic `@Memory` actor is the obvious candidate);
-   4. what the console shows of the tree.
+   3. what the console shows of the tree.
 1. **Phase 1 — confirmed facts and preferences** (cases 1–4, 6): the item format, the store, the
    `remember` / `recall` tools and the always block on `@Intake`, `MemoryApplied`, the scenarios of
    §6 against the scripted model.
 2. **Phase 2 — before the action** (cases 4, 8): the facility manager's handler selects places
-   and confirmed lessons before choosing; episodes (case 7).
+   and confirmed lessons before choosing.
 3. **Phase 3 — proposed lessons and review** (case 5): proposed writes, the Memory page with
    promote and retire, and then the memory keeper.
 4. Live runs, the docs, the changelog.
+
+**Later, when "like last time" is actually wanted — episodes (case 7, M5).** First a spike: can a
+read-only lookup over the coordinators' snapshots serve `@Intake` without copying anything; only
+if not, the index in `episodes/` and the small deterministic actor that writes it.
 
 ---
 
@@ -333,6 +361,11 @@ nobody used is kept.
   as records, lessons are few and need review, and two of ten should not be memory at all.
   Proposed one journaled tree, items bound to their situation, selection by code at the moment of
   action, three write paths with three statuses, and a trace event for every application.
+- 2026-10-29: **Episodes moved to a later step** (M5, case 7). They stay in the design — what they
+  are, what they would be for, and the two shapes they could take, reading the records preferred
+  over indexing them — but not in the plan: they serve one case nobody has asked for, would copy
+  records we already keep, and accumulate who met whom. The spike item and phase that served them
+  moved to a closing "later" note in §10.
 
 ---
 
