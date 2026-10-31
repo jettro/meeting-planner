@@ -1,6 +1,7 @@
 """Seed demo data: the people whose agendas this service keeps.
 
-Ten of them, because a meeting between two people out of three is not much of a
+Ten of them, and the person giving the demo, who can then log in as
+themselves (design_auth.md). Ten, because a meeting between two people out of three is not much of a
 scheduling problem - with ten, finding a window everyone is free in is a real
 question to ask the team.
 """
@@ -22,6 +23,7 @@ SAMPLE_PEOPLE = [
     ("joris@rag4p.org", "Joris Mulder"),
     ("marieke@rag4p.org", "Marieke Hendriks"),
     ("sven@rag4p.org", "Sven Peters"),
+    ("jettro@rag4p.org", "Jettro Coenradie"),
 ]
 
 
