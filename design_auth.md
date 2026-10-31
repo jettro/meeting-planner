@@ -8,8 +8,10 @@ simple enough to stay a demo.
 > **The one sentence to keep:** *the framework already checks who owns what; we only have to tell
 > it who is asking.*
 
-**Status:** proposal (2026-10-31), questions answered (§8) and the spike run (§9) the same day —
-every seam holds. Nothing is built. The spike changed A5, A10, A12 and A14 (see §10).
+**Status:** partly built (2026-10-31). Steps 2, 3 and 6 of §7 are built and verified live: the
+login, the gate, the GUI's login page, and the console's API-key login. Still to build: step 4
+(*My agenda*, A12), step 5 (the organiser, A10) and step 7 (the memory doc). §11 is what building
+it taught us.
 
 ---
 
@@ -298,6 +300,30 @@ page on another port in a browser. **Every seam holds; nothing in the framework 
 
 ---
 
+## 11. What building it taught us
+
+- **The framework did the authorization; we wrote none.** `server/src/meeting_server/auth.py` is
+  a strategy, a cookie and a module; every 404 in `server/tests/test_auth.py` comes from the
+  framework's `OwnerOrAdminPolicy`.
+- **`AUTH=off` is the default in code, `demo` in the environment.** Tests that build
+  `ServerSettings` directly keep the anonymous server unless they ask for a login, and the deployed
+  server logs in unless told not to. `admin_list_all_teams` is always on: without a login nobody
+  holds the role, so it changes nothing then.
+- **A session that ends is noticed by any 401.** The cookie is HttpOnly, so the GUI cannot look
+  at it; `send()` in `client.ts` announces every 401, and the session provider listens. A socket
+  closed with 1008 asks `/auth/me` whether it was the session or the team. Verified live by
+  restarting a server without `AUTH_SECRET`: the open page went to the login by itself.
+- **A change of person starts the GUI afresh**: the team provider is keyed on the user, and the
+  query cache is emptied, so the next person never sees the last one's cached meetings.
+- **`/auth/logout` answers by `Accept`.** The console navigates to it and gets a redirect back to
+  its own origin — only an origin in `CORS_ORIGINS`, never wherever a Referer points; our GUI
+  fetches it and gets JSON.
+- **The live check:** Sanne planned a meeting; Daan's Meetings page was empty; Femke, an admin,
+  saw it at the slot gate. The console was not run against the gated server — its contract is
+  read from source (§9.5) and held by the API-key tests.
+
+---
+
 ## 10. Changelog
 
 - 2026-10-31 — first proposal.
@@ -308,3 +334,5 @@ page on another port in a browser. **Every seam holds; nothing in the framework 
   A14 is a login that ends in the cookie, not a per-request header; A12 needs one read route in
   the meeting service; A10 reads `user_id` only. Two risks added: `localhost` vs `127.0.0.1`, and
   1008 on the socket.
+- 2026-10-31 — steps 2, 3 and 6 built (§11): `DemoLogin`, `AuthModule`, the login page, the
+  console's API-key login. 336 tests pass.

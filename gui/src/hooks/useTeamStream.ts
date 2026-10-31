@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { streamUrl, type TeamEvent } from "../api/client";
+import { checkSession, streamUrl, type TeamEvent } from "../api/client";
+
+/** The close code the identity gate and the team-access check both use. */
+const POLICY_VIOLATION = 1008;
 
 export type StreamStatus = "idle" | "connecting" | "open" | "closed";
 
@@ -42,7 +45,11 @@ export function useTeamStream(teamId: string | null) {
 
     const socket = new WebSocket(streamUrl(teamId));
     socket.onopen = () => update(() => ({ status: "open" }));
-    socket.onclose = () => update(() => ({ status: "closed" }));
+    socket.onclose = (event) => {
+      update(() => ({ status: "closed" }));
+      // Not logged in, or not your team: the socket cannot say which, so ask.
+      if (event.code === POLICY_VIOLATION) void checkSession();
+    };
     socket.onerror = () => update(() => ({ status: "closed" }));
     socket.onmessage = (frame) => {
       const event = JSON.parse(frame.data) as TeamEvent;

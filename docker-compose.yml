@@ -96,6 +96,14 @@ services:
       NOMNOM_SERVICE_URL: http://nomnom-service:8003
       # The SPA is served from its own origin, so CORS is not optional here.
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:8300,http://localhost:8400}
+      # Who is asking (design_auth.md). `demo` lets you pick a person the
+      # meeting service knows - no password; `off` makes everybody anonymous.
+      # The GUI and the console share the session cookie, so both must be
+      # opened on `localhost`, the same host as the server.
+      AUTH: ${AUTH:-demo}
+      AUTH_SECRET: ${AUTH_SECRET:-}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      API_KEYS: ${API_KEYS:-}
 
   # The browser client. It talks to the server over the host's port mapping,
   # not over this network, so the API base is a build argument baked into the

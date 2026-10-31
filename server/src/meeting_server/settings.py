@@ -1,17 +1,19 @@
 """What the server needs to know that the framework does not configure.
 
-`CommunitySettings` covers the server itself. These are the two things that are
+`CommunitySettings` covers the server itself. These are the things that are
 ours: where the three services live, so the browser can be told whether they
-are up. There is no plan store: a meeting's record is its team's coordinator
-state, kept by the framework's own event store (design_durability.md).
+are up, and who may log in (design_auth.md). There is no plan store: a
+meeting's record is its team's coordinator state, kept by the framework's own
+event store (design_durability.md).
 """
 
 from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 
 
 def _env(name: str, default: str) -> str:
@@ -24,6 +26,36 @@ class ServiceEndpoint(BaseModel):
 
     name: str
     url: str
+
+
+class AuthSettings(BaseModel):
+    """Who is asking (design_auth.md A1-A7, A14).
+
+    `off` is the framework's own behaviour: every request is `anonymous`. It is
+    the default for a settings object built in code, so a test states when it
+    wants a login; the deployed server reads `AUTH` and defaults to `demo`.
+    """
+
+    mode: Literal["demo", "off"] = "off"
+
+    #: Signs the session cookie. Empty means a fresh key per process: sessions
+    #: then end at every restart, which is acceptable for a demo and needs no
+    #: secret in anybody's `.env`.
+    secret: SecretStr = SecretStr("")
+
+    #: Principals that get the `admin` role, and with it every team (A7).
+    admin_emails: frozenset[str] = frozenset()
+
+    #: API key -> the email it logs in as (A14). Never in the repo.
+    api_keys: dict[str, str] = Field(default_factory=dict)
+
+    session_max_age_seconds: int = 8 * 3600
+
+
+def _api_keys(raw: str) -> dict[str, str]:
+    """`key=email,key=email` - the shape a compose variable can hold."""
+    pairs = (item.split("=", 1) for item in raw.split(",") if "=" in item)
+    return {key.strip(): email.strip().lower() for key, email in pairs if key.strip() and email.strip()}
 
 
 class ServerSettings(BaseModel):
@@ -48,8 +80,14 @@ class ServerSettings(BaseModel):
     #: not make the whole screen hang on the slowest one.
     health_timeout_seconds: float = 3.0
 
+    auth: AuthSettings = Field(default_factory=AuthSettings)
+
     host: str = "0.0.0.0"  # noqa: S104 - a container port is published deliberately
     port: int = 8200
+
+    def service_url(self, name: str) -> str | None:
+        """The REST base of one of the services, by name."""
+        return next((service.url for service in self.services if service.name == name), None)
 
     @classmethod
     def from_env(cls) -> ServerSettings:
@@ -77,6 +115,15 @@ class ServerSettings(BaseModel):
                 ),
             ],
             health_timeout_seconds=float(_env("HEALTH_TIMEOUT_SECONDS", "3.0")),
+            auth=AuthSettings(
+                mode="off" if _env("AUTH", "demo") == "off" else "demo",
+                secret=SecretStr(_env("AUTH_SECRET", "")),
+                admin_emails=frozenset(
+                    email.strip().lower() for email in _env("ADMIN_EMAILS", "").split(",") if email.strip()
+                ),
+                api_keys=_api_keys(_env("API_KEYS", "")),
+                session_max_age_seconds=int(_env("SESSION_MAX_AGE_SECONDS", str(8 * 3600))),
+            ),
             host=_env("SERVER_HOST", "0.0.0.0"),  # noqa: S104
             port=int(_env("SERVER_PORT", "8200")),
         )

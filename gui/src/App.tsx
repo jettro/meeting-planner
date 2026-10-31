@@ -1,6 +1,8 @@
 import {
   AppBar,
   Box,
+  Button,
+  CircularProgress,
   Container,
   CssBaseline,
   Tab,
@@ -10,13 +12,17 @@ import {
   Typography,
   createTheme,
 } from "@mui/material";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { Link, MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import ChatPage from "./pages/ChatPage";
+import LoginPage from "./pages/LoginPage";
 import MeetingsPage from "./pages/MeetingsPage";
 import PlanPage from "./pages/PlanPage";
 import PlatformPage from "./pages/PlatformPage";
 import TracePage from "./pages/TracePage";
+import { useSession } from "./session";
+import { SessionProvider } from "./SessionContext";
 import { TeamProvider } from "./TeamContext";
 
 const theme = createTheme({ palette: { primary: { main: "#2d6a4f" } } });
@@ -29,6 +35,60 @@ const TABS = [
   { path: "/meetings", label: "Meetings" },
   { path: "/trace", label: "Trace" },
 ];
+
+/** Who is logged in, and the way out - on the right of the app bar. */
+function UserBar() {
+  const session = useSession();
+  if (!session.user) return null;
+  return (
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+      <Typography variant="body2">{session.user.name}</Typography>
+      {session.canLogOut && (
+        <Button color="inherit" size="small" onClick={() => void session.logout()}>
+          Log out
+        </Button>
+      )}
+    </Box>
+  );
+}
+
+/**
+ * The tabs, for somebody who is logged in - otherwise the login page.
+ *
+ * The team being watched and every cached answer belong to one person, so a
+ * change of person starts both afresh: the team provider is keyed on who it is,
+ * and the query cache is emptied.
+ */
+function Gate() {
+  const { user } = useSession();
+  const queries = useQueryClient();
+  const who = user?.user_id ?? null;
+
+  useEffect(() => {
+    queries.clear();
+  }, [who, queries]);
+
+  if (user === undefined) return <CircularProgress sx={{ m: 4 }} />;
+  if (user === null) {
+    return (
+      <Box>
+        <AppBar position="static">
+          <Toolbar>
+            <Typography variant="h6">Meeting planner</Typography>
+          </Toolbar>
+        </AppBar>
+        <Container sx={{ py: 4 }}>
+          <LoginPage />
+        </Container>
+      </Box>
+    );
+  }
+  return (
+    <TeamProvider key={who}>
+      <Shell />
+    </TeamProvider>
+  );
+}
 
 function Shell() {
   const { pathname } = useLocation();
@@ -44,7 +104,10 @@ function Shell() {
     <Box>
       <AppBar position="static">
         <Toolbar>
-          <Typography variant="h6">Meeting planner</Typography>
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+            Meeting planner
+          </Typography>
+          <UserBar />
         </Toolbar>
         <Tabs value={current} textColor="inherit" indicatorColor="secondary">
           {TABS.map((tab) => (
@@ -75,9 +138,9 @@ export default function App() {
             would lose the stream anyway, and a shareable link to a team that
             is waiting for *this* browser to answer a question is a trap. */}
         <MemoryRouter>
-          <TeamProvider>
-            <Shell />
-          </TeamProvider>
+          <SessionProvider>
+            <Gate />
+          </SessionProvider>
         </MemoryRouter>
       </QueryClientProvider>
     </ThemeProvider>

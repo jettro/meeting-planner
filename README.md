@@ -20,9 +20,9 @@ see `design.md` section 3 for the design and rationale.
 **Current phase scope** (see `design.md` and [`design_akgents.md`](./design_akgents.md) for the
 roadmap): plain REST APIs, Pydantic/SQLModel domain models, agent-facing MCP servers that wrap
 each service's own REST API, and an **agent team** built on the in-house "Akgents" framework that
-plans a meeting end to end from the command line. There is **no** authentication/OAuth on the REST
-APIs (the MCP endpoints use a lightweight per-service API key instead, see `design.md` section
-3.3). Each service is self-contained and does not share a common library; a small amount of logic
+plans a meeting end to end from the command line. There is **no** authentication/OAuth on the
+services' REST APIs (the MCP endpoints use a lightweight per-service API key instead, see `design.md`
+section 3.3); the team server has a demo login, described below. Each service is self-contained and does not share a common library; a small amount of logic
 (e.g. the day-availability algorithm) is duplicated between `meeting-service` and
 `location-service` by design.
 
@@ -93,11 +93,13 @@ It is not a server: one run plans one meeting and exits, so it sits behind a com
 
 The same team also runs behind HTTP, for clients that are not a terminal. `make up` starts it on
 <http://localhost:8200>; `make run-server` runs it on the host instead. It is the community tier of
-`akgentic-infra` with one route of our own spliced in:
+`akgentic-infra` with a route and a login of our own spliced in:
 
 | route | what it answers |
 |---|---|
 | `GET /platform/health` | all three services at once, probed concurrently — `up`, `degraded` (it answered, badly) or `unreachable` (it did not answer) |
+| `GET /auth/users`, `POST /auth/login/person` | the people who may log in, and logging in as one of them |
+| `POST /auth/login/apikey`, `GET /auth/me`, `GET /auth/logout` | the session, in the shape the akgentic console expects |
 
 Everything else is the framework's: `POST /teams` creates a team from the catalog,
 `POST /teams/{id}/message/from/@Human/to/@Coordinator` starts a plan with a typed
@@ -106,6 +108,22 @@ needs no endpoint of its own — `GET /teams/{id}/events` (or `WS /ws/{id}`) is 
 `POST /teams/{id}/human-input` answers a gate with plain text, and `GET /teams` plus
 `GET /teams/{id}/agent-states` are the list of meetings: one team arranges one meeting, so there
 is no plan store of our own to read.
+
+### Who is asking
+
+The framework already decides who may see which team: the owner, or an admin — anyone else gets a
+404, as if the team did not exist. Its community tier just makes everybody `anonymous`. With
+`AUTH=demo` (the default in compose) the server tells it who is asking (`design_auth.md`):
+
+- You **log in as any person the meeting service knows**, by picking them. There is no password —
+  this demonstrates users, not security. Your meetings, their traces and cancelling are then yours
+  alone; `ADMIN_EMAILS` see everybody's.
+- The session is an HttpOnly cookie, because a browser cannot put a header on a WebSocket. The GUI
+  and the console share it, so **open both on `localhost`**, the host the server is on —
+  `127.0.0.1` is a different site and gets no cookie.
+- The console logs in with an API key: `API_KEYS` in `.env`, as `key=email` pairs.
+- `AUTH_SECRET` signs the cookie; left empty, everybody is logged out at each server restart.
+  `AUTH=off` brings back the anonymous server.
 
 Both human gates work over HTTP: the answer is read against the question it refers to by
 `ChannelHuman.process_human_input`, using the same `answers.py` the terminal uses. A browser can
@@ -118,7 +136,8 @@ it from nginx on <http://localhost:8300>; `make gui-dev` runs it from Vite on
 <http://localhost:5173> against the same server. Both origins are already in the server's
 `CORS_ORIGINS`.
 
-Five screens:
+A login page first — pick who you are — then five screens, with your name and *Log out* in the
+app bar:
 
 | screen | what it does |
 |---|---|
@@ -145,7 +164,7 @@ member's LLM context and system prompt, the workspaces, and what the run spent.
 It is upstream's [`akgentic-frontend`](https://github.com/b12consulting/akgentic-frontend), run
 unmodified. There is no checkout in this repository: Docker builds it from the upstream git URL at
 a pinned commit, and the only file we own is `console/config.json`, mounted over the image. See
-`console/README.md`.
+`console/README.md`. It logs in with one of the `API_KEYS` (see *Who is asking*).
 
 A team run carries typed metadata — the meeting it was asked to arrange — declared on the team
 card as `metadata_type` and sent with `POST /teams`. That is what makes a list of runs readable:
@@ -302,10 +321,12 @@ Run `make help` for the full list. Highlights:
 Each step so far has a design document, written before it was built: `design.md` (the services
 and their MCP servers), `design_akgents.md` (the agent team), `design_gui.md` (the team as a
 service, the browser and the console), `design_cancel.md` (cancelling), `design_durability.md`
-(the team is the meeting) and `design_chat.md` (the team you talk to).
+(the team is the meeting), `design_chat.md` (the team you talk to) and `design_auth.md` (who is
+asking — the login, and the meetings that are yours).
 
 Still to come, each with a design first:
 
+- **The rest of `design_auth.md`** — a *My agenda* page, and the organiser known to `@Intake`.
 - **Memory** — for example remembering someone's lunch preference, or which "Daan" they usually
   mean. Notes have started; the first task is an evaluation of what akgents offers.
 - **Guardrails** — the hook is known (`BaseAgent.extra_capabilities()`, where `TalkOnlyToHuman`
@@ -314,4 +335,5 @@ Still to come, each with a design first:
   first cases.
 - Open questions from `design_chat.md` §11: changing a request after it is sent, the model for
   `@Intake`, and how much of the relay to narrate.
-- Not planned: a change-meeting feature (cancel and plan again), and OAuth2/auth-server.
+- Not planned: a change-meeting feature (cancel and plan again). A real identity provider (OIDC)
+  would replace only the login page (`design_auth.md` A8).

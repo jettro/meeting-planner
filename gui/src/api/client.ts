@@ -187,11 +187,56 @@ export type RunSubject = Pick<
   "title" | "day" | "location_id" | "location_wish" | "participant_emails"
 >;
 
-async function call<T>(path: string, init?: RequestInit): Promise<T> {
+/** Somebody who may log in: a person the meeting service knows. */
+export interface Person {
+  email: string;
+  name: string;
+}
+
+/** Who the session says you are (`GET /auth/me`, design_auth.md A5). */
+export interface Me {
+  user_id: string;
+  email: string;
+  name: string;
+  roles: string[];
+}
+
+/**
+ * The principal of a server that has no login (`AUTH=off`): everybody is
+ * `anonymous`, exactly as the framework's community tier has it.
+ */
+export const ANONYMOUS: Me = { user_id: "anonymous", email: "", name: "anonymous", roles: [] };
+
+/**
+ * Announced when the server says nobody is logged in.
+ *
+ * The session lives in an HttpOnly cookie no script can read, so the only way
+ * to learn that it ended - expired, logged out in the console, the server
+ * restarted without a secret - is a 401 from some call. Whoever holds the
+ * session listens for this instead of every page handling it.
+ */
+export const UNAUTHORIZED = "meeting-planner:unauthorized";
+
+function unauthorized(): void {
+  window.dispatchEvent(new Event(UNAUTHORIZED));
+}
+
+/**
+ * Every call carries the session cookie. The server is a second origin (G2),
+ * and a cross-origin fetch sends no cookie unless asked to.
+ */
+async function send(path: string, init?: RequestInit): Promise<Response> {
   const response = await fetch(`${BASE}${path}`, {
     ...init,
+    credentials: "include",
     headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
   });
+  if (response.status === 401) unauthorized();
+  return response;
+}
+
+async function call<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await send(path, init);
   if (!response.ok) {
     // The server's detail is the only useful part of a failure here - an
     // unreadable answer at a gate comes back this way, and the person who
@@ -201,6 +246,32 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   }
   return response.status === 204 ? (null as T) : ((await response.json()) as T);
 }
+
+export const auth = {
+  /**
+   * Who is logged in: `null` when nobody is, `ANONYMOUS` when this server has
+   * no login at all - a 404 on the route means the gate is off (`AUTH=off`).
+   * Asked with a plain fetch, because "nobody" is an answer here, not a fault.
+   */
+  me: async (): Promise<Me | null> => {
+    const response = await fetch(`${BASE}/auth/me`, { credentials: "include" });
+    if (response.status === 404) return ANONYMOUS;
+    if (!response.ok) return null;
+    return (await response.json()) as Me;
+  },
+
+  people: () => call<Person[]>("/auth/users"),
+
+  loginAs: async (email: string): Promise<Me> => {
+    const body = await call<{ user: Me }>("/auth/login/person", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+    return body.user;
+  },
+
+  logout: () => call<{ success: boolean }>("/auth/logout"),
+};
 
 export const api = {
   platformHealth: () => call<PlatformHealth>("/platform/health"),
@@ -342,12 +413,21 @@ export const api = {
    * it is already running, which is the outcome being asked for.
    */
   restoreTeam: async (teamId: string): Promise<void> => {
-    const response = await fetch(`${BASE}/teams/${teamId}/restore`, { method: "POST" });
+    const response = await send(`/teams/${teamId}/restore`, { method: "POST" });
     if (!response.ok && response.status !== 409) {
       throw new Error((await response.text()) || `${response.status} ${response.statusText}`);
     }
   },
 };
+
+/**
+ * A socket closed for policy (1008) is the WebSocket's 401 - or its 404, for
+ * a team that is not yours. Asking `/auth/me` tells the two apart, and
+ * announces the first.
+ */
+export async function checkSession(): Promise<void> {
+  if ((await auth.me()) === null) unauthorized();
+}
 
 export function streamUrl(teamId: string): string {
   return `${BASE.replace(/^http/, "ws")}/ws/${teamId}`;

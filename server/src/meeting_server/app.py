@@ -1,6 +1,8 @@
-"""Composing the server: the community tier, plus the one thing we add.
+"""Composing the server: the community tier, plus the two things we add.
 
-That one thing is `/platform/health`. There used to be a second, `/plans`, read
+The first is `/platform/health`. The second is a login (design_auth.md): the
+framework already checks who owns which team, and `AuthModule` tells it who is
+asking. There used to be a second, `/plans`, read
 from a plan store of our own; it went when the coordinator's state became the
 meeting's record (design_durability.md R3, R7). The browser now lists teams
 and reads each coordinator's snapshot through the framework's own routes.
@@ -18,6 +20,8 @@ Two things happen here that the framework cannot do for us:
    `services.catalog` at the moment it loads a team, so assigning after wiring
    is enough - and there is a test that holds the framework to that.
 3. `apply_env` is called, because the placeholders have to refer to something.
+4. With `AUTH=demo`, `services.auth` is replaced the same way as the catalog,
+   and the identity gate is added to the composition.
 """
 
 from __future__ import annotations
@@ -31,6 +35,7 @@ from fastapi import FastAPI
 from meeting_agents.bootstrap import apply_env
 from meeting_agents.settings import Settings as AgentSettings
 
+from meeting_server.auth import AuthModule, DemoLogin, People, people_from
 from meeting_server.catalog import EnvResolvingCatalog
 from meeting_server.platform import PlatformModule
 from meeting_server.settings import ServerSettings
@@ -57,13 +62,20 @@ def community_settings(settings: ServerSettings) -> CommunitySettings:
         workspaces_root=settings.workspaces_root,
         cors_origins=settings.cors_origins,
         catalog_model_type_prefixes=["meeting_agents."],
+        # An admin sees every team, including the ones made as `anonymous`
+        # before there was a login (design_auth.md A7). Without a login nobody
+        # holds the role, so this changes nothing then.
+        admin_list_all_teams=True,
         host=settings.host,
         port=settings.port,
     )
 
 
-def create_meeting_app(settings: ServerSettings | None = None) -> FastAPI:
-    """The server, ready to run."""
+def create_meeting_app(settings: ServerSettings | None = None, *, people: People | None = None) -> FastAPI:
+    """The server, ready to run.
+
+    `people` is who may log in; by default, everyone the meeting service knows.
+    """
     settings = settings or ServerSettings.from_env()
     agent_settings = AgentSettings.from_env()
 
@@ -81,6 +93,15 @@ def create_meeting_app(settings: ServerSettings | None = None) -> FastAPI:
         *server_modules(services, infra_settings),
         PlatformModule(settings),
     ]
+    if settings.auth.mode == "demo":
+        strategy = DemoLogin(
+            settings.auth,
+            people or people_from(settings.service_url("meeting-service") or "http://meeting-service:8001"),
+            settings.cors_origins,
+        )
+        services.auth = strategy
+        modules.append(AuthModule(strategy))
+    logger.info("login: %s", settings.auth.mode)
     logger.info(
         "serving team namespace '%s' from %s, events in %s",
         NAMESPACE,

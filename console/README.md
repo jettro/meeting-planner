@@ -35,7 +35,8 @@ in the image. Change it and reload the browser; there is no build step.
 | Key | Why it is set |
 | --- | --- |
 | `api` | Our server, on the host's port mapping. The browser runs on the host, so `http://server:8200` would not resolve - the same reasoning as the SPA's `VITE_API_BASE` |
-| `hideLogin` | The community tier has no authentication. There is no `/auth/me` to answer, so a login page would be a door onto a wall |
+| `hideLogin` | `false`: our server has a login (design_auth.md), and the console's own login page is how it gets a session. With `true` the console sends no credentials at all and every call is a 401. Back to `true` only with `AUTH=off` |
+| `loginProviders` | `["apikey"]`: the console posts the key once to `/auth/login/apikey` and sends only the session cookie afterwards, on its WebSocket too. The keys are `API_KEYS` in `.env`, as `key=email` pairs - you log in as that person. Logging in on our GUI at `localhost:8300` logs you in here as well: same host, same cookie |
 | `welcomeMessage` | Names the deployment, so it is obvious which backend the console is looking at |
 
 The full key list is in upstream's README. To see what a running container
