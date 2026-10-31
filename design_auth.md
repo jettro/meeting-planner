@@ -8,8 +8,8 @@ simple enough to stay a demo.
 > **The one sentence to keep:** *the framework already checks who owns what; we only have to tell
 > it who is asking.*
 
-**Status:** proposal (2026-10-31), questions answered the same day (§8). Nothing is built. §9 is
-the spike that comes first.
+**Status:** proposal (2026-10-31), questions answered (§8) and the spike run (§9) the same day —
+every seam holds. Nothing is built. The spike changed A5, A10, A12 and A14 (see §10).
 
 ---
 
@@ -71,9 +71,21 @@ trace lives on one. A token in the query string ends up in logs. A cookie travel
 `localhost:8200` are the same *site* (ports do not count for `SameSite`), so `SameSite=Lax` works;
 CORS already runs with `allow_credentials=True` and explicit origins (`modules/core.py`).
 
-**A5 — the strategy's routes are `/auth/users`, `/auth/login`, `/auth/logout`, `/auth/me`**,
-returned by `get_auth_routes()`. `/auth/` is on the default allowlist, so they are reachable
-without a session, as a login must be.
+**A5 — the strategy's routes follow the contract the akgentic console already speaks**
+(found in the spike, §9.5), so one session serves our GUI and the console alike. Returned by
+`get_auth_routes()`; `/auth/` is on the default allowlist, so they are reachable without a session,
+as a login must be:
+
+| Route | Body / answer |
+|---|---|
+| `GET /auth/users` | ours: the people who may log in (name, email) |
+| `POST /auth/login/person` | ours: `{"email"}` → sets `mp_session`, answers `{"success": true, "user": …}` |
+| `POST /auth/login/apikey` | the console's: `{"apikey"}` → same cookie, same answer (A14) |
+| `GET /auth/me` | `{user_id, email, name, roles}`, or **401** — the console reads 401 as "go to login" |
+| `GET /auth/logout` | clears the cookie and redirects — the console navigates to it, it does not fetch it |
+
+Our GUI and the console run on the same host (`localhost`), so they share the cookie: logging in on
+one logs you in on the other.
 
 **A6 — an `AuthModule` mounts `RequireAuthMiddleware` at `IDENTITY`**, with the merged allowlist
 the builder hands it. This is the one line community leaves out on purpose. `/platform/health`
@@ -98,8 +110,8 @@ browser: it is the part that survives.
 **A9 — teams: the framework's `OwnerOrAdminPolicy`, unchanged.** You see, resume, trace and
 cancel the meetings you started; an admin sees all. Nothing to build.
 
-**A10 — agents act on behalf of the owner, and know it.** `@Intake` reads `self.user_id` /
-`self.user_email` and says who it is talking to in its context ("you are arranging meetings for
+**A10 — agents act on behalf of the owner, and know it.** `@Intake` reads `self.user_id` — the
+email, by A2; `Akgent` has no public `user_email`, only a private `_user_email` — and says who it is talking to in its context ("you are arranging meetings for
 Sanne de Vries"), so "me", "my team" and "my usual room" have a referent. The organiser is added
 to `PlanMeetingRequest` as an optional `organiser` field, and the coordinator includes the organiser
 among the participants unless told otherwise (Q2, decided): `@Intake` drops the organiser when the
@@ -111,11 +123,16 @@ on someone's behalf, spending on lunch: that is the `before_tool_execute` seam n
 guardrails, and it can now ask *who* — but deciding rules is a separate design.
 
 **A12 — now: everyone sees their own agenda.** Not being able to see the meetings you are in
-would feel like a missing feature (Q3), and the data already exists: the meeting service keeps
-every person's agenda (`GET /persons/{email}/agenda?day=`). A **My agenda** page shows the logged-in
-person's meetings for a day, through a gated route on our server, `GET /me/agenda?day=`, that takes
-the email **from the session, never from the request** — so nobody reads another person's agenda by
-editing a URL. A meeting this planner booked links to its team when you own that team.
+would feel like a missing feature (Q3), and the meeting service keeps every person's agenda. But
+its API does not show it: `GET /persons/{email}/agenda?day=` answers only *free slots*, and
+`GET /meetings` lists every meeting but not the busy blocks without one (`AgendaItem.meeting_id`
+is optional). So the meeting service gains one read route, `GET /persons/{email}/agenda/items?day=`
+— each item's time, title and `meeting_id` — a change in a service we own, and no MCP tool changes.
+A **My agenda** page shows the logged-in person's day through a gated route on our server,
+`GET /me/agenda?day=`, that takes the email **from the session, never from the request** — so
+nobody reads another person's agenda by editing a URL. An item whose `meeting_id` matches
+`plan.meeting_id` in one of *your* coordinators' states links to that team; the Meetings page
+already loads those states.
 
 **A13 — later: participants opening the team behind a meeting.** Seeing *that* you are invited is
 A12; seeing *how* it was arranged (the trace, cancel) for a meeting someone else organised needs a
@@ -127,15 +144,21 @@ team's metadata has to be updated when the plan settles, and who writes it is a 
 
 ### 2.4 The console: an API key
 
-**A14 — `DemoLogin` also accepts an API key.** akgentic's own client already knows this
-convention: a credential with the `ak_` prefix is sent as `X-API-Key`, anything else as
-`Authorization: Bearer` (`infra/cli/client.py`). The validation lives in the paid tiers, so ours
-is a small map in configuration, `API_KEYS`, from key to email: a request carrying a known key is
-that person, roles included; an unknown key is a 401. The cookie stays the GUI's way in; the key is
-the way in for the console and for the akgentic CLI against our server. Keys live only in the
-environment and `.env` (a placeholder in `.env.example`), never in the repo. What the spike must
-show is *how* the console sends it — a browser cannot put a header on a WebSocket, so if the
-console's trace uses one, the key has to travel another way (Q4).
+**A14 — an API key logs you in; it is a login, not a header on every request.** The spike
+answered *how* the console sends a key: it does not send it on requests at all. Its login page has
+an `apikey` provider that `POST`s `{"apikey"}` once to `/auth/login/apikey`, expects the session
+cookie back, and from then on sends only the cookie (`withCredentials`) — on HTTP and on its
+WebSocket alike, which is what makes the WebSocket question disappear. Turning it on is
+configuration in `console/config.json`: `"hideLogin": false`, `"loginProviders": ["apikey"]`.
+
+The keys are a small map in configuration, `API_KEYS`, from key to email: a known key logs in as
+that person, roles included; an unknown key is a 401. Keys live only in the environment and `.env`
+(a placeholder in `.env.example`), never in the repo.
+
+For a script or the akgentic CLI, which send `X-API-Key` on each request (`ak_` prefix,
+`infra/cli/client.py`), `resolve_request_user` also accepts that header — cheap, and verified. A
+key in the WebSocket's query string also worked in the spike but is **not** adopted: a URL ends up
+in logs.
 
 ---
 
@@ -163,8 +186,10 @@ This is the reason for the step, so it is worth saying exactly:
 |---|---|
 | `server/src/meeting_server/auth.py` (new) | `DemoLogin(AuthStrategy)`: cookie sign/verify, the four `/auth/*` routes, the people list from `MEETING_SERVICE_URL` |
 | `server/src/meeting_server/app.py` | `services.auth = DemoLogin(...)`; `AuthModule` with `RequireAuthMiddleware` at `IDENTITY`; `admin_list_all_teams=True` |
-| `server/src/meeting_server/auth.py` (cont.) | `X-API-Key` checked against `API_KEYS` before the cookie (A14) |
+| `server/src/meeting_server/auth.py` (cont.) | `/auth/login/apikey` and an `X-API-Key` header, both against `API_KEYS` (A14) |
 | `server/src/meeting_server/agenda.py` (new) | `GET /me/agenda?day=` → the meeting service, for the session's email (A12) |
+| `services/meeting-service` | `GET /persons/{email}/agenda/items?day=`: a person's agenda items with `meeting_id` (A12) |
+| `console/config.json` | `"hideLogin": false`, `"loginProviders": ["apikey"]` (A14) |
 | `server/src/meeting_server/settings.py` | `AUTH_SECRET`, `ADMIN_EMAILS`, `API_KEYS`, `SESSION_MAX_AGE` (8 h); `AUTH=demo|off` so tests and the old behaviour stay one switch away |
 | `agents/…/messages.py`, `plan.py` | optional `organiser` on the request and the plan |
 | `agents/…/intake.py`, intake prompt | the owner in the context; `plan_meeting` passes `organiser` |
@@ -193,10 +218,13 @@ This is the reason for the step, so it is worth saying exactly:
 
 ## 6. Risks
 
-- **The console.** `akgentic-frontend` talks to the same server. With the gate on, it gets 401
-  unless it sends an API key (A14) — or the cookie, from the same site, after logging in on our
-  GUI. If its WebSocket can carry neither, the fallback is a second server process with
-  `AUTH=off` for the console only, read-only by convention.
+- **The console** keeps `hideLogin: true` in today's config and would then send no credentials
+  and get 401s; switching the gate on and the console's login on is one change (A14).
+- **`localhost` and `127.0.0.1` are different sites.** A GUI opened on one and a server on the
+  other would never get the cookie back. The compose files and `VITE_API_BASE` use `localhost`
+  throughout; the README says so.
+- **A closed socket is a 1008, not a 401.** The GUI's stream hook has to read close code 1008 as
+  "log in again" rather than as a connection lost.
 - **Teams created before the switch** belong to `anonymous`. Only admins see them (A7). Acceptable
   for demo data; a `make reset-data` is the other answer.
 - **A demo login looks like security.** The login page says plainly that there is no password.
@@ -211,7 +239,7 @@ This is the reason for the step, so it is worth saying exactly:
 3. GUI: login page, `credentials: "include"`, app bar.
 4. My agenda: `/me/agenda` and its page (A12).
 5. Agents: organiser in context and request (A10).
-6. API key for the console (A14), shaped by what the spike found.
+6. API key login and the console's config (A14).
 7. Docs: README, `design_memory.md` Q1 answered here, M1's two trees.
 
 Each step is usable on its own; after 2 and 3 the list is already private per person.
@@ -229,29 +257,44 @@ person says it is not their meeting, and the form has an *I attend* checkbox (A1
 without it the users would feel like a missing feature, and the meeting service already has the
 data. Opening the *team* behind someone else's meeting stays a later step (A13).
 
-**Q4 — the console.** With an API key, the convention akgentic's client already uses (A14). The
-spike settles how the console sends it.
+**Q4 — the console.** With an API key. The spike found the console already has an API-key login
+that ends in the session cookie, so our routes adopt its contract (A5, A14).
 
 **Q5 — session length.** 8 hours, no refresh.
 
 ---
 
-## 9. The spike — what must be true before building
+## 9. The spike — run 2026-10-31
 
-1. `services.auth` can be replaced after `wire_community`, and a module contributing
-   `RequireAuthMiddleware` at `IDENTITY` makes `get_request_user` return our principal on **both**
-   an HTTP route and `/ws/{team_id}`.
-2. The cookie set by `/auth/login` on `:8200` is sent by a page on `:5173` with `fetch`
-   `credentials: "include"` **and** on the WebSocket handshake.
-3. A team created as Sanne is invisible to Daan — `GET /teams`, `/teams/{id}`, `/restore`, the
-   socket — and visible to an admin.
-4. After stop and restore, the team's actors still have `self.user_id` (the restorer passes
-   `process.user_id`; check it reaches the agents), and `@Intake`'s `memory` workspace resolves
-   under the owner, not `anonymous`.
-5. How the console sends a credential — a configurable API key, on HTTP **and** on its
-   WebSocket — and what it does on a 401.
-6. `/persons/{email}/agenda` returns enough to tell which entries this planner booked (to link
-   them to their team), or whether the agenda page can only list them.
+Throwaway code in the session's scratchpad, not in the repo: a copy of `create_meeting_app` with a
+`DemoLogin`, an `AuthModule` and `admin_list_all_teams=True`, driven with the real catalog and the
+real `meeting-planner` team through FastAPI's `TestClient`; then the same app under uvicorn with a
+page on another port in a browser. **Every seam holds; nothing in the framework had to be bent.**
+
+1. **The gate.** `services.auth` replaced after `wire_community` and `RequireAuthMiddleware` at
+   `IDENTITY` work together: no session → `GET /teams` 401, `/platform/health` and `/readiness`
+   200 through the allowlist. The owner's WebSocket opens; another user's and an anonymous one
+   are closed with **1008**.
+2. **The cookie across ports, in a browser.** A page on `localhost:5181` logged in on
+   `localhost:8211` with `fetch(..., {credentials: "include"})`: before login 401, after 200,
+   `document.cookie` empty (HttpOnly), a team created (201), and the WebSocket opened and
+   streamed with the cookie alone.
+3. **Isolation.** A team Sanne created has `user_id` `sanne@rag4p.org`. Daan's `GET /teams` is
+   empty; his `GET /teams/{id}`, `agent-states`, `restore` and `DELETE` are all **404**; the admin
+   lists it. The catalog entries are owned by `anonymous`, and that did **not** stop Sanne from
+   creating a team from them.
+4. **Restore.** After `stop` and `restore` the team is still Sanne's, and a probe agent saw
+   `user_id` `sanne@rag4p.org` in `on_start` both when created and when restored.
+   `resolve_workspace_path` gives `sanne@rag4p.org/_id/memory` for `workspace_id="memory"`, and
+   `_shared/_id/memory-shared` with `workspace_sharable=True` — §3 as written.
+   One detail: `Akgent` has `user_id` but no public `user_email` (A10).
+5. **The console** (`akgentic-frontend` at the pinned commit, read from source): it has a login
+   page with providers `azure_ad`, `google`, `apikey` and `default`; `apikey` posts
+   `{"apikey"}` to `/auth/login/apikey` and expects `{"success": true, "user"}` and the cookie;
+   `/auth/me` 2xx or 401; logout navigates to `GET /auth/logout`. With `hideLogin: true` it
+   sends no credentials at all. → A5, A14.
+6. **The agenda data** is not exposed: the meeting service answers free slots per person, and
+   `GET /meetings` misses blocks that are not meetings. → one new read route (A12).
 
 ---
 
@@ -261,3 +304,7 @@ spike settles how the console sends it.
 - 2026-10-31 — Q1–Q5 answered: everyone may log in; organiser attends by default; *My agenda*
   added now (A12), the participants' team access moved to A13; API key for the console (A14);
   8-hour sessions.
+- 2026-10-31 — spike run (§9), every seam holds. A5 follows the console's `/auth/*` contract;
+  A14 is a login that ends in the cookie, not a per-request header; A12 needs one read route in
+  the meeting service; A10 reads `user_id` only. Two risks added: `localhost` vs `127.0.0.1`, and
+  1008 on the socket.
