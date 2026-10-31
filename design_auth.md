@@ -8,8 +8,8 @@ simple enough to stay a demo.
 > **The one sentence to keep:** *the framework already checks who owns what; we only have to tell
 > it who is asking.*
 
-**Status:** proposal (2026-10-31). Nothing is built. §8 lists the questions still open, §9 the
-spike that comes first.
+**Status:** proposal (2026-10-31), questions answered the same day (§8). Nothing is built. §9 is
+the spike that comes first.
 
 ---
 
@@ -51,7 +51,7 @@ That is the part this design adds.
 package: the loader exists for tiers selected by config string, and we compose the app ourselves.
 
 **A2 — the users are the people the meeting service already knows.** Its seed has ten people with
-an email and a name. The login page lists them; you pick one. `user_id` is the **email** — the key
+an email and a name. The login page lists **all of them** (Q1); you pick one. `user_id` is the **email** — the key
 the meeting service, the scheduler's lookups and `design_memory.md`'s `people/<email>.md` already
 use, so no mapping table is ever needed.
 
@@ -102,16 +102,40 @@ cancel the meetings you started; an admin sees all. Nothing to build.
 `self.user_email` and says who it is talking to in its context ("you are arranging meetings for
 Sanne de Vries"), so "me", "my team" and "my usual room" have a referent. The organiser is added
 to `PlanMeetingRequest` as an optional `organiser` field, and the coordinator includes the organiser
-among the participants unless told otherwise (Q2). The form page fills it from `/auth/me`.
+among the participants unless told otherwise (Q2, decided): `@Intake` drops the organiser when the
+person says it is not their meeting, and the form has an *I attend* checkbox, on by default. The
+form page fills the organiser from `/auth/me`.
 
 **A11 — what an agent may *do* stays the guardrails' business, not authentication's.** Booking
 on someone's behalf, spending on lunch: that is the `before_tool_execute` seam noted for
 guardrails, and it can now ask *who* — but deciding rules is a separate design.
 
-**A12 — not now: participants seeing meetings they are invited to.** It needs a custom
-`TeamAccessPolicy` whose `list_filters` adds a metadata clause (`participants` ⊇ me) and team
-metadata written at creation. The protocol supports exactly this (`TeamListFilter.metadata`, OR-
-combined); it is a later step, worth doing when there is a reason to show it.
+**A12 — now: everyone sees their own agenda.** Not being able to see the meetings you are in
+would feel like a missing feature (Q3), and the data already exists: the meeting service keeps
+every person's agenda (`GET /persons/{email}/agenda?day=`). A **My agenda** page shows the logged-in
+person's meetings for a day, through a gated route on our server, `GET /me/agenda?day=`, that takes
+the email **from the session, never from the request** — so nobody reads another person's agenda by
+editing a URL. A meeting this planner booked links to its team when you own that team.
+
+**A13 — later: participants opening the team behind a meeting.** Seeing *that* you are invited is
+A12; seeing *how* it was arranged (the trace, cancel) for a meeting someone else organised needs a
+custom `TeamAccessPolicy` whose `list_filters` adds a metadata clause (`participant|<me>`) and
+whose `can_get_team` allows read but not stop or cancel. The protocol supports exactly this
+(`TeamListFilter.metadata`, OR-combined; `TeamAccessContext.metadata_indexes`). What makes it a
+step of its own: in the chat team the participants are only known *after* the conversation, so the
+team's metadata has to be updated when the plan settles, and who writes it is a design question.
+
+### 2.4 The console: an API key
+
+**A14 — `DemoLogin` also accepts an API key.** akgentic's own client already knows this
+convention: a credential with the `ak_` prefix is sent as `X-API-Key`, anything else as
+`Authorization: Bearer` (`infra/cli/client.py`). The validation lives in the paid tiers, so ours
+is a small map in configuration, `API_KEYS`, from key to email: a request carrying a known key is
+that person, roles included; an unknown key is a 401. The cookie stays the GUI's way in; the key is
+the way in for the console and for the akgentic CLI against our server. Keys live only in the
+environment and `.env` (a placeholder in `.env.example`), never in the repo. What the spike must
+show is *how* the console sends it — a browser cannot put a header on a WebSocket, so if the
+console's trace uses one, the key has to travel another way (Q4).
 
 ---
 
@@ -139,11 +163,14 @@ This is the reason for the step, so it is worth saying exactly:
 |---|---|
 | `server/src/meeting_server/auth.py` (new) | `DemoLogin(AuthStrategy)`: cookie sign/verify, the four `/auth/*` routes, the people list from `MEETING_SERVICE_URL` |
 | `server/src/meeting_server/app.py` | `services.auth = DemoLogin(...)`; `AuthModule` with `RequireAuthMiddleware` at `IDENTITY`; `admin_list_all_teams=True` |
-| `server/src/meeting_server/settings.py` | `AUTH_SECRET`, `ADMIN_EMAILS`, `SESSION_MAX_AGE`; `AUTH=demo|off` so tests and the old behaviour stay one switch away |
+| `server/src/meeting_server/auth.py` (cont.) | `X-API-Key` checked against `API_KEYS` before the cookie (A14) |
+| `server/src/meeting_server/agenda.py` (new) | `GET /me/agenda?day=` → the meeting service, for the session's email (A12) |
+| `server/src/meeting_server/settings.py` | `AUTH_SECRET`, `ADMIN_EMAILS`, `API_KEYS`, `SESSION_MAX_AGE` (8 h); `AUTH=demo|off` so tests and the old behaviour stay one switch away |
 | `agents/…/messages.py`, `plan.py` | optional `organiser` on the request and the plan |
 | `agents/…/intake.py`, intake prompt | the owner in the context; `plan_meeting` passes `organiser` |
 | `gui/src/api/client.ts` | `credentials: "include"` on every call; `me()`, `login()`, `logout()`; a 401 sends you to the login |
 | `gui/src/pages/LoginPage.tsx` (new), `App.tsx` | pick a person; the user and *log out* in the app bar |
+| `gui/src/pages/AgendaPage.tsx` (new) | *My agenda*: a day picker and the day's meetings, linked to their team when it is yours |
 | compose / `.env.example` | `AUTH_SECRET` placeholder, `ADMIN_EMAILS` |
 | CLI | unchanged: it drives `TeamManager` in-process as `cli`, never through the server |
 
@@ -167,9 +194,9 @@ This is the reason for the step, so it is worth saying exactly:
 ## 6. Risks
 
 - **The console.** `akgentic-frontend` talks to the same server. With the gate on, it gets 401
-  unless it carries the cookie (it would, from the same site, after logging in on our GUI — to be
-  verified) or knows the paid tiers' login. Fallback: run the console against a second server
-  process with `AUTH=off`, read-only by convention.
+  unless it sends an API key (A14) — or the cookie, from the same site, after logging in on our
+  GUI. If its WebSocket can carry neither, the fallback is a second server process with
+  `AUTH=off` for the console only, read-only by convention.
 - **Teams created before the switch** belong to `anonymous`. Only admins see them (A7). Acceptable
   for demo data; a `make reset-data` is the other answer.
 - **A demo login looks like security.** The login page says plainly that there is no password.
@@ -182,31 +209,30 @@ This is the reason for the step, so it is worth saying exactly:
 2. Server: `DemoLogin`, `AuthModule`, settings, tests (HTTP 401, WS 1008, owner isolation: Sanne
    cannot see, resume or cancel Daan's meeting — 404).
 3. GUI: login page, `credentials: "include"`, app bar.
-4. Agents: organiser in context and request (A10).
-5. Docs: README, `design_memory.md` Q1 answered here, M1's two trees.
+4. My agenda: `/me/agenda` and its page (A12).
+5. Agents: organiser in context and request (A10).
+6. API key for the console (A14), shaped by what the spike found.
+7. Docs: README, `design_memory.md` Q1 answered here, M1's two trees.
 
 Each step is usable on its own; after 2 and 3 the list is already private per person.
 
 ---
 
-## 8. Questions open
+## 8. Questions answered (2026-10-31)
 
-**Q1 — which people may log in?** All ten from the meeting service, or a short list in
-configuration? *Recommendation:* all ten — the demo is more convincing when anyone in the address
-book can be the organiser, and the list needs no upkeep.
+**Q1 — which people may log in?** All ten the meeting service knows (A2).
 
-**Q2 — is the organiser automatically a participant?** Usually yes, but "book a room for Sanne and
-Daan" is a real request. *Recommendation:* yes by default; `@Intake` drops it when the person says
-it is not their meeting, and the form has a checkbox.
+**Q2 — is the organiser automatically a participant?** Yes by default; `@Intake` drops it when the
+person says it is not their meeting, and the form has an *I attend* checkbox (A10).
 
-**Q3 — participants see their meetings (A12): now or later?** *Recommendation:* later. Ownership
-alone already shows per-user memory; the metadata policy is its own small design.
+**Q3 — participants see their meetings?** Split in two. Seeing your own agenda is built now (A12):
+without it the users would feel like a missing feature, and the meeting service already has the
+data. Opening the *team* behind someone else's meeting stays a later step (A13).
 
-**Q4 — the console.** Verify in the spike whether the cookie is enough; otherwise the `AUTH=off`
-second process. *Recommendation:* decide after the spike, not before.
+**Q4 — the console.** With an API key, the convention akgentic's client already uses (A14). The
+spike settles how the console sends it.
 
-**Q5 — session length.** *Recommendation:* 8 hours, no refresh — re-picking a person costs a
-click.
+**Q5 — session length.** 8 hours, no refresh.
 
 ---
 
@@ -222,10 +248,16 @@ click.
 4. After stop and restore, the team's actors still have `self.user_id` (the restorer passes
    `process.user_id`; check it reaches the agents), and `@Intake`'s `memory` workspace resolves
    under the owner, not `anonymous`.
-5. What the console does against the gated server.
+5. How the console sends a credential — a configurable API key, on HTTP **and** on its
+   WebSocket — and what it does on a 401.
+6. `/persons/{email}/agenda` returns enough to tell which entries this planner booked (to link
+   them to their team), or whether the agenda page can only list them.
 
 ---
 
 ## 10. Changelog
 
 - 2026-10-31 — first proposal.
+- 2026-10-31 — Q1–Q5 answered: everyone may log in; organiser attends by default; *My agenda*
+  added now (A12), the participants' team access moved to A13; API key for the console (A14);
+  8-hour sessions.
