@@ -30,3 +30,7 @@ payload:
       __ref__: meeting-planner.default_model
     tools:
       - __ref__: intake_tools
+      # Memory (design_memory.md): MemoryTool reads and writes the two trees;
+      # memory_tree only declares the organiser's tree, so the console shows it.
+      - __ref__: memory
+      - __ref__: memory_tree

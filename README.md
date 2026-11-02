@@ -78,6 +78,25 @@ treat `@Intake` as its human, and `@Intake` relays its questions and results. Th
 approve a time in the conversation: the slot question is answered on its card, as on the form.
 The specialists are the form team's own catalog entries, by reference. See `design_chat.md`.
 
+### It remembers
+
+`@Intake` remembers what you tell it that will still be true next time (`design_memory.md`):
+who "my team" is, how long your stand-ups are, that Sanne is vegetarian. The next conversation
+knows it without asking.
+
+- **Yours, or everybody's.** How *you* arrange meetings lives in your own tree, under your login;
+  facts about a person live in a shared tree, so Daan's lunch for Sanne knows she is vegetarian
+  even though Jettro said it.
+- **Files on the server's disk**, under the workspaces root — `/data/workspaces` on the
+  `server-data` volume in compose:
+  `<you>/_id/memory/organiser.md` and `_shared/_id/memory-shared/people/<email>.md`, each beside a
+  git journal (`memory.git`) recording every change and which agent made it. `make reset` wipes
+  them with everything else.
+- **Only what a person said**, as confirmed; never a secret or an id, and about someone else only
+  after looking them up. Saying it again replaces it; the journal keeps the old version.
+- **Visible:** every time memory reaches the model, a `MemoryApplied` row in the Trace says what and
+  why. The console shows your own tree.
+
 It also runs as a container, reaching the MCP servers over the compose network instead of
 `localhost`:
 
@@ -321,14 +340,16 @@ Run `make help` for the full list. Highlights:
 Each step so far has a design document, written before it was built: `design.md` (the services
 and their MCP servers), `design_akgents.md` (the agent team), `design_gui.md` (the team as a
 service, the browser and the console), `design_cancel.md` (cancelling), `design_durability.md`
-(the team is the meeting), `design_chat.md` (the team you talk to) and `design_auth.md` (who is
-asking — the login, and the meetings that are yours).
+(the team is the meeting), `design_chat.md` (the team you talk to), `design_auth.md` (who is
+asking — the login, and the meetings that are yours) and `design_memory.md` (what the team
+remembers, phase 1).
 
 Still to come, each with a design first:
 
 - **The rest of `design_auth.md`** — a *My agenda* page, and the organiser known to `@Intake`.
-- **Memory** — for example remembering someone's lunch preference, or which "Daan" they usually
-  mean. Notes have started; the first task is an evaluation of what akgents offers.
+- **Memory, phases 2 and 3** — the facility manager using place facts before it chooses, proposed
+  lessons a person promotes, and a Memory page to see, correct and delete items
+  (`design_memory.md` §10).
 - **Guardrails** — the hook is known (`BaseAgent.extra_capabilities()`, where `TalkOnlyToHuman`
   already lives); a guard on the specialists' `book_*` calls would be the next one.
 - **Evals** for the LLM agents — the three live conversations in `design_chat.md` §14 are the

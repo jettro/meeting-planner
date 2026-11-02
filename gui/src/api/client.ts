@@ -78,6 +78,8 @@ export interface TeamEvent {
   recipient?: ActorRef | null;
   /** Present on `SentMessage` only: the message that was actually sent. */
   message?: DomainMessage | null;
+  /** Present on `EventMessage` only: what an agent announced. */
+  event?: { __model__?: string } | null;
 }
 
 export interface ProposedSlot {
@@ -441,6 +443,15 @@ export function shortName(model: string | undefined): string {
 /** Our messages, as opposed to the framework talking about itself. */
 export function isDomainEvent(event: TeamEvent): boolean {
   return Boolean(event.message?.__model__?.startsWith("meeting_agents."));
+}
+
+/**
+ * An event an agent of ours announced - today only `MemoryApplied`, memory
+ * reaching an agent's model (design_memory.md M9). Kept apart
+ * from `isDomainEvent`, whose callers rely on a message being there.
+ */
+export function isOurEvent(event: TeamEvent): boolean {
+  return Boolean(event.event?.__model__?.startsWith("meeting_agents."));
 }
 
 /**

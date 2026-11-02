@@ -22,6 +22,8 @@ Two things happen here that the framework cannot do for us:
 3. `apply_env` is called, because the placeholders have to refer to something.
 4. With `AUTH=demo`, `services.auth` is replaced the same way as the catalog,
    and the identity gate is added to the composition.
+5. The agents are told to write their workspaces where the server reads them,
+   and allowed the shared memory tree (`memory.py`, design_memory.md M12/M13).
 """
 
 from __future__ import annotations
@@ -37,6 +39,7 @@ from meeting_agents.settings import Settings as AgentSettings
 
 from meeting_server.auth import AuthModule, DemoLogin, People, people_from
 from meeting_server.catalog import EnvResolvingCatalog
+from meeting_server.memory import configure_memory
 from meeting_server.platform import PlatformModule
 from meeting_server.settings import ServerSettings
 from meeting_server.yaml_types import install_yaml_representers
@@ -84,6 +87,9 @@ def create_meeting_app(settings: ServerSettings | None = None, *, people: People
 
     # Before anything loads a card: the placeholders have to point at values.
     apply_env(agent_settings)
+
+    # Before the first team binds a workspace.
+    configure_memory(settings.workspaces_root, settings.catalog_path)
 
     infra_settings = community_settings(settings)
     services = wire_community(infra_settings)

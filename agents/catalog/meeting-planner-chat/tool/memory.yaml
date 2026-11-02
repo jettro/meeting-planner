@@ -1,0 +1,10 @@
+id: memory
+kind: tool
+namespace: meeting-planner-chat
+user_id: anonymous
+model_type: meeting_agents.memory.MemoryTool
+description: "What the team remembers between meetings: the organiser's own tree and a shared one (design_memory.md)."
+payload:
+  personal_workspace: memory
+  shared_workspace: memory-shared
+  max_always_items: 20

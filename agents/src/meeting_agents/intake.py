@@ -25,6 +25,11 @@ properties hold that sentence up:
 What the model does get is the whole story: every relayed message is also an
 "Update:" turn, so it can explain what is on the person's screen and say the
 outcome in words (I6).
+
+And it remembers (design_memory.md, phase 1): what the organiser said about how
+they meet is always in front of it, what is known about a participant arrives
+with the lookup that settles them, and `remember` stores what a person says -
+only that, and only about someone this conversation knows.
 """
 
 from __future__ import annotations
@@ -49,6 +54,7 @@ from pydantic_ai import AgentCapability, ModelRetry, RunContext
 from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.output import OutputContext
 
+from meeting_agents.memory import MemoryItem, MemoryTool
 from meeting_agents.messages import (
     AssignmentFailed,
     CancelPlanRequest,
@@ -150,6 +156,62 @@ class IntakeAgent(BaseAgent, Akgent[IntakeConfig, IntakeState]):
         """
         update = AgentMessage(type="notification", content=f"Update: {text}", sender=sender)
         super().receiveMsg_AgentMessage(update, sender)  # type: ignore[arg-type]
+
+    # -- memory ------------------------------------------------------------
+
+    def _memory(self) -> MemoryTool | None:
+        """The team's memory, when this agent's card has one."""
+        return next((card for card in self.config.tools if isinstance(card, MemoryTool)), None)
+
+    def remember_said(self, kind: str, about: str, situation: str, text: str) -> str:
+        """Store what the person said, as confirmed (M4).
+
+        `about` is `organiser` for how this person arranges meetings, or the
+        email of the person a fact is about - which must be someone this
+        conversation settled, or the organiser: a guessed address would be a
+        fact about a stranger.
+        """
+        memory = self._memory()
+        if memory is None:
+            return "Refused: this team has no memory."
+        if kind not in ("fact", "preference"):
+            return "Refused: kind is 'fact' or 'preference'."
+        organiser = str(self.user_id or "anonymous")
+        about = about.strip().lower()
+        if about == "organiser":
+            scope = "organiser"
+        elif about == organiser or about in self.state.settled_emails:
+            scope = f"person:{about}"
+        else:
+            return (
+                f"Refused: {about} is not someone this conversation knows. Look them up first, "
+                "or use 'organiser' for how the person you talk to likes to meet."
+            )
+        item = MemoryItem(
+            kind=kind,  # type: ignore[arg-type]
+            scope=scope,
+            situation=situation,
+            text=text,
+            said_by=organiser,
+            reason="said in conversation",
+            evidence=f"team {self.team_id}",
+        )
+        answer: str = memory.remember(item)
+        return answer
+
+    def _remembered_about(self, emails: list[str]) -> list[str]:
+        """What is remembered about people just settled - selected by the lookup, in code."""
+        memory = self._memory()
+        if memory is None:
+            return []
+        lines = []
+        for email in emails:
+            items = memory.person_items(email)
+            if items:
+                memory.applied(f"a lookup settled {email}", items)
+                said = "; ".join(f"{i.situation}: {i.text}" for i in items)
+                lines.append(f"Remembered about {email}: {said}.")
+        return lines
 
     # -- what the tools do (kept here, so they are testable without a model) --
 
@@ -285,6 +347,7 @@ class IntakeAgent(BaseAgent, Akgent[IntakeConfig, IntakeState]):
                 lines.append(f'"{match.asked}" could be: {options}. Ask the person which one.')
             else:
                 lines.append(f'Nobody called "{match.asked}" is known. Ask the person who they mean.')
+        lines += self._remembered_about(settled)
         self._tell_the_model("the scheduler looked people up. " + " ".join(lines), sender)
 
     def receiveMsg_AssignmentFailed(  # noqa: N802
@@ -306,7 +369,7 @@ def describe(plan: MeetingPlan) -> str:
 
 
 class IntakeTools(ToolCard):
-    """The three things the model may do, and nothing that books (I3).
+    """The four things the model may do, and nothing that books (I3).
 
     The tools are thin: they validate what the model passed and hand it to the
     agent, whose methods hold the rules, so the rules are testable without a
@@ -369,7 +432,24 @@ class IntakeTools(ToolCard):
             """Call the meeting off. Everything it booked is released."""
             return self._agent().cancel()
 
-        return [look_up_people, plan_meeting, cancel_meeting]
+        def remember(kind: str, about: str, situation: str, text: str) -> str:
+            """Remember, for next time, something the person told you that will still be true then.
+
+            Only what they said, in their words - never a guess, a one-off, an id or a secret.
+            Saying it again about the same situation replaces the earlier one.
+
+            Args:
+                kind: 'preference' for how something should be done, 'fact' for what is so.
+                about: 'organiser' for how the person you talk to arranges meetings (who
+                    "Daan" or "my team" is, how long their stand-ups are, where focus
+                    sessions go); or the email of the person a fact is about, as
+                    look_up_people settled it ("Sanne is vegetarian").
+                situation: When it applies, in a few words: "who Daan is", "lunch", "stand-ups".
+                text: What to remember, in the person's words.
+            """
+            return self._agent().remember_said(kind, about, situation, text)
+
+        return [look_up_people, plan_meeting, cancel_meeting, remember]
 
 
 # -- the guard ---------------------------------------------------------------

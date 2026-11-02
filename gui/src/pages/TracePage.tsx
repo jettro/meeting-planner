@@ -12,7 +12,7 @@ import { DataGrid, type GridColDef } from "@mui/x-data-grid";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api, isDomainEvent, shortName, summarise, type TeamEvent } from "../api/client";
+import { api, isDomainEvent, isOurEvent, shortName, summarise, type TeamEvent } from "../api/client";
 import { EventDetails } from "../components/EventDetails";
 import { useTeam } from "../team";
 
@@ -55,7 +55,8 @@ export default function TracePage() {
   const connected = !replaying && live.connected;
 
   const rows = useMemo(() => {
-    const visible = showFramework ? events : events.filter(isDomainEvent);
+    // Memory being applied belongs to the story: it is why an agent knew something.
+    const visible = showFramework ? events : events.filter((event) => isDomainEvent(event) || isOurEvent(event));
     return visible.map((event, index) => ({
       id: event.id,
       step: index + 1,
@@ -147,7 +148,7 @@ export default function TracePage() {
 
 /** A domain message by its own name; anything else by what the framework calls it. */
 function describe(event: TeamEvent): string {
-  return isDomainEvent(event)
-    ? shortName(event.message?.__model__)
-    : shortName(event.__model__);
+  if (isDomainEvent(event)) return shortName(event.message?.__model__);
+  if (isOurEvent(event)) return shortName(event.event?.__model__);
+  return shortName(event.__model__);
 }

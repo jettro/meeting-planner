@@ -14,8 +14,10 @@ import pytest
 from akgentic.agent.messages import AgentMessage
 from akgentic.team import TeamCard, TeamCardMember
 from akgentic.tool.mcp import MCPTool
+from akgentic.tool.workspace import WorkspaceTool
 from meeting_agents.bootstrap import load_team_card
 from meeting_agents.intake import IntakeTools
+from meeting_agents.memory import MemoryTool
 from meeting_agents.messages import MESSAGE_TYPES
 from meeting_agents.settings import Settings
 
@@ -82,10 +84,26 @@ def test_the_coordinator_differs_only_in_who_its_human_is(chat: TeamCard, form: 
 
 
 def test_intake_reaches_no_service(chat: TeamCard):
-    """Its only tool card is its own, and none of it books anything (I3)."""
+    """Its own tools and its memory, and none of it books anything (I3)."""
     tools = by_name(chat)["@Intake"].card.config.tools
-    assert [type(tool) for tool in tools] == [IntakeTools]
+    assert [type(tool) for tool in tools] == [IntakeTools, MemoryTool, WorkspaceTool]
     assert not any(isinstance(tool, MCPTool) for tool in tools)
+
+
+def test_the_declared_memory_tree_gives_the_model_no_file_tools(chat: TeamCard):
+    """It is there so the console finds the organiser's tree (design_memory.md S4);
+    reading and writing is MemoryTool's, in code."""
+    tree = next(t for t in by_name(chat)["@Intake"].card.config.tools if isinstance(t, WorkspaceTool))
+    assert tree.workspace_id == "memory"
+    assert tree.read_only
+    assert tree.get_tools() == []
+    assert tree.get_commands() == {}
+
+
+def test_memory_is_the_organisers_tree_and_one_shared_tree(chat: TeamCard):
+    memory = next(t for t in by_name(chat)["@Intake"].card.config.tools if isinstance(t, MemoryTool))
+    assert (memory.personal_workspace, memory.shared_workspace) == ("memory", "memory-shared")
+    assert memory.get_tools() == []
 
 
 def test_intake_talks_to_the_human_and_asks_the_coordinator(chat: TeamCard):

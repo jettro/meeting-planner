@@ -14,9 +14,10 @@ verified against the installed packages, and what this team needs.
 > **The one sentence to keep:** *remember only what will change a future decision — and say when
 > it stops being true.*
 
-**Status:** proposal, revised 2026-11-02 for the login (`design_auth.md`), and the spike run the
-same day (§10.1) — the store holds, with three things to build around. Nothing is built. §4.2 says
-exactly where memory is stored; §9 lists the questions still open.
+**Status:** phase 1 built (2026-11-02) and verified live — confirmed facts and preferences,
+remembered by `@Intake` and applied in later conversations, per person and shared. Phases 2 and 3
+are still proposals. §4.2 says exactly where memory is stored; §10.2 is what building phase 1
+taught us; §9 lists the questions still open.
 
 ---
 
@@ -187,8 +188,9 @@ Two consequences worth stating:
   `AKGENTIC_WORKSPACE_SHARED_KINDS=id` in the server's environment. Without it the card's bind
   raises and never falls back to a personal tree — but the spike found that the raise happens in
   the agent's `on_start`, and **a team still gets built**, with the agent half-wired (§10.1 S5). So
-  **M13 — the server refuses to start when the memory cards are in the catalog and the permission
-  is missing**, rather than let the first conversation find out.
+  **M13 — the server settles it at startup**: when the catalog uses `MemoryTool` and the variable
+  is unset, the server sets it to `id`; when it is set and does not permit `id`, the server refuses
+  to start. Either way the first conversation never finds out.
 
 ### 4.3 One item format: a lesson bound to its situation
 
@@ -238,12 +240,13 @@ plain matching on `situation` is enough at this size (a handful of files). RAG o
 
 ### 4.5 Writing: two paths now, a third later
 
-**The card's shape (§10.1 S1, S4).** The two trees are two plain `WorkspaceTool` cards in the
-agent's `tools`, with every model-facing capability switched off; a `MemoryTool` card of ours
-declares `depends_on = ["WorkspaceTool"]`, finds them by `workspace_id` when it is wired, and does
-all reading and writing through their gated callables. Plain cards because that is what the
-server scans for the console; through their callables because that is where the write gate and the
-journal are — a write from our code was committed as `write: organiser.md`, authored `@Intake`.
+**The card's shape (§10.1 S1, S4; as built, §10.2).** `MemoryTool` holds the two trees privately
+— two `WorkspaceTool`s it binds itself — and does all reading and writing through their gated
+callables, because that is where the write gate and the journal are: a write from our code is
+committed as `write: organiser.md`, authored `@Intake`. They are private because a `WorkspaceTool`
+in an agent's `tools` hands the model every file callable it has. Beside it, `@Intake` declares one
+plain `WorkspaceTool(workspace_id="memory", read_only=True)` with every capability off: it gives
+the model nothing and exists only so the server — and the console — find the organiser's tree.
 
 **Every write re-reads first (§10.1 S6).** The gate refuses to replace a file the writer has not
 read, or that changed since: two organisers adding to `people/sanne@rag4p.org.md` at once, the
@@ -384,7 +387,7 @@ first cases of the evals the README roadmap lists.
 | M10 | **`pydantic-ai-harness` `Memory` stays an option for scratch notes, not the store of record** | Status and code-driven selection are the point here; the harness pins pydantic-ai exactly |
 | M11 | **Your tree is yours; a file about a person is theirs to see and delete; admins promote and prune the shared tree** | The login gives every item an owner or a subject; the demo login shows the mechanism, not protection |
 | M12 | **One workspace root: the server sets `AKGENTIC_WORKSPACES_ROOT` from `WORKSPACES_ROOT`** | Otherwise the agents write off the volume and the console reads an empty directory (§10.1 S3) |
-| M13 | **The server will not start with memory cards and without `AKGENTIC_WORKSPACE_SHARED_KINDS=id`** | A refused bind leaves a half-wired agent in a team that was built anyway (§10.1 S5) |
+| M13 | **The server settles sharing at startup: unset becomes `id`, a value without `id` stops it** | A refused bind leaves a half-wired agent in a team that was built anyway (§10.1 S5) |
 
 ---
 
@@ -473,6 +476,41 @@ from the server's source.
 Not covered: the console against a real team (S4 is from source), and `depends_on` wiring order for
 the card shape in §4.5 — both are the first test of phase 1.
 
+### 10.2 What building phase 1 taught us
+
+Built: `agents/src/meeting_agents/memory.py` (the item format, `MemoryTool`, the always block,
+`MemoryApplied`), `remember` on `@Intake` and memory in its lookup update, the catalog entries
+`memory` and `memory_tree`, `server/src/meeting_server/memory.py` (M12, M13), and the trace showing
+`MemoryApplied` among the messages. Tests: `agents/tests/test_memory.py` (the §6 scenarios and the
+item format), `server/tests/test_memory_config.py`, `server/tests/test_memory_server.py`.
+
+- **A model calls `remember` twice in one turn, in parallel — and one was lost.** Found in the
+  first live conversation: "my team" and "my stand-ups" both answered *Remembered*, and only the
+  second was in the file. The write gate guards against *other* writers; to the gate, the first
+  write was this agent's own view, so the second replaced it. Fixed with one lock per memory file
+  in the process; a test runs eight `remember` calls at once, and fails without the lock every time.
+- **The card shape changed from the spike's proposal.** `depends_on` was not needed: private trees
+  keep the file tools from the model, and one declared, capability-less card is enough for the
+  console. The shared tree is not declared, so the framework's routes answer 404 for it rather than
+  the 403 the spike read in the source — not visible either way.
+- **M13 became "settle it" rather than "refuse".** The deployment's own catalog asks for the
+  shared tree, so an unset variable is set; only a value that forbids it stops the server.
+- **The live check, three conversations** (`AUTH=demo`, the real model):
+  1. as Jettro: *"my team means Sanne and Daan, my stand-ups are 30 minutes"* and *"Sanne is
+     vegetarian"* — two items in `jettro@rag4p.org/_id/memory/organiser.md`, one in
+     `_shared/_id/memory-shared/people/sanne@rag4p.org.md`, said_by Jettro. The model looked Sanne
+     up before remembering a fact about her, as the tool requires.
+  2. as Jettro, a new conversation: *"Plan a stand-up with my team"* — it proposed a 30-minute
+     stand-up with Sanne de Vries and Daan Jansen, and said Sanne is vegetarian. Two
+     `MemoryApplied` events: the always block, and the lookup that settled Sanne.
+  3. as Daan: *"What do you know about my stand-ups?"* — nothing; but the lookup for Sanne
+     brought *vegetarian* along.
+  In the GUI's trace the two `MemoryApplied` rows sit between the messages, with their reason.
+- **Not yet:** whether the model uses a remembered fact is the model's business — in one browser
+  run it asked "what kind of lunch?" without mentioning Sanne's diet, though the fact had reached
+  it. Phase 1 guarantees delivery, not use; the §6 scenarios test the former, live evals would
+  test the latter.
+
 **Later, when "like last time" is actually wanted — episodes (case 7, M5).** First a spike: can a
 read-only lookup over the coordinators' snapshots serve `@Intake` without copying anything; only
 if not, the index in `episodes/` and the small deterministic actor that writes it.
@@ -507,6 +545,10 @@ if not, the index in `episodes/` and the small deterministic actor that writes i
   shared one, so the Memory page needs its own route for `memory-shared`; a refused shared bind
   leaves a half-wired agent in a built team (M13); concurrent writers are refused, not merged, so
   every write re-reads first.
+- 2026-11-02: **Phase 1 built** (§10.2): the two trees, `remember` and the always block on
+  `@Intake`, memory with the lookup, `MemoryApplied` in the trace, M12 and M13 in the server. A
+  lost update between two parallel `remember` calls of one agent was found live and fixed with a
+  per-file lock. 378 tests pass.
 
 ---
 
