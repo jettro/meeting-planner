@@ -173,9 +173,9 @@ Three ways to look at it — not all of them see both trees (§10.1 S4):
   workspaces by scanning those, not cards nested inside ours. It **never** shows the shared tree:
   the framework refuses every `_shared` path with 403, admins included, until an entitlement policy
   exists (`_team_access.check_workspace_scope`).
-- **the Memory page** (M9) — ours. Your own tree through the same routes; the shared tree through a
-  route of our own on the server, which reads `people/<me>.md` (and places and lessons) with M11's
-  rules, because no framework route will.
+- **the Memory page** (M9, §4.8) — ours. One route of our own on the server reads both your own
+  tree and `people/<me>.md`, with each item's history from the journal, because no framework route
+  serves a shared path or a journal.
 - **the disk** — `docker compose exec server ls /data/workspaces/...`, and `git log` in the
   journal to see every change with its author.
 
@@ -327,7 +327,74 @@ there is enough memory to consolidate, it would be a solution looking for a prob
 Library?". The journal answers "who wrote this and what did it say before". A **Memory** page
 lists, for the logged-in person, *my memory* (their own tree) and *about me* (their file in
 `people/`), plus places and lessons; it links each item to the run that wrote it and lets a person
-edit, retire or delete what M11 allows, and an admin promote.
+edit, retire or delete what M11 allows, and an admin promote. §4.8 builds the reading half first.
+
+### 4.8 The Memory page, read-only first
+
+The console shows the current `organiser.md` and nothing else: the framework's workspace routes
+list and read files, and no route reads a journal (akgentic-infra 1.16.0: `/workspace/{team_id}/tree`,
+`/file` and an upload, nothing more). `git log` in the container is the only view of the history.
+For a demo, *where did it learn that?* is the question memory most needs answered, so the first
+Memory page answers it, and changes nothing.
+
+**M14 — the first Memory page reads; changing comes with phase 3.** Two lists for the person
+logged in:
+
+- **Mine** — the items in their own `organiser.md`: how they like to meet.
+- **About me** — the items in `people/<me>.md` in the shared tree, whoever wrote them.
+
+Each item shows its situation, its text, who said it and when, and opens into its **history**:
+the earlier versions it replaced, newest first, with the date and the writer of each. Editing,
+retiring, deleting and promoting (M9, M11) wait for phase 3, with the rules they need. That leaves
+§8's obligation — a person can delete what is said about them — unmet for now; acceptable while
+the people are invented and anyone can log in as anyone (A3 in `design_auth.md`), and the first
+thing phase 3 adds.
+
+**M15 — one route of our own, `GET /me/memory`, the email from the session.** Like `/me/agenda`
+(`design_auth.md` A12), the route never takes an email from the request: it uses the request user
+from the auth strategy, and with `AUTH=off` that is `anonymous`. It reads the two files straight
+from the workspace root with the agents' own `parse_items`, not through a `WorkspaceTool` — that
+needs an actor, and a read needs no gate. It answers:
+
+```json
+{
+  "email": "jettro@rag4p.org",
+  "mine":     [{"item": {...}, "history": [{"item": {...}, "changed": "2026-11-02T10:14:03+00:00", "by": "@Intake"}]}],
+  "about_me": [{"item": {...}, "history": []}],
+  "journal": true
+}
+```
+
+The route is the server's (`meeting_server/memory_page.py`), next to M12 and M13, because the
+server owns the root; the framework's routes would not serve `_shared` anyway (§10.1 S4).
+
+**M16 — history is read from the journal, item by item, along `supersedes`.** The journal commits
+files, and its author is the **agent** (`write: organiser.md | @Intake`, §10.1 S1), not the person
+— who said it is in the item, as `said_by`. So the route:
+
+1. runs `git log --format=%H %aI %an -- <file>` on the tree's journal (`<tree>.git`, with
+   `--work-tree`), newest first, at most 50 commits;
+2. reads each version with `git show <sha>:<file>` and parses its items;
+3. for every current item, follows `supersedes` back through those versions: each earlier item it
+   finds is one history entry, dated by the commit that last held it.
+
+Following `supersedes` rather than matching on situation keeps the history what the code decided
+it was (M4's replacement), not a guess. Git runs with a timeout and a scrubbed environment — no
+`GIT_*`, no global config — for the same reasons the journal does. With no journal (no git, or
+nothing recorded yet), items are listed without history and `journal: false` says why, so a
+missing git is visible, not silent as it was (changelog, 2026-11-02). A hand edit is committed as
+`out-of-band` when the tool next writes that tree (§10.1 S1 saw one); the page names such a version
+*changed outside the planner*.
+
+**What links where.** An item's `evidence` names its conversation. The page links it to that
+conversation's trace only when the conversation is the reader's own — it always is under *Mine*;
+under *About me* it usually belongs to whoever wrote it, and `OwnerOrAdminPolicy` would answer 404,
+so the page names the writer instead (*said by Jettro, in their conversation*).
+
+**What it needs in the GUI.** A **Memory** entry in the navigation and `pages/MemoryPage.tsx`: the
+two lists, each item a row that expands into its history, and a line when `journal` is false. It
+uses the session the other pages use, and refreshes when the page opens — memory changes in
+conversations, not while you look at it.
 
 ---
 
@@ -389,6 +456,9 @@ first cases of the evals the README roadmap lists.
 | M11 | **Your tree is yours; a file about a person is theirs to see and delete; admins promote and prune the shared tree** | The login gives every item an owner or a subject; the demo login shows the mechanism, not protection |
 | M12 | **One workspace root: the server sets `AKGENTIC_WORKSPACES_ROOT` from `WORKSPACES_ROOT`** | Otherwise the agents write off the volume and the console reads an empty directory (§10.1 S3) |
 | M13 | **The server settles sharing at startup: unset becomes `id`, a value without `id` stops it** | A refused bind leaves a half-wired agent in a team that was built anyway (§10.1 S5) |
+| M14 | **The first Memory page reads — mine, and about me, each item with its history; changing waits for phase 3** | *Where did it learn that?* is the demo's question, and editing needs M11's rules |
+| M15 | **One route of our own, `GET /me/memory`, the email from the session, reading the files directly** | The framework serves no journal and no `_shared` path; a read needs no actor and no gate |
+| M16 | **History is read from the journal along `supersedes`; who said it comes from the item, not the commit** | The journal's author is the agent; `supersedes` is what the code decided was replaced |
 
 ---
 
@@ -436,9 +506,11 @@ nobody used is kept.
    the always block on `@Intake`; `MemoryApplied`; the scenarios of §6 against the scripted model.
 2. **Phase 2 — before the action** (cases 4, 8): the facility manager's handler selects places
    and confirmed lessons before choosing.
-3. **Phase 3 — proposed lessons and review** (case 5): proposed writes, the Memory page with
-   promote and retire, and then the memory keeper.
-4. Live runs, the docs, the changelog.
+3. **The read-only Memory page** (M14–M16): `GET /me/memory` with the history, and the page.
+   Before phase 2, because it is what shows phase 1 and 2 at work.
+4. **Phase 3 — proposed lessons and review** (case 5): proposed writes; on the Memory page edit,
+   delete, promote and retire under M11; and then the memory keeper.
+5. Live runs, the docs, the changelog.
 
 ### 10.1 The spike — run 2026-11-02
 
@@ -558,6 +630,10 @@ if not, the index in `episodes/` and the small deterministic actor that writes i
   PATH the workspace tool writes no journal and says nothing, so a deployed stack kept memory
   without its history (M1). The journal sets its own author, so the image needs no git config;
   the journal test passes inside the image.
+- 2026-11-02: **A read-only Memory page first** (§4.8, M14–M16). The console shows the current
+  file and no history, since no framework route reads a journal. Proposed `GET /me/memory`: your
+  own items and those about you, each with the versions it replaced, read from the journal along
+  `supersedes`. Editing stays in phase 3, now step 4.
 
 ---
 
