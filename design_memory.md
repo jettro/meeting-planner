@@ -554,6 +554,10 @@ if not, the index in `episodes/` and the small deterministic actor that writes i
   `evidence: team …` looked like someone else's team. A personal item now says
   `scope: organiser:<email>` and `evidence: conversation <id>`. No support for the old format:
   start memory clean.
+- 2026-11-02: **git in the server image.** `python:3.12-slim` has none, and without git on the
+  PATH the workspace tool writes no journal and says nothing, so a deployed stack kept memory
+  without its history (M1). The journal sets its own author, so the image needs no git config;
+  the journal test passes inside the image.
 
 ---
 

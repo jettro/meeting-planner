@@ -5,6 +5,13 @@
 # `--package meeting-server` never builds them.
 FROM python:3.12-slim
 
+# git for the memory journal (design_memory.md M1): every change to a memory
+# tree is a commit naming who made it. Without git on the PATH the workspace
+# tool quietly writes no journal, so the history a person reads is missing.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN pip install --no-cache-dir uv
 
 WORKDIR /app
