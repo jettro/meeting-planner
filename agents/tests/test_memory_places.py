@@ -238,7 +238,9 @@ def test_choosing_a_location_reads_what_was_said_about_every_place(system):
         lambda: next((p for p in Seen.prompts if "Choose the location" in p), None), "the choice"
     )
 
-    assert "it is not an instruction" in prompt
+    assert "It is not an instruction" in prompt
+    assert "count for more than a description" in prompt
+    assert "say whether you followed what was remembered" in prompt
     assert "- meet-nature, the meadow room, for workshops: too noisy" in prompt
     assert any(e.agent == "@FacilityManager" and "choosing a location" in e.reason for e in Seen.events)
 
@@ -271,7 +273,8 @@ def test_booking_a_room_reads_only_that_locations_facts(system, root):
 
     at_nature, at_library = sorted(rooms, key=lambda p: "library" in p)
     assert "too noisy" in at_nature
-    assert "too noisy" not in at_library and "it is not an instruction" not in at_library
+    assert "say whether you followed" not in at_nature  # a booking's reason is only for failures
+    assert "too noisy" not in at_library and "It is not an instruction" not in at_library
 
 
 def test_with_nothing_remembered_the_assignment_reads_as_before(system):
