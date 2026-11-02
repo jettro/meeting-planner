@@ -14,9 +14,9 @@ verified against the installed packages, and what this team needs.
 > **The one sentence to keep:** *remember only what will change a future decision — and say when
 > it stops being true.*
 
-**Status:** proposal, revised 2026-11-02 now that there is a login (`design_auth.md`). Nothing is
-built. §4.2 says exactly where memory is stored; §9 lists the questions still open, §10 the spike
-that comes first.
+**Status:** proposal, revised 2026-11-02 for the login (`design_auth.md`), and the spike run the
+same day (§10.1) — the store holds, with three things to build around. Nothing is built. §4.2 says
+exactly where memory is stored; §9 lists the questions still open.
 
 ---
 
@@ -143,10 +143,19 @@ a table of our own.
 
 Memory is **files on the server's disk**, in the same place akgentic keeps every workspace. Nothing
 goes to a database or an outside service. The path is
-`<WORKSPACES_ROOT>/<scope>/_id/<workspace_id>`, where `<scope>` is the team owner's email for a
-personal tree and `_shared` for a shared one (`resolve_workspace_path`, verified in the auth spike):
+`<root>/<scope>/_id/<workspace_id>`, where `<scope>` is the team owner's email for a personal tree
+and `_shared` for a shared one (`resolve_workspace_path`, verified in the auth spike and again in
+§10.1).
 
-| Running as | `WORKSPACES_ROOT` | Jettro's own memory | Shared memory |
+**The root has two names, and today they disagree (§10.1 S3).** The agents write under
+`AKGENTIC_WORKSPACES_ROOT`, read by `WorkspaceTool` itself, which defaults to `./workspaces`. The
+server's routes and team deletion read `WORKSPACES_ROOT` (`CommunitySettings.workspaces_root`). Our
+Dockerfile sets only the second, so in the container the agents would write to `/app/workspaces` —
+inside the image, off the volume, gone at the next rebuild — while the console looks in
+`/data/workspaces` and finds nothing. **M12 — the server sets `AKGENTIC_WORKSPACES_ROOT` to its own
+`WORKSPACES_ROOT` at startup**, so there is one root. With that:
+
+| Running as | root | Jettro's own memory | Shared memory |
 |---|---|---|---|
 | compose (`make up`) | `/data/workspaces`, on the `server-data` volume | `/data/workspaces/jettro@rag4p.org/_id/memory/` | `/data/workspaces/_shared/_id/memory-shared/` |
 | host (`make run-server`) | `data/workspaces` in the repo, git-ignored | `data/workspaces/jettro@rag4p.org/_id/memory/` | `data/workspaces/_shared/_id/memory-shared/` |
@@ -155,11 +164,17 @@ Beside each tree sits its **journal**, a git repository named after it — `memo
 `memory-shared.git` — and, once search is switched on, an `.index` directory for the RAG index.
 They are siblings, not children, so the tree an agent sees holds only the items.
 
-Three ways to look at it:
+Three ways to look at it — not all of them see both trees (§10.1 S4):
 
-- **the console** — its workspace tab shows a team's workspaces, through the framework's
-  `/workspace/{team_id}/tree` and `/file` routes (with `workspace_id=memory` or `memory-shared`);
-- **the Memory page** (M9) — ours, the same routes, through one of your own teams;
+- **the console** — its workspace tab shows a team's workspaces through the framework's
+  `/workspace/{team_id}/tree` and `/file` routes. It shows **your own** tree (`workspace_id=memory`),
+  and only if the `WorkspaceTool` card sits directly in an agent's `tools` — the server finds
+  workspaces by scanning those, not cards nested inside ours. It **never** shows the shared tree:
+  the framework refuses every `_shared` path with 403, admins included, until an entitlement policy
+  exists (`_team_access.check_workspace_scope`).
+- **the Memory page** (M9) — ours. Your own tree through the same routes; the shared tree through a
+  route of our own on the server, which reads `people/<me>.md` (and places and lessons) with M11's
+  rules, because no framework route will.
 - **the disk** — `docker compose exec server ls /data/workspaces/...`, and `git log` in the
   journal to see every change with its author.
 
@@ -169,8 +184,11 @@ Two consequences worth stating:
   memory too. Memory and meetings have different lifetimes; a reset that keeps memory would be a
   separate target (§8).
 - **Sharing needs permission.** A shared tree is only created if the server allows it:
-  `AKGENTIC_WORKSPACE_SHARED_KINDS=id` in the server's environment. A card asking for a shared tree
-  without it fails loudly at team creation — never silently falls back to a personal tree.
+  `AKGENTIC_WORKSPACE_SHARED_KINDS=id` in the server's environment. Without it the card's bind
+  raises and never falls back to a personal tree — but the spike found that the raise happens in
+  the agent's `on_start`, and **a team still gets built**, with the agent half-wired (§10.1 S5). So
+  **M13 — the server refuses to start when the memory cards are in the catalog and the permission
+  is missing**, rather than let the first conversation find out.
 
 ### 4.3 One item format: a lesson bound to its situation
 
@@ -219,6 +237,19 @@ plain matching on `situation` is enough at this size (a handful of files). RAG o
 (`workspace_rag_search`) is available when volume justifies it, not before.
 
 ### 4.5 Writing: two paths now, a third later
+
+**The card's shape (§10.1 S1, S4).** The two trees are two plain `WorkspaceTool` cards in the
+agent's `tools`, with every model-facing capability switched off; a `MemoryTool` card of ours
+declares `depends_on = ["WorkspaceTool"]`, finds them by `workspace_id` when it is wired, and does
+all reading and writing through their gated callables. Plain cards because that is what the
+server scans for the console; through their callables because that is where the write gate and the
+journal are — a write from our code was committed as `write: organiser.md`, authored `@Intake`.
+
+**Every write re-reads first (§10.1 S6).** The gate refuses to replace a file the writer has not
+read, or that changed since: two organisers adding to `people/sanne@rag4p.org.md` at once, the
+second is refused with *"it changed since you read it"*. So `remember` reads the file, applies its
+one change to what is there *now*, and writes; on a refusal it does that once more. One file per
+subject keeps the window small, and nothing is ever merged textually.
 
 **M4 — what a person said is written at once, as confirmed.** `@Intake` gets `remember(kind,
 scope, situation, text)`. It may only store what the person said in this conversation, with their
@@ -352,6 +383,8 @@ first cases of the evals the README roadmap lists.
 | M9 | **Every application is a `MemoryApplied` event; a Memory page shows, edits, retires and promotes** | Managing memory means explaining it |
 | M10 | **`pydantic-ai-harness` `Memory` stays an option for scratch notes, not the store of record** | Status and code-driven selection are the point here; the harness pins pydantic-ai exactly |
 | M11 | **Your tree is yours; a file about a person is theirs to see and delete; admins promote and prune the shared tree** | The login gives every item an owner or a subject; the demo login shows the mechanism, not protection |
+| M12 | **One workspace root: the server sets `AKGENTIC_WORKSPACES_ROOT` from `WORKSPACES_ROOT`** | Otherwise the agents write off the volume and the console reads an empty directory (§10.1 S3) |
+| M13 | **The server will not start with memory cards and without `AKGENTIC_WORKSPACE_SHARED_KINDS=id`** | A refused bind leaves a half-wired agent in a team that was built anyway (§10.1 S5) |
 
 ---
 
@@ -393,25 +426,52 @@ nobody used is kept.
 
 ## 10. Implementation order
 
-0. **Spike**, against the installed packages:
-   1. reading and writing a workspace tree from a tool card of ours, not only through
-      `WorkspaceTool`'s own callables — and whether those writes are journaled and attributed;
-   2. an always block through `get_context_states()` on the `LLM_CONTEXT` channel, and how it
-      survives a restore;
-   3. what the console shows of the tree;
-   4. a personal and a shared tree on one agent, with `AKGENTIC_WORKSPACE_SHARED_KINDS=id` —
-      that both resolve as §4.2 says, for two different owners, and that the shared one refuses
-      to bind without the permission;
-   5. two teams of different owners writing the same file in the shared tree at once — whether
-      the workspace's own locks serialise them, or the second write must re-read and retry.
-1. **Phase 1 — confirmed facts and preferences** (cases 1–4, 6): the item format, the store, the
-   `remember` / `recall` tools and the always block on `@Intake`, `MemoryApplied`, the scenarios of
-   §6 against the scripted model.
+0. **Spike** — done 2026-11-02, §10.1.
+1. **Phase 1 — confirmed facts and preferences** (cases 1–4, 6): one root and the start-up check
+   (M12, M13); the item format, the two trees and `MemoryTool`; the `remember` / `recall` tools and
+   the always block on `@Intake`; `MemoryApplied`; the scenarios of §6 against the scripted model.
 2. **Phase 2 — before the action** (cases 4, 8): the facility manager's handler selects places
    and confirmed lessons before choosing.
 3. **Phase 3 — proposed lessons and review** (case 5): proposed writes, the Memory page with
    promote and retire, and then the memory keeper.
 4. Live runs, the docs, the changelog.
+
+### 10.1 The spike — run 2026-11-02
+
+Throwaway code in the session's scratchpad: a `SpikeMemory` card holding two `WorkspaceTool`s
+(`memory`, and `memory-shared` with `workspace_sharable=True`, both journaled) on an `@Intake`
+subclass, in a real actor system, for two owners. Items 1, 2, 4 and 5 were run; item 3 was read
+from the server's source.
+
+- **S1 — code can write through the gate, and the journal attributes it.** Writing
+  `organiser.md` from our card through `workspace_write` worked; overwriting it after a
+  `workspace_read` worked. The journal holds `write: organiser.md | @Intake` per change, after one
+  `out-of-band` commit of the seeded `.gitignore`.
+- **S2 — the always block works, and survives a restore.** A `ContextState` provider on our card
+  put *"What you remember about this organiser: Daan means Daan Jansen."* into the agent's context
+  update. After `stop_team` and `resume_team` the agent still had `user_id`
+  `jettro@rag4p.org`, read the same file, and rendered the same block.
+- **S3 — two roots.** `WorkspaceTool` writes under `AKGENTIC_WORKSPACES_ROOT` (default
+  `./workspaces`); the server's routes read `CommunitySettings.workspaces_root`. Read from source;
+  our Dockerfile sets only `WORKSPACES_ROOT`. → M12.
+- **S4 — what the routes show** (read from source, `services/_workspace_paths.py`,
+  `routes/_team_access.py`): workspaces are found by scanning each agent's top-level `tools` for
+  `WorkspaceTool`, so a card nested in ours would be invisible; a `_shared` path is refused with
+  403 for every caller. → the card's shape (§4.5) and the Memory page's own route (§4.2).
+- **S5 — a refused shared bind does not stop the team.** Without
+  `AKGENTIC_WORKSPACE_SHARED_KINDS`, the bind raised the documented `ValueError` — but in the
+  agent's `on_start`, and `TeamFactory.build` returned a team whose agent had its personal tree and
+  no shared one. The same held for a plain shared `WorkspaceTool`, so this is the framework's
+  behaviour in-process, not our wrapper's. → M13.
+- **S6 — two owners, one shared file.** Jettro and Daan both read
+  `people/sanne@rag4p.org.md`; Jettro wrote; Daan's write was refused (*"it changed since you read
+  it"*), the file kept Jettro's version, and Daan's re-read-and-write then landed. → write rule in
+  §4.5.
+- **Two owners, two trees** — Daan's team could not see Jettro's `organiser.md`, and both saw the
+  shared `people/` file: §4.1 as designed.
+
+Not covered: the console against a real team (S4 is from source), and `depends_on` wiring order for
+the card shape in §4.5 — both are the first test of phase 1.
 
 **Later, when "like last time" is actually wanted — episodes (case 7, M5).** First a spike: can a
 read-only lookup over the coordinators' snapshots serve `@Intake` without copying anything; only
@@ -441,6 +501,12 @@ if not, the index in `episodes/` and the small deterministic actor that writes i
   New §4.2 says where memory is stored on disk, beside its git journal, and how to look at it. M11
   sets who may see and change what. Q1 answered by the login; two spike items added for the shared
   tree.
+- 2026-11-02: **Spike run** (§10.1). The two trees, code-driven writes through the gate, the
+  journal's attribution, the always block and its restore all hold. Found: two names for the
+  workspace root (M12); the console can show only a top-level card's personal tree and never a
+  shared one, so the Memory page needs its own route for `memory-shared`; a refused shared bind
+  leaves a half-wired agent in a built team (M13); concurrent writers are refused, not merged, so
+  every write re-reads first.
 
 ---
 
