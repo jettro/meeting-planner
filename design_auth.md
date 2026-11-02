@@ -128,7 +128,7 @@ guardrails, and it can now ask *who* — but deciding rules is a separate design
 would feel like a missing feature (Q3), and the meeting service keeps every person's agenda. But
 its API does not show it: `GET /persons/{email}/agenda?day=` answers only *free slots*, and
 `GET /meetings` lists every meeting but not the busy blocks without one (`AgendaItem.meeting_id`
-is optional). So the meeting service gains one read route, `GET /persons/{email}/agenda/items?day=`
+is optional). So the meeting service gains one read route — built 2026-11-02 as `GET /api/persons/{email}/meetings?from_day=&to_day=`, upcoming by default
 — each item's time, title and `meeting_id` — a change in a service we own, and no MCP tool changes.
 A **My agenda** page shows the logged-in person's day through a gated route on our server,
 `GET /me/agenda?day=`, that takes the email **from the session, never from the request** — so
@@ -190,7 +190,7 @@ This is the reason for the step, so it is worth saying exactly:
 | `server/src/meeting_server/app.py` | `services.auth = DemoLogin(...)`; `AuthModule` with `RequireAuthMiddleware` at `IDENTITY`; `admin_list_all_teams=True` |
 | `server/src/meeting_server/auth.py` (cont.) | `/auth/login/apikey` and an `X-API-Key` header, both against `API_KEYS` (A14) |
 | `server/src/meeting_server/agenda.py` (new) | `GET /me/agenda?day=` → the meeting service, for the session's email (A12) |
-| `services/meeting-service` | `GET /persons/{email}/agenda/items?day=`: a person's agenda items with `meeting_id` (A12) |
+| `services/meeting-service` | `GET /api/persons/{email}/meetings`: a person's meetings in date order, with `meeting_id` and participants (A12) — **built** |
 | `console/config.json` | `"hideLogin": false`, `"loginProviders": ["apikey"]` (A14) |
 | `server/src/meeting_server/settings.py` | `AUTH_SECRET`, `ADMIN_EMAILS`, `API_KEYS`, `SESSION_MAX_AGE` (8 h); `AUTH=demo|off` so tests and the old behaviour stay one switch away |
 | `agents/…/messages.py`, `plan.py` | optional `organiser` on the request and the plan |

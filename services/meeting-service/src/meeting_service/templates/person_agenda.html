@@ -3,6 +3,28 @@
 {% block content %}
 {% if person %}
 <h1>{{ person.name }}'s agenda</h1>
+
+<h5 class="mt-4">Upcoming meetings</h5>
+<table class="table table-sm">
+    <thead><tr><th>Day</th><th>Time</th><th>Title</th><th>With</th></tr></thead>
+    <tbody>
+    {% for meeting in upcoming %}
+        <tr>
+            <td><a href="?day={{ meeting.day }}">{{ meeting.day }}</a></td>
+            <td>{{ meeting.start.strftime('%H:%M') }}–{{ meeting.end.strftime('%H:%M') }}</td>
+            <td>{{ meeting.title }}</td>
+            <td>
+                {% set others = meeting.participant_emails | reject("equalto", person.email) | list %}
+                {{ others | join(", ") if others else "—" }}
+            </td>
+        </tr>
+    {% else %}
+        <tr><td colspan="4">No upcoming meetings.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<h5 class="mt-4">Free slots on a day</h5>
 <form method="get" class="row g-2 mb-3">
     <div class="col-auto">
         <input type="date" name="day" value="{{ day }}" class="form-control">
@@ -11,7 +33,7 @@
         <button class="btn btn-primary" type="submit">Show</button>
     </div>
 </form>
-<h5>Free slots on {{ day }}</h5>
+<p class="text-muted">On {{ day }}:</p>
 <ul>
     {% for slot in free_slots %}
         <li>{{ slot }}</li>

@@ -88,3 +88,24 @@ class MeetingResponse(BaseModel):
 class MeetingCancelResponse(BaseModel):
     success: bool
     message: str
+
+
+class PersonMeeting(BaseModel):
+    """One entry in a person's agenda, as that person would read it.
+
+    `meeting_id` is null for a block that is not a booked meeting - something
+    put straight into the agenda - and then the person is the only participant.
+    """
+
+    meeting_id: int | None
+    title: str
+    day: date
+    start: time
+    end: time
+    participant_emails: list[str]
+
+
+class PersonMeetings(BaseModel):
+    email: str
+    name: str
+    meetings: list[PersonMeeting]

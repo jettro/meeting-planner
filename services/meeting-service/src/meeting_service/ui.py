@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 
+from meeting_service.api import meetings_of
 from meeting_service.db import get_session
 from meeting_service.models import (
     AgendaItem,
@@ -19,7 +21,8 @@ from meeting_service.models import (
 )
 
 router = APIRouter(tags=["ui"])
-templates = Jinja2Templates(directory="src/meeting_service/templates")
+# Next to this module, not relative to wherever the service was started from.
+templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -43,13 +46,17 @@ def person_agenda_page(
     person = session.exec(select(Person).where(Person.email == email)).first()
     selected_day = date.fromisoformat(day) if day else date.today()
     free_slots: list[str] = []
+    upcoming = []
     if person is not None:
         items = session.exec(select(AgendaItem).where(AgendaItem.person_id == person.id)).all()
         free_slots = availability_for_day(items, selected_day)
+        # What a person wants to see first; the free slots below are what the
+        # agents search, and stay as they were.
+        upcoming = meetings_of(session, person, date.today(), None)
     return templates.TemplateResponse(
         request,
         "person_agenda.html",
-        {"person": person, "day": selected_day.isoformat(), "free_slots": free_slots},
+        {"person": person, "day": selected_day.isoformat(), "free_slots": free_slots, "upcoming": upcoming},
     )
 
 
@@ -98,16 +105,6 @@ def create_meeting(
             "message": f"Not available: {', '.join(unavailable)}",
         }
     else:
-        for person in persons:
-            session.add(
-                AgendaItem(
-                    person_id=person.id,  # type: ignore[arg-type]
-                    day=meeting_day,
-                    start=start_t,
-                    end=end_t,
-                    title=title,
-                )
-            )
         meeting = Meeting(
             title=title,
             description=description,
@@ -117,6 +114,21 @@ def create_meeting(
             participant_emails_csv=",".join(participant_emails),
         )
         session.add(meeting)
+        session.commit()
+        session.refresh(meeting)
+        # Linked to the meeting, as the API does, so a person's list of
+        # meetings shows who else is in it and a cancel frees the agendas.
+        for person in persons:
+            session.add(
+                AgendaItem(
+                    person_id=person.id,  # type: ignore[arg-type]
+                    meeting_id=meeting.id,
+                    day=meeting_day,
+                    start=start_t,
+                    end=end_t,
+                    title=title,
+                )
+            )
         session.commit()
         result = {"booked": True, "message": f"Meeting '{title}' booked successfully."}
 

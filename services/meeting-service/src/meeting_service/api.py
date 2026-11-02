@@ -28,6 +28,8 @@ from meeting_service.schemas import (
     MeetingRequest,
     MeetingResponse,
     PersonAvailability,
+    PersonMeeting,
+    PersonMeetings,
     PersonRead,
 )
 
@@ -73,6 +75,57 @@ def get_person_agenda(email: str, day: date, session: Session = Depends(get_sess
         email=person.email,
         name=person.name,
         free_slots=availability_for_day(items, day),
+    )
+
+
+def meetings_of(session: Session, person: Person, from_day: date, to_day: date | None) -> list[PersonMeeting]:
+    """A person's agenda from `from_day` on, in the order it happens.
+
+    Read from the agenda items rather than from the meetings, because the
+    agenda is what is actually blocked for this person. An item booked as part
+    of a meeting carries that meeting's id and participants.
+    """
+    query = select(AgendaItem).where(AgendaItem.person_id == person.id, AgendaItem.day >= from_day)
+    if to_day is not None:
+        query = query.where(AgendaItem.day <= to_day)
+    items = sorted(session.exec(query).all(), key=lambda item: (item.day, item.start))
+
+    meeting_ids = {item.meeting_id for item in items if item.meeting_id is not None}
+    meetings = {m.id: m for m in session.exec(select(Meeting).where(Meeting.id.in_(meeting_ids))).all()}  # type: ignore[union-attr]
+
+    entries = []
+    for item in items:
+        meeting = meetings.get(item.meeting_id)
+        entries.append(
+            PersonMeeting(
+                meeting_id=item.meeting_id,
+                title=item.title,
+                day=item.day,
+                start=item.start,
+                end=item.end,
+                participant_emails=meeting.participant_emails if meeting else [person.email],
+            )
+        )
+    return entries
+
+
+@router.get("/persons/{email}/meetings", response_model=PersonMeetings)
+def get_person_meetings(
+    email: str,
+    from_day: date | None = None,
+    to_day: date | None = None,
+    session: Session = Depends(get_session),
+) -> PersonMeetings:
+    """What is in a person's agenda: the meetings they are in, in date order.
+
+    Upcoming by default - `from_day` is today unless given; `to_day` is open.
+    For *free* time on one day, use `/persons/{email}/agenda`.
+    """
+    person = _get_person_or_404(session, email)
+    return PersonMeetings(
+        email=person.email,
+        name=person.name,
+        meetings=meetings_of(session, person, from_day or date.today(), to_day),
     )
 
 
