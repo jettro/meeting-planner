@@ -21,8 +21,7 @@ import logging
 import os
 from pathlib import Path
 
-from akgentic.tool.workspace import ID_KIND, permitted_shared_kinds
-from akgentic.tool.workspace.workspace import SHARED_KINDS_ENV
+from meeting_agents.memory import MemoryConfigurationError, permit_sharing
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +31,7 @@ ROOT_ENV = "AKGENTIC_WORKSPACES_ROOT"
 MEMORY_MODEL_TYPE = "meeting_agents.memory.MemoryTool"
 
 
-class MemoryConfigurationError(RuntimeError):
-    """The process forbids what the catalog's memory needs."""
+__all__ = ["MemoryConfigurationError", "configure_memory", "uses_memory"]
 
 
 def uses_memory(catalog_path: Path) -> bool:
@@ -49,13 +47,5 @@ def configure_memory(workspaces_root: Path, catalog_path: Path) -> None:
         logger.warning("%s was %s; using the server's workspaces root %s", ROOT_ENV, previous, root)
     os.environ[ROOT_ENV] = root
 
-    if not uses_memory(catalog_path):
-        return
-    if not os.environ.get(SHARED_KINDS_ENV, "").strip():
-        os.environ[SHARED_KINDS_ENV] = "id"
-        logger.info("%s set to 'id' for the shared memory tree", SHARED_KINDS_ENV)
-    if ID_KIND not in permitted_shared_kinds():
-        raise MemoryConfigurationError(
-            f"The catalog uses shared memory, but {SHARED_KINDS_ENV}={os.environ[SHARED_KINDS_ENV]!r} "
-            "does not permit 'id'. Add 'id' to it, or leave it unset (design_memory.md M13)."
-        )
+    if uses_memory(catalog_path):
+        permit_sharing()

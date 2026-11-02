@@ -28,6 +28,7 @@ from akgentic.agent.config import AgentConfig, AgentState
 from akgentic.core import ActorAddress, Akgent
 from pydantic import BaseModel
 
+from meeting_agents.memory import MemoryItem, MemoryTool
 from meeting_agents.messages import (
     AssignmentFailed,
     BookFacilitiesAssignment,
@@ -37,6 +38,7 @@ from meeting_agents.messages import (
     FacilitiesBooked,
     FindLocationAssignment,
     FindPeopleAssignment,
+    FindPlaceAssignment,
     FindSlotsAssignment,
     LocationFound,
     LunchOrdered,
@@ -45,6 +47,8 @@ from meeting_agents.messages import (
     OrderLunchAssignment,
     PeopleFound,
     Person,
+    Place,
+    PlaceFound,
     ProposedSlot,
     SlotsFound,
 )
@@ -55,6 +59,7 @@ from meeting_agents.outputs import (
     ClockError,
     FoundSlots,
     MatchedPeople,
+    MatchedPlaces,
     OrderedLunch,
     ReleasedBooking,
     parse_clock,
@@ -284,6 +289,8 @@ class FacilityManager(SpecialistAgent, Akgent[FacilityManagerConfig, AgentState]
         only one that can see the locations and what they are like, so the
         judgement stays here and the list never travels (design_chat.md §13.1).
         """
+        remembered = self._place_facts(None, f'choosing a location for "{message.wish}"')
+        message = message.model_copy(update={"remembered": remembered})
         chosen = self.attempt(message, ChosenLocation, message.plan_id, sender)
         if chosen is None:
             return
@@ -305,9 +312,33 @@ class FacilityManager(SpecialistAgent, Akgent[FacilityManagerConfig, AgentState]
             ),
         )
 
+    def receiveMsg_FindPlaceAssignment(  # noqa: N802
+        self, message: FindPlaceAssignment, sender: ActorAddress
+    ) -> None:
+        """Turn a name into the places it could mean. A lookup: nothing is booked.
+
+        Asked by `@Intake` before it remembers something about a place: only
+        this agent sees the locations, so a fact is filed under the id it gives
+        (design_memory.md M17). Every candidate, never a pick - as the people
+        lookup does.
+        """
+        found = self.attempt(message, MatchedPlaces, message.plan_id, sender)
+        if found is None:
+            return
+        if not found.succeeded:
+            self.fail(message.plan_id, found.reason or "could not search the locations", sender)
+            return
+        candidates = [
+            Place(location_id=place.location_id, name=place.name, room_code=place.room_code)
+            for place in found.candidates
+        ]
+        self.send(sender, PlaceFound(plan_id=message.plan_id, asked=message.name, candidates=candidates))
+
     def receiveMsg_BookFacilitiesAssignment(  # noqa: N802
         self, message: BookFacilitiesAssignment, sender: ActorAddress
     ) -> None:
+        remembered = self._place_facts(message.location_id, f"choosing a room at {message.location_id}")
+        message = message.model_copy(update={"remembered": remembered})
         booked = self.attempt(message, BookedRoom, message.plan_id, sender)
         if booked is None:
             return
@@ -427,6 +458,29 @@ class FacilityManager(SpecialistAgent, Akgent[FacilityManagerConfig, AgentState]
             logger.error("[%s] no %s to report to", self.config.name, self.config.coordinator_name)
             return
         self.send(coordinator, message)
+
+    # -- memory (design_memory.md M18, M19) ----------------------------------------
+
+    def _memory(self) -> MemoryTool | None:
+        return next((card for card in self.config.tools if isinstance(card, MemoryTool)), None)
+
+    def _place_facts(self, location_id: str | None, reason: str) -> list[str]:
+        """What people have said about places, selected in code before the model acts.
+
+        Every place while a location is still being chosen - there are few - and
+        only the chosen location's when a room is. Each selection is a
+        `MemoryApplied` event, so the trace says why a room was passed over.
+        """
+        memory = self._memory()
+        if memory is None:
+            return []
+        try:
+            items: list[MemoryItem] = memory.place_items(location_id)[-memory.max_always_items :]
+        except Exception:  # memory must never stop a booking
+            logger.exception("[%s] place memory could not be read", self.config.name)
+            return []
+        memory.applied(reason, items)
+        return [f"- {item.scope.removeprefix('place:')}, {item.situation}: {item.text}" for item in items]
 
     def _take_pending(self, plan_id: str) -> PendingFacilities | None:
         room = self._pending.pop(plan_id, None)

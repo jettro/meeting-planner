@@ -232,6 +232,8 @@ export interface MyMemory {
   email: string;
   mine: Remembered[];
   about_me: Remembered[];
+  /** What anyone said about a place - everybody's to read. */
+  places: Remembered[];
   /** False when no history could be read: no git on the server, or nothing recorded yet. */
   journal: boolean;
 }

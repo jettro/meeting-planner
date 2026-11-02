@@ -10,10 +10,12 @@ import os
 from pathlib import Path
 
 import pytest
-from akgentic.catalog import Catalog, YamlEntryRepository
+from akgentic.catalog import Catalog, YamlEntryRepository, set_allowed_prefixes
 from akgentic.catalog.env import resolve_env_vars
 from akgentic.core import AgentCard
 from akgentic.tool.mcp import MCPHTTPConnectionConfig, MCPTool
+from meeting_agents.bootstrap import MODEL_TYPE_PREFIXES
+from meeting_agents.memory import MemoryTool
 from meeting_agents.settings import Settings
 
 CATALOG_ROOT = Path(__file__).resolve().parents[1] / "catalog"
@@ -36,6 +38,8 @@ EXPECTED_CLASS = {
 
 @pytest.fixture
 def catalog() -> Catalog:
+    # The facility manager's memory card is one of ours, as `build_catalog` allows.
+    set_allowed_prefixes(MODEL_TYPE_PREFIXES)
     return Catalog(repository=YamlEntryRepository(root=CATALOG_ROOT))
 
 
@@ -64,9 +68,13 @@ def test_each_agent_gets_exactly_one_mcp_server(catalog: Catalog, entry_id: str)
     card = load_agent(catalog, entry_id)
     prefix, _ = EXPECTED_SERVER[entry_id]
 
-    assert len(card.config.tools) == 1, "an agent must not reach a second service"
+    servers = [tool for tool in card.config.tools if isinstance(tool, MCPTool)]
+    assert len(servers) == 1, "an agent must not reach a second service"
     tool = card.config.tools[0]
     assert isinstance(tool, MCPTool), "the ref must rehydrate as a real MCPTool"
+    # Anything else is memory, which gives the model no tool at all (design_memory.md M19).
+    others = card.config.tools[1:]
+    assert all(isinstance(other, MemoryTool) and other.get_tools() == [] for other in others)
     assert isinstance(tool.connection, MCPHTTPConnectionConfig)
     assert tool.connection.tool_prefix == prefix
 

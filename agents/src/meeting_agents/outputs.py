@@ -109,6 +109,25 @@ class MatchedPeople(BaseModel):
     reason: str = Field(default="", description="If succeeded is false, the failure the tool reported.")
 
 
+class PlaceOut(BaseModel):
+    location_id: str = Field(description="The location id exactly as list_locations gave it.")
+    name: str = Field(description="The location's name, as listed.")
+    room_code: str = Field(
+        default="", description="The room code as list_rooms gave it, only if a room was meant."
+    )
+
+
+class MatchedPlaces(BaseModel):
+    """@FacilityManager's answer to 'which place is this?'."""
+
+    succeeded: bool = Field(description="True if you could search the locations. False if a tool failed.")
+    candidates: list[PlaceOut] = Field(
+        default_factory=list,
+        description="Every place the name could mean. Empty if none matches; several if it is ambiguous.",
+    )
+    reason: str = Field(default="", description="If succeeded is false, the failure the tool reported.")
+
+
 class ChosenLocation(BaseModel):
     """@FacilityManager's answer to 'which location fits this description?'."""
 

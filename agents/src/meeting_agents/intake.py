@@ -59,9 +59,11 @@ from meeting_agents.messages import (
     AssignmentFailed,
     CancelPlanRequest,
     FindPeopleAssignment,
+    FindPlaceAssignment,
     LunchApprovalDecision,
     LunchApprovalRequest,
     PeopleFound,
+    PlaceFound,
     PlanCancelled,
     PlanCompleted,
     PlanFailed,
@@ -80,6 +82,7 @@ class IntakeConfig(AgentConfig):
     human_name: str = "@Human"
     coordinator_name: str = "@Coordinator"
     scheduler_name: str = "@Scheduler"
+    facility_manager_name: str = "@FacilityManager"
 
 
 class IntakeState(AgentState):
@@ -99,6 +102,9 @@ class IntakeState(AgentState):
     #: may reach `plan_meeting`: a guessed address is a meeting in a stranger's
     #: agenda (§13.2).
     settled_emails: list[str] = Field(default_factory=list)
+    #: Location ids a place lookup settled. Only these may be remembered about:
+    #: a place is filed under the id the facility manager gave (design_memory.md M17).
+    settled_places: list[str] = Field(default_factory=list)
 
 
 class IntakeAgent(BaseAgent, Akgent[IntakeConfig, IntakeState]):
@@ -166,10 +172,11 @@ class IntakeAgent(BaseAgent, Akgent[IntakeConfig, IntakeState]):
     def remember_said(self, kind: str, about: str, situation: str, text: str) -> str:
         """Store what the person said, as confirmed (M4).
 
-        `about` is `organiser` for how this person arranges meetings, or the
+        `about` is `organiser` for how this person arranges meetings, the
         email of the person a fact is about - which must be someone this
         conversation settled, or the organiser: a guessed address would be a
-        fact about a stranger.
+        fact about a stranger - or `place:<location_id>` for a place a place
+        lookup settled.
         """
         memory = self._memory()
         if memory is None:
@@ -182,6 +189,14 @@ class IntakeAgent(BaseAgent, Akgent[IntakeConfig, IntakeState]):
             scope = f"organiser:{organiser}"
         elif about == organiser or about in self.state.settled_emails:
             scope = f"person:{about}"
+        elif about.startswith("place:"):
+            location_id = about.removeprefix("place:")
+            if location_id not in self.state.settled_places:
+                return (
+                    f"Refused: {location_id} is not a place this conversation looked up. Use "
+                    "look_up_place first, and the location id it gave."
+                )
+            scope = about
         else:
             return (
                 f"Refused: {about} is not someone this conversation knows. Look them up first, "
@@ -245,6 +260,13 @@ class IntakeAgent(BaseAgent, Akgent[IntakeConfig, IntakeState]):
             return "Refused: there is no scheduler on this team to ask."
         self.send(scheduler, FindPeopleAssignment(names=names))
         return "Asked the scheduler. The answer will arrive as an update."
+
+    def look_up_place(self, name: str) -> str:
+        facility_manager = self._member(self.config.facility_manager_name)
+        if facility_manager is None:
+            return "Refused: there is no facility manager on this team to ask."
+        self.send(facility_manager, FindPlaceAssignment(name=name))
+        return "Asked the facility manager. The answer will arrive as an update."
 
     def cancel(self) -> str:
         if not self.state.requested:
@@ -350,6 +372,26 @@ class IntakeAgent(BaseAgent, Akgent[IntakeConfig, IntakeState]):
         lines += self._remembered_about(settled)
         self._tell_the_model("the scheduler looked people up. " + " ".join(lines), sender)
 
+    def receiveMsg_PlaceFound(  # noqa: N802
+        self, message: PlaceFound, sender: ActorAddress
+    ) -> None:
+        """Settle one place in code, with what is remembered about it; ask about the rest."""
+        if len(message.candidates) == 1:
+            place = message.candidates[0]
+            self._update(settled_places=sorted({*self.state.settled_places, place.location_id}))
+            line = f'"{message.asked}" is {place.label()} (remember it as place:{place.location_id}).'
+            memory = self._memory()
+            items = memory.place_items(place.location_id) if memory is not None else []
+            if memory is not None and items:
+                memory.applied(f"a lookup settled the place {place.location_id}", items)
+                line += " Remembered about it: " + "; ".join(f"{i.situation}: {i.text}" for i in items) + "."
+        elif message.candidates:
+            options = "; ".join(f"{place.label()} ({place.location_id})" for place in message.candidates)
+            line = f'"{message.asked}" could be: {options}. Ask the person which one.'
+        else:
+            line = f'No place called "{message.asked}" is known. Ask the person what they mean.'
+        self._tell_the_model("the facility manager looked a place up. " + line, sender)
+
     def receiveMsg_AssignmentFailed(  # noqa: N802
         self, message: AssignmentFailed, sender: ActorAddress
     ) -> None:
@@ -369,7 +411,7 @@ def describe(plan: MeetingPlan) -> str:
 
 
 class IntakeTools(ToolCard):
-    """The four things the model may do, and nothing that books (I3).
+    """The five things the model may do, and nothing that books (I3).
 
     The tools are thin: they validate what the model passed and hand it to the
     agent, whose methods hold the rules, so the rules are testable without a
@@ -390,6 +432,14 @@ class IntakeTools(ToolCard):
                 names: The names or email addresses exactly as the person said them.
             """
             return self._agent().look_up(names)
+
+        def look_up_place(name: str) -> str:
+            """Find which location or room a place the person named is, before remembering something about it.
+
+            Args:
+                name: The place exactly as the person said it: "the meadow", "the Library".
+            """
+            return self._agent().look_up_place(name)
 
         def plan_meeting(
             title: str,
@@ -442,14 +492,16 @@ class IntakeTools(ToolCard):
                 kind: 'preference' for how something should be done, 'fact' for what is so.
                 about: 'organiser' for how the person you talk to arranges meetings (who
                     "Daan" or "my team" is, how long their stand-ups are, where focus
-                    sessions go); or the email of the person a fact is about, as
-                    look_up_people settled it ("Sanne is vegetarian").
+                    sessions go); the email of the person a fact is about, as
+                    look_up_people settled it ("Sanne is vegetarian"); or
+                    'place:<location_id>' for a place, as look_up_place settled it
+                    ("the meadow room is too noisy for workshops").
                 situation: When it applies, in a few words: "who Daan is", "lunch", "stand-ups".
                 text: What to remember, in the person's words.
             """
             return self._agent().remember_said(kind, about, situation, text)
 
-        return [look_up_people, plan_meeting, cancel_meeting, remember]
+        return [look_up_people, look_up_place, plan_meeting, cancel_meeting, remember]
 
 
 # -- the guard ---------------------------------------------------------------

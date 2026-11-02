@@ -10,7 +10,9 @@ journal recording every change and who made it (M1).
   about how they work: who "Daan" is, who "my team" is, how long a stand-up
   lasts, where focus sessions go.
 - **`memory-shared` - ours.** One for everybody. `people/<email>.md` holds what
-  is true about a person whoever books for them - Sanne is vegetarian.
+  is true about a person whoever books for them - Sanne is vegetarian; and
+  `places/<location_id>.md` what is true about a place - the meadow room is too
+  noisy for a workshop (phase 2, §10.3).
 
 Phase 1 writes only what a person *said*, as confirmed (M4), through one narrow
 tool, and selects by code (M3): the organiser's file is an always-present block
@@ -26,6 +28,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import re
 import threading
 import uuid
@@ -37,7 +40,8 @@ from typing import Any, Literal, Self
 import yaml
 from akgentic.tool import ContextState, ToolCard
 from akgentic.tool.errors import RetriableError
-from akgentic.tool.workspace import WorkspaceTool
+from akgentic.tool.workspace import ID_KIND, WorkspaceTool, permitted_shared_kinds
+from akgentic.tool.workspace.workspace import SHARED_KINDS_ENV
 from pydantic import BaseModel, Field, PrivateAttr
 
 logger = logging.getLogger(__name__)
@@ -63,7 +67,7 @@ class MemoryItem(BaseModel):
     kind: Kind
     status: Status = "confirmed"
     #: `organiser:<email>` in a personal tree - whose tree it is, readable in the
-    #: file itself; `person:<email>` in the shared one.
+    #: file itself; `person:<email>` or `place:<location_id>` in the shared one.
     scope: str
     situation: str
     text: str
@@ -201,11 +205,17 @@ class MemoryTool(ToolCard):
     as they would to a model's (spike S1).
 
     A shared tree needs `AKGENTIC_WORKSPACE_SHARED_KINDS=id` on the process;
-    without it the bind raises here and is not caught (M13).
+    without it the bind raises here and is not caught (M13) - `permit_sharing`
+    sets it, and both the server and the command line call it.
+
+    `personal=False` binds the shared tree only, and adds no organiser block:
+    for `@FacilityManager`, which holds `book_room` and must never see what an
+    organiser said about themselves (M19).
     """
 
     personal_workspace: str = "memory"
     shared_workspace: str = "memory-shared"
+    personal: bool = True
     #: Most items the always block carries; the newest win. Bounded, so memory
     #: cannot crowd out the conversation (the notes' "keep it limited").
     max_always_items: int = 20
@@ -216,11 +226,12 @@ class MemoryTool(ToolCard):
 
     def observer(self, observer):  # type: ignore[no-untyped-def, override]
         super().observer(observer)
-        self._mine = WorkspaceTool(workspace_id=self.personal_workspace, git_journal=True)
+        if self.personal:
+            self._mine = WorkspaceTool(workspace_id=self.personal_workspace, git_journal=True)
+            self._mine.observer(observer)
         self._ours = WorkspaceTool(
             workspace_id=self.shared_workspace, workspace_sharable=True, git_journal=True
         )
-        self._mine.observer(observer)
         self._ours.observer(observer)
         return self
 
@@ -250,10 +261,21 @@ class MemoryTool(ToolCard):
             return []
 
     def organiser_items(self) -> list[MemoryItem]:
+        if not self.personal:
+            return []
         return [item for item in self._read(False, ORGANISER_FILE) if item.applies()]
 
     def person_items(self, email: str) -> list[MemoryItem]:
         return [item for item in self._read(True, person_file(email)) if item.applies()]
+
+    def place_items(self, location_id: str | None = None) -> list[MemoryItem]:
+        """What is remembered about one place, or about every place when `None` (M18)."""
+        if location_id is not None:
+            return [item for item in self._read(True, place_file(location_id)) if item.applies()]
+        folder = self._tree(True).workspace.root / PLACES_FOLDER
+        files = sorted(folder.glob("*.md")) if folder.is_dir() else []
+        items = [item for file in files for item in self._read(True, f"{PLACES_FOLDER}/{file.name}")]
+        return [item for item in items if item.applies()]
 
     # -- writing ------------------------------------------------------------------
 
@@ -293,6 +315,10 @@ class MemoryTool(ToolCard):
         if item.scope.startswith("organiser:"):
             self._write(False, ORGANISER_FILE, lambda items: with_item(items, item))
             return f"Remembered for {self.organiser}: {item.situation} - {item.text}"
+        if item.scope.startswith("place:"):
+            location_id = item.scope.removeprefix("place:")
+            self._write(True, place_file(location_id), lambda items: with_item(items, item))
+            return f"Remembered about the place {location_id}: {item.situation} - {item.text}"
         email = item.scope.removeprefix("person:")
         self._write(True, person_file(email), lambda items: with_item(items, item))
         return f"Remembered about {email}: {item.situation} - {item.text}"
@@ -311,6 +337,9 @@ class MemoryTool(ToolCard):
             notify(event)
 
     def get_context_states(self) -> list[Callable[[], ContextState | None]]:
+        if not self.personal:
+            return []
+
         def organiser_block() -> ContextState | None:
             try:
                 items = self.organiser_items()[-self.max_always_items :]
@@ -347,3 +376,36 @@ def _lock_for(path: str) -> threading.Lock:
 def person_file(email: str) -> str:
     """Where what is remembered about a person lives, in the shared tree."""
     return f"people/{email.strip().lower()}.md"
+
+
+#: Facts about places, one file per location, in the shared tree.
+PLACES_FOLDER = "places"
+
+
+def place_file(location_id: str) -> str:
+    """Where what is remembered about a place lives, in the shared tree."""
+    return f"{PLACES_FOLDER}/{location_id.strip().lower()}.md"
+
+
+class MemoryConfigurationError(RuntimeError):
+    """The process forbids what memory needs."""
+
+
+def permit_sharing() -> None:
+    """Let the shared tree be bound in this process (design_memory.md M13).
+
+    A refused bind does not stop a team from being built - the agent is left
+    half-wired (spike S5) - so an explicit value that forbids it is an error
+    here, at startup. Unset, it is set: sharing this one kind is what memory
+    asks for. The server calls this when its catalog uses memory, and the
+    command line before it builds a team.
+    """
+    if not os.environ.get(SHARED_KINDS_ENV, "").strip():
+        # The variable names kinds by their word, `id`; the path segment is `_id`.
+        os.environ[SHARED_KINDS_ENV] = "id"
+        logger.info("%s set to 'id' for the shared memory tree", SHARED_KINDS_ENV)
+    if ID_KIND not in permitted_shared_kinds():
+        raise MemoryConfigurationError(
+            f"Memory needs a shared tree, but {SHARED_KINDS_ENV}={os.environ[SHARED_KINDS_ENV]!r} "
+            "does not permit 'id'. Add 'id' to it, or leave it unset (design_memory.md M13)."
+        )

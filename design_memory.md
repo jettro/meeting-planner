@@ -674,6 +674,24 @@ books it.
 **Not in phase 2:** `lessons/facility_manager.md`. Only a proposed lesson (M6) would write one,
 and proposals are phase 3; reading a file nothing writes is left until then.
 
+**Built (2026-11-02).** As above, plus one thing the check missed: the form team also runs from
+the command line, where the server's M13 never runs, so the facility manager's shared bind would
+fail there. `permit_sharing()` moved into `meeting_agents.memory`; the server's `configure_memory`
+and the CLI's `load_team_card` both call it. Verified live, against the running services:
+
+- Jettro said *the meadow room at Meeting in Nature is too noisy for workshops*; `@Intake` called
+  `look_up_place`, and the fact went to `places/meet-nature.md` as `place:meet-nature`.
+- A workshop "somewhere in nature" in a new conversation: the trace shows `MemoryApplied` from
+  `@FacilityManager`, *choosing a location for "somewhere in nature"*, with that fact. (It chose
+  Meeting in Nature anyway, which is right: the fact is about one of its rooms, and the room is
+  chosen at booking - the unit tests cover that handler; the live run stopped at the slot gate so
+  nothing was booked.)
+- A focus session: `@Intake` wrote *at the Library as remembered for focus sessions* (M20).
+- The Memory page lists the fact under **Places**.
+
+Seen on the way, not changed: the headcount counts the participants and not the organiser, and
+`@Intake` sometimes announces a request and waits for a "yes" before calling `plan_meeting`.
+
 ---
 
 ## 11. Changelog
@@ -727,6 +745,9 @@ and proposals are phase 3; reading a file nothing writes is left until then.
   the facility manager, so `@Intake` looks it up first; a room is chosen at booking, so place
   facts reach both handlers; the facility manager binds the shared tree only. Lessons wait for
   phase 3.
+- 2026-11-02: **Phase 2 built** (§10.3): `look_up_place` and place facts, selection in both
+  facility-manager handlers, the shared-only card, the wish, Places on the Memory page, and
+  `permit_sharing` for the command line too. 397 tests pass.
 
 ---
 

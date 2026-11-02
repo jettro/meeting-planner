@@ -87,9 +87,14 @@ knows it without asking.
 - **Yours, or everybody's.** How *you* arrange meetings lives in your own tree, under your login;
   facts about a person live in a shared tree, so Daan's lunch for Sanne knows she is vegetarian
   even though Jettro said it.
+- **Places, before the choice.** Tell it *the meadow room is too noisy for workshops* and the
+  facility manager looks the place up, and is given that fact - selected in code - whenever it
+  chooses a location or a room, for everyone. Where *your* focus sessions go, `@Intake` puts in
+  the wish.
 - **Files on the server's disk**, under the workspaces root — `/data/workspaces` on the
   `server-data` volume in compose:
-  `<you>/_id/memory/organiser.md` and `_shared/_id/memory-shared/people/<email>.md`, each beside a
+  `<you>/_id/memory/organiser.md`, `_shared/_id/memory-shared/people/<email>.md` and
+  `_shared/_id/memory-shared/places/<location_id>.md`, each beside a
   git journal (`memory.git`) recording every change and which agent made it. `make reset` wipes
   them with everything else.
 - **Only what a person said**, as confirmed; never a secret or an id, and about someone else only

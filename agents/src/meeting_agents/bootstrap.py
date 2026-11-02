@@ -24,6 +24,7 @@ from akgentic.catalog import Catalog, YamlEntryRepository, resolve_env_vars, set
 from akgentic.team import TeamCard
 from pydantic import BaseModel
 
+from meeting_agents.memory import permit_sharing
 from meeting_agents.settings import Settings
 
 logger = logging.getLogger(__name__)
@@ -85,6 +86,10 @@ def load_team_card(settings: Settings, namespace: str = "meeting-planner") -> Te
     surfaces here - at startup, naming the variable - rather than mid-saga.
     """
     apply_env(settings)
+    # The facility manager remembers places in the shared tree (design_memory.md
+    # M19); without this its bind fails in `on_start` and the team is built
+    # half-wired. The server does the same in `configure_memory`.
+    permit_sharing()
     card = build_catalog(settings).load_team(namespace)
     resolve_env_in_place(card)
     logger.info("loaded team '%s' from %s", card.name, settings.catalog_path)

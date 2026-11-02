@@ -60,6 +60,8 @@ payload:
     - __type__: meeting_agents.messages.LocationFound
     - __type__: meeting_agents.messages.FindPeopleAssignment
     - __type__: meeting_agents.messages.PeopleFound
+    - __type__: meeting_agents.messages.FindPlaceAssignment
+    - __type__: meeting_agents.messages.PlaceFound
     - __type__: meeting_agents.messages.FindSlotsAssignment
     - __type__: meeting_agents.messages.SlotsFound
     - __type__: meeting_agents.messages.BookMeetingAssignment

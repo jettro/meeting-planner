@@ -118,6 +118,19 @@ def test_about_me_is_what_anyone_said_and_mine_is_only_mine(tmp_path):
     assert daan.mine == [] and daan.about_me == []
 
 
+def test_places_are_everybodys_to_read(tmp_path):
+    noisy = said("the meadow room, for workshops", "too noisy", scope="place:meet-nature")
+    write(ours(tmp_path), "places/meet-nature.md", [noisy])
+
+    for reader in (JETTRO, DAAN, SANNE):
+        [place] = my_memory(tmp_path, user(reader)).places
+        assert (place.item.scope, place.item.text, place.item.said_by) == (
+            "place:meet-nature",
+            "too noisy",
+            JETTRO,
+        )
+
+
 def test_without_a_journal_the_items_come_without_history_and_say_so(tmp_path):
     write(mine(tmp_path, JETTRO), "organiser.md", [said("stand-ups", "30 minutes")], journal=False)
 

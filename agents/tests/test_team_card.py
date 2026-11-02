@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 from akgentic.team import TeamCard, TeamCardMember
 from meeting_agents.bootstrap import load_team_card
+from meeting_agents.memory import MemoryTool
 from meeting_agents.messages import MESSAGE_TYPES
 from meeting_agents.settings import Settings
 from meeting_agents.team_metadata import MeetingTeamMetadata
@@ -96,9 +97,19 @@ def test_the_coordinator_cannot_reach_any_service(card: TeamCard):
     assert not hasattr(config, "model_cfg")
 
 
-@pytest.mark.parametrize("name", ["@Scheduler", "@FacilityManager", "@Catering"])
+@pytest.mark.parametrize("name", ["@Scheduler", "@Catering"])
 def test_each_specialist_still_has_exactly_one_tool(card: TeamCard, name: str):
     assert len(by_name(card)[name].card.config.tools) == 1
+
+
+def test_the_facility_manager_has_its_server_and_the_shared_memory_only(card: TeamCard):
+    """M19: place facts, and never an organiser's own tree or block."""
+    tools = by_name(card)["@FacilityManager"].card.config.tools
+    assert len(tools) == 2
+    memory = tools[1]
+    assert isinstance(memory, MemoryTool)
+    assert memory.personal is False
+    assert memory.get_tools() == []
 
 
 def test_no_placeholder_survives_loading(card: TeamCard):

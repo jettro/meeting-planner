@@ -23,7 +23,7 @@ import {
 } from "../api/client";
 
 /**
- * What the planner remembers for you and about you (design_memory.md §4.8).
+ * What the planner remembers for you, about you, and about places (design_memory.md §4.8, §10.3).
  *
  * Read-only on purpose (M14): it answers "where did it learn that?" - who said
  * it, in which conversation, and what it said before - and changes nothing.
@@ -42,8 +42,8 @@ export default function MemoryPage() {
         Memory
       </Typography>
       <Typography color="text.secondary" sx={{ mb: 2 }}>
-        What the planner remembers between conversations: how you like to meet, and what people
-        told it about you. To change something, tell the planner - it replaces the old version and
+        What the planner remembers between conversations: how you like to meet, what people told
+        it about you, and what anyone told it about a place. To change something, tell the planner - it replaces the old version and
         keeps it in the history.
       </Typography>
 
@@ -56,7 +56,8 @@ export default function MemoryPage() {
 
       {memory.data && (
         <Stack spacing={4}>
-          {!memory.data.journal && (memory.data.mine.length > 0 || memory.data.about_me.length > 0) && (
+          {!memory.data.journal &&
+            [memory.data.mine, memory.data.about_me, memory.data.places].some((list) => list.length > 0) && (
             <Alert severity="warning">
               No history is recorded for these items: the server has no git, or nothing was
               written through the planner yet.
@@ -73,6 +74,13 @@ export default function MemoryPage() {
             title="About me"
             empty="Nobody has told the planner anything about you."
             items={memory.data.about_me}
+            me={memory.data.email}
+            name={name}
+          />
+          <Section
+            title="Places"
+            empty="Nobody has told the planner anything about a place yet."
+            items={memory.data.places}
             me={memory.data.email}
             name={name}
           />
@@ -118,6 +126,9 @@ function Item({ remembered, me, name }: { remembered: Remembered; me: string; na
       <CardContent>
         <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1 }}>
           <Typography sx={{ fontWeight: 600, flexGrow: 1 }}>{item.situation}</Typography>
+          {item.scope.startsWith("place:") && (
+            <Chip label={item.scope.slice("place:".length)} size="small" />
+          )}
           <Chip label={item.kind} size="small" variant="outlined" />
           {item.status !== "confirmed" && <Chip label={item.status} size="small" color="warning" />}
         </Stack>

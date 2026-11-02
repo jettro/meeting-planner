@@ -5,7 +5,8 @@ route reads a journal, and none serves a shared tree. This route does both, for
 the person logged in, and changes nothing (M14):
 
 - **mine** - the items in their own `organiser.md`;
-- **about me** - the items in `people/<me>.md`, whoever wrote them.
+- **about me** - the items in `people/<me>.md`, whoever wrote them;
+- **places** - what anyone said about a place, everybody's to read (M11, §10.3).
 
 The email comes from the session, never from the request (M15), and the files
 are read straight from the workspace root with the agents' own parser - a read
@@ -31,7 +32,14 @@ from akgentic.infra.server.assembly import BaseAppModule, RouteSpec
 from akgentic.infra.server.auth import RequestUser, get_request_user
 from akgentic.tool.workspace import git_dir_for, resolve_workspace_path
 from fastapi import APIRouter, Depends
-from meeting_agents.memory import ORGANISER_FILE, MemoryItem, MemoryTool, parse_items, person_file
+from meeting_agents.memory import (
+    ORGANISER_FILE,
+    PLACES_FOLDER,
+    MemoryItem,
+    MemoryTool,
+    parse_items,
+    person_file,
+)
 from pydantic import BaseModel, Field, computed_field
 
 logger = logging.getLogger(__name__)
@@ -70,6 +78,7 @@ class MyMemory(BaseModel):
     email: str
     mine: list[Remembered] = Field(default_factory=list)
     about_me: list[Remembered] = Field(default_factory=list)
+    places: list[Remembered] = Field(default_factory=list)
     #: False when no history could be read for any file: no git, or no journal yet.
     journal: bool = False
 
@@ -175,11 +184,31 @@ def _remembered(tree: Path, path: str) -> tuple[list[Remembered], bool]:
     return remembered, True
 
 
+def _places(tree: Path) -> tuple[list[Remembered], bool]:
+    """Every place file, one location each, in name order."""
+    folder = tree / PLACES_FOLDER
+    places: list[Remembered] = []
+    journal = False
+    for file in sorted(folder.glob("*.md")) if folder.is_dir() else []:
+        remembered, read = _remembered(tree, f"{PLACES_FOLDER}/{file.name}")
+        places += remembered
+        journal = journal or read
+    return places, journal
+
+
 def my_memory(root: Path, user: RequestUser) -> MyMemory:
     email = (user.email or user.user_id).strip().lower()
+    shared = _tree(root, user.user_id, shared=True)
     mine, mine_journal = _remembered(_tree(root, user.user_id, shared=False), ORGANISER_FILE)
-    about_me, ours_journal = _remembered(_tree(root, user.user_id, shared=True), person_file(email))
-    return MyMemory(email=email, mine=mine, about_me=about_me, journal=mine_journal or ours_journal)
+    about_me, ours_journal = _remembered(shared, person_file(email))
+    places, places_journal = _places(shared)
+    return MyMemory(
+        email=email,
+        mine=mine,
+        about_me=about_me,
+        places=places,
+        journal=mine_journal or ours_journal or places_journal,
+    )
 
 
 # -- the route ------------------------------------------------------------------

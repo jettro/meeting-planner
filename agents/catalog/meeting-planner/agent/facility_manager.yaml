@@ -31,3 +31,6 @@ payload:
       __ref__: default_model
     tools:
       - __ref__: location_mcp
+      # What people said about places, selected by the handlers in code before
+      # the model chooses (design_memory.md M18). It gives the model no tool.
+      - __ref__: place_memory

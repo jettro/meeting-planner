@@ -17,6 +17,7 @@ payload:
     human_name: "@Human"
     coordinator_name: "@Coordinator"
     scheduler_name: "@Scheduler"
+    facility_manager_name: "@FacilityManager"
     prompt:
       template:
         __ref__: intake_prompt

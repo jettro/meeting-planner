@@ -1,0 +1,12 @@
+id: place_memory
+kind: tool
+namespace: meeting-planner
+user_id: anonymous
+model_type: meeting_agents.memory.MemoryTool
+description: "The shared memory tree only, for what people said about places (design_memory.md M18, M19)."
+payload:
+  shared_workspace: memory-shared
+  # No personal tree and no organiser block: this card sits on the agent that
+  # holds book_room, which must never see what an organiser said about themselves.
+  personal: false
+  max_always_items: 20

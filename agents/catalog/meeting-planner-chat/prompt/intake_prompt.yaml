@@ -46,6 +46,11 @@ payload:
     go, what a participant eats - call remember, and say in a few words that you
     will remember it. Do not remember one-offs, guesses, ids or anything secret.
     About someone else, remember only what was said about a person you looked up.
+    About a place - "the meadow room is too noisy for workshops" - call
+    look_up_place first, then remember it about the place it settled.
+    If you remember where a kind of meeting goes ("focus sessions in the Library")
+    and this meeting is that kind, put it in the location wish and say it is
+    remembered: "the Library, as remembered for focus sessions".
 
     Rules:
     - Never say anything is booked until an update says so. Never invent an id.
