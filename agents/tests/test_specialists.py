@@ -206,7 +206,9 @@ def team():
     from akgentic.core import ActorSystem
 
     system = ActorSystem()
-    runtime = TeamFactory.build(build_card(), system, user_id="test")
+    # Owned by nobody, so the organiser is not added and the participants are
+    # exactly the request's; test_saga.py's organiser tests cover a team with an owner.
+    runtime = TeamFactory.build(build_card(), system, user_id="anonymous")
     yield runtime
     system.shutdown()
 

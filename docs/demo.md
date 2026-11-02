@@ -65,7 +65,9 @@ plans a meeting across them. Each agent can reach exactly one service; a test ho
 1. **Platform tab.** The three services, polled every ten seconds. *Degraded* and *unreachable*
    are kept apart: a 503 and a silence have different causes.
 2. **Plan a meeting.** Title *Design review*, participants Sanne and Daan, the day, 60 minutes,
-   and under *Describe the place*: **somewhere quiet**. Send it.
+   and under *Describe the place*: **somewhere quiet**. *I attend* is ticked: you are the
+   organiser, and you count - the team takes who you are from your login, not from the form.
+   Send it.
 3. **The first gate: the time.** The card names the place the facility manager chose - the
    Library, probably - and **why**. Point out that approving the time approves the place, and
    that nothing is booked yet. Pick a slot.
@@ -116,7 +118,8 @@ still answered on its card.
 1. **Talk to the planner.** *A design review with Sanne and Daan on Tuesday 10 November,
    somewhere in nature, no lunch.*
 2. `@Intake` looks the names up through `@Scheduler` - a name is never guessed into an email.
-3. If it says it is about to request the meeting, answer *yes, go ahead*.
+   You are not looked up: it knows who it is talking to, and you attend unless you say so.
+3. It requests the meeting at once and says in one sentence what it asked for.
 4. The time card appears inline, with the place and why. Pick a slot; type *the second one* in
    the chat instead to show it is understood but **authorises nothing**.
 5. **Trace** shows `@Intake` in front of the same team as act 1.
@@ -250,8 +253,7 @@ Each takes under a minute; pick one or two.
 |---|---|
 | Logged out in one tab but not the other | one tab is on `127.0.0.1`; use `localhost` everywhere |
 | Logged out after a restart | `AUTH_SECRET` is empty in `.env` |
-| `@Intake` says it is *about to request* and stops | it is waiting for a yes; say *go ahead* |
-| The place is chosen "for 2 people" with three of you | the headcount counts the participants, not the organiser |
+| The meeting is booked without you | you said it was not your meeting, or unticked *I attend* on the form |
 | The Memory tab says *no history is recorded* | the server image predates git; `make build` and `make up` again |
 | The trace has no `MemoryApplied` row | nothing was remembered yet for that person or place, or memory was cleared |
 | A plan fails at the first step | the Platform tab: a service is down |

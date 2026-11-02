@@ -162,11 +162,21 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
 
     # -- human -> coordinator --------------------------------------------
 
+    def _organiser(self) -> str:
+        """The team's owner, who arranges this meeting (design_auth.md A15).
+
+        Read from the team, not the request: the owner is set when the team is
+        created and kept on restore, and no client can change it. `anonymous`
+        - no login, the command line - is nobody.
+        """
+        owner = str(getattr(self, "user_id", None) or "")
+        return "" if owner in ("", "anonymous") else owner
+
     def receiveMsg_PlanMeetingRequest(  # noqa: N802
         self, message: PlanMeetingRequest, sender: ActorAddress
     ) -> None:
         """Start the meeting: find the place if it was described, then the time."""
-        plan = message.to_plan()
+        plan = message.to_plan(organiser=self._organiser())
         if self.state.plan is not None:
             # One team, one meeting. Answered rather than dropped, so a client
             # that reused a team hears why nothing happened.

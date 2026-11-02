@@ -342,7 +342,8 @@ was about to request and then waited for a *yes*.
 - **S4 — the pause is the prompt's.** *Before calling plan_meeting, say in one sentence what you
   are about to request, so a mistake can be caught while it is free* - and the model ends its turn
   on that sentence. But nothing is booked before the time is approved, and the slot card shows
-  the place, the day and the people: a mistake is still free there, and cancelling is one click.
+  the place and the day: a mistake is still free there, and cancelling is one click. The people
+  are in `@Intake`'s one sentence, said as it sends the request.
 
 The decisions, replacing A10's mechanism and keeping its intent:
 
@@ -373,6 +374,12 @@ only offers known people, but `API_KEYS` can name any email, so a console user w
 address book would see the slot search fail. The emails in `API_KEYS` should be people in the
 meeting service; `.env.example` says so.
 
+**Built (2026-11-02).** As above. One thing the check missed: the framework keys context
+providers by function name per agent, and `MemoryTool` already exposes `organiser_block`, so
+`@Intake`'s is `who_is_asking`. The saga's and specialists' test teams are now owned by
+`anonymous`, so their participants stay exactly the request's; new tests cover an owner who
+attends, one who does not, one already listed, and none.
+
 ---
 
 ## 10. Changelog
@@ -390,3 +397,5 @@ meeting service; `.env.example` says so.
 - 2026-11-02 — §12: step 5 checked against the code. The organiser is the team's owner, set by
   the coordinator, not sent by a client (A15); attends by default and so counts (A16); `@Intake`
   knows who it talks to (A17); *I attend* on the form (A18); `@Intake` requests without a pause (A19).
+- 2026-11-02 — §12 built: organiser on the plan, set by the coordinator; *I attend* on the form;
+  `@Intake` names the organiser and requests without a pause. 404 tests pass.

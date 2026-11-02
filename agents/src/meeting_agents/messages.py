@@ -68,6 +68,10 @@ class PlanMeetingRequest(Message):
     #: decided yet - ask me", which is what opens the lunch gate (D9). A string
     #: (including "") settles it up front, so a scripted run never blocks.
     lunch_wish: str | None = None
+    #: Whether the organiser - the team's owner, whom only the team knows -
+    #: takes part. There is deliberately no field naming the organiser: a
+    #: client could name anyone (design_auth.md A15, A16).
+    organiser_attends: bool = True
 
     @model_validator(mode="after")
     def _one_way_to_say_where(self) -> PlanMeetingRequest:
@@ -81,11 +85,19 @@ class PlanMeetingRequest(Message):
             raise ValueError("say where with a location_id or a location_wish - exactly one of them")
         return self
 
-    def to_plan(self) -> MeetingPlan:
-        """The aggregate this request starts. The plan id is created here."""
+    def to_plan(self, organiser: str = "") -> MeetingPlan:
+        """The aggregate this request starts. The plan id is created here.
+
+        `organiser` is the team's owner, as the coordinator knows it; when they
+        attend they join the participants, once (A16).
+        """
+        participants = list(self.participant_emails)
+        if organiser and self.organiser_attends and organiser not in participants:
+            participants.append(organiser)
         return MeetingPlan(
             title=self.title,
-            participant_emails=list(self.participant_emails),
+            organiser=organiser,
+            participant_emails=participants,
             day=self.day,
             duration_minutes=self.duration_minutes,
             location_id=self.location_id.strip(),

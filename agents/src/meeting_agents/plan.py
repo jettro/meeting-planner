@@ -65,7 +65,11 @@ class MeetingPlan(BaseModel):
 
     # The request, fixed for the plan's lifetime.
     title: str
+    #: Everyone who takes part - the organiser too, when they attend (design_auth.md A16).
     participant_emails: list[str]
+    #: Who arranged it: the team's owner, set by @Coordinator, never by a
+    #: request (A15). Empty without a login.
+    organiser: str = ""
     day: date
     duration_minutes: int = Field(default=60, gt=0, le=480)
     #: Empty until chosen, when the request described the place instead.

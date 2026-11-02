@@ -107,6 +107,8 @@ export interface LunchQuestion extends DomainMessage {
 export interface MeetingPlan {
   plan_id: string;
   title: string;
+  /** The team's owner, who arranged it; empty without a login. */
+  organiser?: string;
   participant_emails: string[];
   day: string;
   duration_minutes: number;
@@ -176,6 +178,11 @@ export interface PlanRequest {
   /** Exactly one of these two: a location id, or the place in your own words. */
   location_id: string;
   location_wish: string;
+  /**
+   * Whether you, the person logged in, take part. Who you are is not sent:
+   * the team knows its owner, and a request could name anyone (design_auth.md A15).
+   */
+  organiser_attends?: boolean;
 }
 
 /**

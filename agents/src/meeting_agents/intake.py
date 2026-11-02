@@ -38,7 +38,7 @@ import logging
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Self
 
 from akgentic.agent import BaseAgent
 from akgentic.agent.config import AgentConfig, AgentState
@@ -47,6 +47,7 @@ from akgentic.agent.output_models import StructuredOutput
 from akgentic.agent.recipients import can_retry
 from akgentic.core import ActorAddress, Akgent
 from akgentic.core.messages import Message
+from akgentic.tool import ContextState
 from akgentic.tool.core import ToolCard
 from akgentic.tool.errors import RetriableError
 from pydantic import Field, ValidationError
@@ -163,6 +164,11 @@ class IntakeAgent(BaseAgent, Akgent[IntakeConfig, IntakeState]):
         update = AgentMessage(type="notification", content=f"Update: {text}", sender=sender)
         super().receiveMsg_AgentMessage(update, sender)  # type: ignore[arg-type]
 
+    def organiser(self) -> str:
+        """Who this conversation arranges a meeting for: the team's owner (A15, A17)."""
+        owner = str(self.user_id or "")
+        return "" if owner in ("", "anonymous") else owner
+
     # -- memory ------------------------------------------------------------
 
     def _memory(self) -> MemoryTool | None:
@@ -237,7 +243,9 @@ class IntakeAgent(BaseAgent, Akgent[IntakeConfig, IntakeState]):
                 "Refused: this conversation has already requested its meeting. A different "
                 "meeting needs a new conversation."
             )
-        unsettled = [email for email in request.participant_emails if email not in self.state.settled_emails]
+        # The organiser needs no lookup: the team knows who they are (design_auth.md A17).
+        known = {*self.state.settled_emails, self.organiser()}
+        unsettled = [email for email in request.participant_emails if email not in known]
         if unsettled:
             return (
                 f"Refused: {', '.join(unsettled)} was not settled by look_up_people. Look every "
@@ -450,6 +458,7 @@ class IntakeTools(ToolCard):
             duration_minutes: int = 60,
             with_lunch: bool = True,
             lunch_wish: str | None = None,
+            organiser_attends: bool = True,
         ) -> str:
             """Request the meeting from the team. Call it once, when everything is known.
 
@@ -462,6 +471,7 @@ class IntakeTools(ToolCard):
                 duration_minutes: How long it lasts; 60 if nobody said.
                 with_lunch: False if the person does not want lunch.
                 lunch_wish: What lunch, in their own words; leave it out if lunch never came up.
+                organiser_attends: False only if the person you talk to says they will not be there.
             """
             try:
                 request = PlanMeetingRequest(
@@ -473,6 +483,7 @@ class IntakeTools(ToolCard):
                     duration_minutes=duration_minutes,
                     with_lunch=with_lunch,
                     lunch_wish=lunch_wish,
+                    organiser_attends=organiser_attends,
                 )
             except ValidationError as exc:
                 raise RetriableError(f"That request is not valid: {exc.errors()[0]['msg']}") from exc
@@ -502,6 +513,36 @@ class IntakeTools(ToolCard):
             return self._agent().remember_said(kind, about, situation, text)
 
         return [look_up_people, look_up_place, plan_meeting, cancel_meeting, remember]
+
+    def get_context_states(self) -> list[Callable[[], ContextState | None]]:
+        # The framework keys providers by function name, per agent: `MemoryTool`
+        # already has `organiser_block`, so this one is named for what it says.
+        def who_is_asking() -> ContextState | None:
+            organiser = self._agent().organiser()
+            return OrganiserContext(organiser=organiser) if organiser else None
+
+        return [who_is_asking]
+
+
+class OrganiserContext(ContextState):
+    """Who the model is talking to, on every turn (design_auth.md A17).
+
+    So "me", "my team" and "I" have a referent, and the organiser is neither
+    looked up nor listed: the coordinator adds them when they attend.
+    """
+
+    organiser: str
+
+    def render_full(self) -> str:
+        return (
+            f"You are arranging this meeting for {self.organiser}, the person you talk to. They "
+            "take part unless they say otherwise - do not look them up and do not list them as a "
+            "participant; the team adds them. If they say it is not their meeting, pass "
+            "organiser_attends=false."
+        )
+
+    def render_delta(self, previous: Self) -> str | None:
+        return None if previous.organiser == self.organiser else self.render_full()
 
 
 # -- the guard ---------------------------------------------------------------

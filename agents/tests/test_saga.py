@@ -45,7 +45,7 @@ from meeting_agents.messages import (
     SlotApprovalRequest,
     SlotsFound,
 )
-from meeting_agents.plan import PlanStatus
+from meeting_agents.plan import MeetingPlan, PlanStatus
 
 DAY = date(2031, 9, 15)
 SLOT = ProposedSlot(start=time(10, 0), end=time(11, 0))
@@ -177,7 +177,9 @@ def build_card(scheduler_class=StubScheduler) -> TeamCard:
 def team():
     Inbox.reset()
     system = ActorSystem()
-    runtime = TeamFactory.build(build_card(), system, user_id="test")
+    # Owned by nobody, so the organiser is not added and the participants are
+    # exactly the request's; the organiser tests cover a team with an owner.
+    runtime = TeamFactory.build(build_card(), system, user_id="anonymous")
     yield runtime
     system.shutdown()
 
@@ -519,3 +521,80 @@ def test_the_lunch_gate_books_nothing_while_it_waits(team):
         LunchApprovalDecision(plan_id=question.plan_id, wants_lunch=True),
     )
     assert Inbox.expect(PlanCompleted).plan.meeting_id == MEETING_ID
+
+
+# -- the organiser (design_auth.md A15, A16) -----------------------------------
+
+
+@pytest.fixture
+def owned_by():
+    """A team with an owner - the person logged in - as the server builds it."""
+    systems = []
+
+    def build(owner: str):
+        Inbox.reset()
+        system = ActorSystem()
+        systems.append(system)
+        return TeamFactory.build(build_card(), system, user_id=owner)
+
+    yield build
+    for system in systems:
+        system.shutdown()
+
+
+def plan_of(runtime, **overrides) -> tuple[MeetingPlan, int]:
+    """The plan as the coordinator recorded it, and the headcount lunch is asked for."""
+    runtime.send_from_to(
+        "@Human",
+        "@Coordinator",
+        PlanMeetingRequest(
+            **{
+                "title": "Workshop",
+                "participant_emails": ["sanne@rag4p.org", "daan@rag4p.org"],
+                "day": DAY,
+                "location_id": "AMS",
+                "lunch_wish": None,
+                **overrides,
+            }
+        ),
+    )
+    slots = Inbox.expect(SlotApprovalRequest)
+    runtime.send_from_to(
+        "@Human",
+        "@Coordinator",
+        SlotApprovalDecision(plan_id=slots.plan_id, approved=True, slot=slots.candidates[0]),
+    )
+    lunch = Inbox.expect(LunchApprovalRequest)
+    plan = coordinator_state(runtime).plan
+    assert plan is not None
+    return plan, lunch.headcount
+
+
+def test_the_organiser_attends_and_is_counted(owned_by):
+    plan, headcount = plan_of(owned_by("jettro@rag4p.org"))
+
+    assert plan.organiser == "jettro@rag4p.org"
+    assert plan.participant_emails == ["sanne@rag4p.org", "daan@rag4p.org", "jettro@rag4p.org"]
+    assert headcount == 3
+
+
+def test_an_organiser_who_does_not_attend_is_recorded_but_not_counted(owned_by):
+    plan, headcount = plan_of(owned_by("jettro@rag4p.org"), organiser_attends=False)
+
+    assert plan.organiser == "jettro@rag4p.org"
+    assert plan.participant_emails == ["sanne@rag4p.org", "daan@rag4p.org"]
+    assert headcount == 2
+
+
+def test_an_organiser_already_listed_is_counted_once(owned_by):
+    plan, _ = plan_of(owned_by("sanne@rag4p.org"))
+
+    assert plan.participant_emails == ["sanne@rag4p.org", "daan@rag4p.org"]
+
+
+def test_a_team_without_a_login_has_no_organiser(owned_by):
+    """The command line and AUTH=off: exactly as before."""
+    plan, _ = plan_of(owned_by("anonymous"))
+
+    assert plan.organiser == ""
+    assert plan.participant_emails == ["sanne@rag4p.org", "daan@rag4p.org"]

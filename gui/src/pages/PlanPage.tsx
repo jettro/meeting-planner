@@ -4,7 +4,9 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Chip,
+  FormControlLabel,
   LinearProgress,
   Stack,
   TextField,
@@ -19,6 +21,7 @@ import {
   type MeetingPlan,
 } from "../api/client";
 import { GatePrompt } from "../components/GatePrompt";
+import { useSession } from "../session";
 import { useTeam } from "../team";
 
 const TODAY_PLUS_A_YEAR = new Date(Date.now() + 365 * 24 * 3600 * 1000)
@@ -37,6 +40,11 @@ export default function PlanPage() {
   // always carries exactly one of the two.
   const [describe, setDescribe] = useState(false);
   const [placeWish, setPlaceWish] = useState("somewhere in nature");
+  // You attend your own meeting unless you say otherwise (design_auth.md A18).
+  // Without a login there is no organiser, so there is nothing to ask.
+  const { user } = useSession();
+  const organiser = user && user.user_id !== "anonymous" ? user : null;
+  const [attend, setAttend] = useState(true);
 
   const submit = () =>
     team.start({
@@ -49,6 +57,7 @@ export default function PlanPage() {
       duration_minutes: duration,
       location_id: describe ? "" : location,
       location_wish: describe ? placeWish : "",
+      organiser_attends: attend,
     });
 
   const plan = team.outcome?.plan as MeetingPlan | undefined;
@@ -75,10 +84,18 @@ export default function PlanPage() {
               />
               <TextField
                 label="Participants"
-                helperText="Email addresses, comma separated"
+                helperText={
+                  organiser ? "The others, as email addresses, comma separated" : "Email addresses, comma separated"
+                }
                 value={people}
                 onChange={(event) => setPeople(event.target.value)}
               />
+              {organiser && (
+                <FormControlLabel
+                  control={<Checkbox checked={attend} onChange={(event) => setAttend(event.target.checked)} />}
+                  label={`I attend (${organiser.name})`}
+                />
+              )}
               <Stack direction="row" spacing={2}>
                 <TextField
                   label="Day"

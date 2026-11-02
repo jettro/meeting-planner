@@ -374,3 +374,50 @@ def test_writing_to_anyone_else_is_sent_back():
 def test_when_no_retry_is_left_the_strays_are_dropped_not_delivered():
     kept = check(run_context(retry=1, max_retries=1), output("@Human", "@Catering"))
     assert [request.recipient for request in kept.messages] == ["@Human"]
+
+
+# -- who is asking (design_auth.md A17) ------------------------------------------
+
+JETTRO = "jettro@rag4p.org"
+
+
+@pytest.fixture
+def jettros(channel):
+    """A conversation for someone logged in."""
+    Model.reset()
+    system = ActorSystem()
+    runtime = TeamFactory.build(build_card(), system, user_id=JETTRO)
+    yield runtime
+    system.shutdown()
+
+
+def context_of(runtime) -> str:
+    tools = next(card for card in intake(runtime).config.tools if isinstance(card, IntakeTools))
+    states = [provider() for provider in tools.get_context_states()]
+    return "".join(state.render_full() for state in states if state is not None)
+
+
+def test_the_model_is_told_who_it_arranges_for(jettros):
+    context = context_of(jettros)
+
+    assert f"arranging this meeting for {JETTRO}" in context
+    assert "do not look them up" in context
+
+
+def test_without_a_login_nobody_is_named(team):
+    """`user_id="test"` is a login too; only anonymous has no organiser."""
+    system = ActorSystem()
+    try:
+        anonymous = TeamFactory.build(build_card(), system, user_id="anonymous")
+        assert context_of(anonymous) == ""
+    finally:
+        system.shutdown()
+
+
+def test_the_organiser_needs_no_lookup(jettros):
+    intake(jettros).look_up(["Sanne"])
+    wait_for_update("Sanne Visser")
+
+    answer = intake(jettros).request_meeting(request(participant_emails=["sanne@rag4p.org", JETTRO]))
+
+    assert answer.startswith("Requested")
