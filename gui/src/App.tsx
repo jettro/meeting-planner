@@ -18,6 +18,7 @@ import { Link, MemoryRouter, Route, Routes, useLocation } from "react-router-dom
 import ChatPage from "./pages/ChatPage";
 import LoginPage from "./pages/LoginPage";
 import MeetingsPage from "./pages/MeetingsPage";
+import MemoryPage from "./pages/MemoryPage";
 import PlanPage from "./pages/PlanPage";
 import PlatformPage from "./pages/PlatformPage";
 import TracePage from "./pages/TracePage";
@@ -34,6 +35,7 @@ const TABS = [
   { path: "/chat", label: "Talk to the planner" },
   { path: "/meetings", label: "Meetings" },
   { path: "/trace", label: "Trace" },
+  { path: "/memory", label: "Memory" },
 ];
 
 /** Who is logged in, and the way out - on the right of the app bar. */
@@ -123,6 +125,7 @@ function Shell() {
           <Route path="/meetings" element={<MeetingsPage />} />
           <Route path="/trace" element={<TracePage />} />
           <Route path="/trace/:teamId" element={<TracePage />} />
+          <Route path="/memory" element={<MemoryPage />} />
         </Routes>
       </Container>
     </Box>

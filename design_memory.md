@@ -359,8 +359,12 @@ needs an actor, and a read needs no gate. It answers:
 ```json
 {
   "email": "jettro@rag4p.org",
-  "mine":     [{"item": {...}, "history": [{"item": {...}, "changed": "2026-11-02T10:14:03+00:00", "by": "@Intake"}]}],
-  "about_me": [{"item": {...}, "history": []}],
+  "mine": [{
+    "item": {...},
+    "recorded": {"item": {...}, "changed": "2026-11-02T13:24:38+01:00", "by": "@Intake", "outside": false},
+    "history":  [{"item": {...}, "changed": "2026-11-02T13:24:26+01:00", "by": "@Intake", "outside": false}]
+  }],
+  "about_me": [{"item": {...}, "recorded": {...}, "history": []}],
   "journal": true
 }
 ```
@@ -376,7 +380,8 @@ files, and its author is the **agent** (`write: organiser.md | @Intake`, §10.1 
    `--work-tree`), newest first, at most 50 commits;
 2. reads each version with `git show <sha>:<file>` and parses its items;
 3. for every current item, follows `supersedes` back through those versions: each earlier item it
-   finds is one history entry, dated by the commit that last held it.
+   finds is one history entry, dated by the commit that first held it - when it was said. The
+   current item gets the same, as `recorded`.
 
 Following `supersedes` rather than matching on situation keeps the history what the code decided
 it was (M4's replacement), not a guess. Git runs with a timeout and a scrubbed environment — no
@@ -512,6 +517,11 @@ nobody used is kept.
    delete, promote and retire under M11; and then the memory keeper.
 5. Live runs, the docs, the changelog.
 
+**Step 3 built (2026-11-02).** `meeting_server/memory_page.py` and `pages/MemoryPage.tsx`, as
+§4.8 describes. Verified live: Jettro said his stand-ups last 60 minutes and corrected it to 30; the
+page showed the 30 with the 60 struck through under *History*, both linked to the conversation.
+Logged in as Sanne, *About me* showed "vegetarian", said by Jettro, *in their conversation*.
+
 ### 10.1 The spike — run 2026-11-02
 
 Throwaway code in the session's scratchpad: a `SpikeMemory` card holding two `WorkspaceTool`s
@@ -634,6 +644,9 @@ if not, the index in `episodes/` and the small deterministic actor that writes i
   file and no history, since no framework route reads a journal. Proposed `GET /me/memory`: your
   own items and those about you, each with the versions it replaced, read from the journal along
   `supersedes`. Editing stays in phase 3, now step 4.
+- 2026-11-02: **The read-only Memory page built** (§10, step 3). Each item also carries
+  `recorded`, when its current version was said; history entries are dated by the commit that
+  first held them. 386 tests pass.
 
 ---
 

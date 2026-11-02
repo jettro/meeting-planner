@@ -24,6 +24,9 @@ Two things happen here that the framework cannot do for us:
    and the identity gate is added to the composition.
 5. The agents are told to write their workspaces where the server reads them,
    and allowed the shared memory tree (`memory.py`, design_memory.md M12/M13).
+
+And a third thing we add: `/me/memory`, what is remembered about the person
+logged in, with its history (`memory_page.py`, design_memory.md §4.8).
 """
 
 from __future__ import annotations
@@ -40,6 +43,7 @@ from meeting_agents.settings import Settings as AgentSettings
 from meeting_server.auth import AuthModule, DemoLogin, People, people_from
 from meeting_server.catalog import EnvResolvingCatalog
 from meeting_server.memory import configure_memory
+from meeting_server.memory_page import MemoryPageModule
 from meeting_server.platform import PlatformModule
 from meeting_server.settings import ServerSettings
 from meeting_server.yaml_types import install_yaml_representers
@@ -98,6 +102,7 @@ def create_meeting_app(settings: ServerSettings | None = None, *, people: People
     modules = [
         *server_modules(services, infra_settings),
         PlatformModule(settings),
+        MemoryPageModule(settings.workspaces_root),
     ]
     if settings.auth.mode == "demo":
         strategy = DemoLogin(

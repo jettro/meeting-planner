@@ -195,6 +195,53 @@ export interface Person {
   name: string;
 }
 
+/** One thing remembered (`meeting_agents.memory.MemoryItem`, design_memory.md §4.3). */
+export interface MemoryItem {
+  id: string;
+  kind: "fact" | "preference";
+  status: "confirmed" | "proposed" | "retired";
+  scope: string;
+  situation: string;
+  text: string;
+  said_by: string;
+  reason: string;
+  /** `conversation <team id>`: where it was said. */
+  evidence: string;
+  review_when: string;
+  supersedes: string | null;
+  written: string;
+}
+
+/** An item as the journal recorded it: when, and by which agent - or by hand. */
+export interface MemoryVersion {
+  item: MemoryItem;
+  changed: string | null;
+  by: string;
+  outside: boolean;
+}
+
+export interface Remembered {
+  item: MemoryItem;
+  recorded: MemoryVersion | null;
+  /** What it replaced, newest first. */
+  history: MemoryVersion[];
+}
+
+/** `GET /me/memory` (design_memory.md §4.8). */
+export interface MyMemory {
+  email: string;
+  mine: Remembered[];
+  about_me: Remembered[];
+  /** False when no history could be read: no git on the server, or nothing recorded yet. */
+  journal: boolean;
+}
+
+/** The conversation an item names in its evidence, if it names one. */
+export function conversationOf(item: MemoryItem): string | null {
+  const match = /^conversation (\S+)/.exec(item.evidence);
+  return match ? match[1] : null;
+}
+
 /** Who the session says you are (`GET /auth/me`, design_auth.md A5). */
 export interface Me {
   user_id: string;
@@ -277,6 +324,9 @@ export const auth = {
 
 export const api = {
   platformHealth: () => call<PlatformHealth>("/platform/health"),
+
+  /** What is remembered for and about the person logged in, with its history. */
+  myMemory: () => call<MyMemory>("/me/memory"),
 
   /**
    * A team's meeting, read from its coordinator's persisted state.

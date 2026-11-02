@@ -253,7 +253,7 @@ class MemoryTool(ToolCard):
         return [item for item in self._read(False, ORGANISER_FILE) if item.applies()]
 
     def person_items(self, email: str) -> list[MemoryItem]:
-        return [item for item in self._read(True, _person_file(email)) if item.applies()]
+        return [item for item in self._read(True, person_file(email)) if item.applies()]
 
     # -- writing ------------------------------------------------------------------
 
@@ -294,7 +294,7 @@ class MemoryTool(ToolCard):
             self._write(False, ORGANISER_FILE, lambda items: with_item(items, item))
             return f"Remembered for {self.organiser}: {item.situation} - {item.text}"
         email = item.scope.removeprefix("person:")
-        self._write(True, _person_file(email), lambda items: with_item(items, item))
+        self._write(True, person_file(email), lambda items: with_item(items, item))
         return f"Remembered about {email}: {item.situation} - {item.text}"
 
     # -- applying (M9) --------------------------------------------------------------
@@ -344,5 +344,6 @@ def _lock_for(path: str) -> threading.Lock:
         return _LOCKS.setdefault(path, threading.Lock())
 
 
-def _person_file(email: str) -> str:
+def person_file(email: str) -> str:
+    """Where what is remembered about a person lives, in the shared tree."""
     return f"people/{email.strip().lower()}.md"

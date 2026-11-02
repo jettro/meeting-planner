@@ -95,7 +95,8 @@ knows it without asking.
 - **Only what a person said**, as confirmed; never a secret or an id, and about someone else only
   after looking them up. Saying it again replaces it; the journal keeps the old version.
 - **Visible:** every time memory reaches the model, a `MemoryApplied` row in the Trace says what and
-  why. The console shows your own tree.
+  why. The **Memory** tab shows what is remembered for you and about you, who said it, and what
+  each item replaced, read from the journal. The console shows your own tree.
 
 It also runs as a container, reaching the MCP servers over the compose network instead of
 `localhost`:
