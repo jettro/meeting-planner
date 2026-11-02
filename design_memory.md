@@ -201,11 +201,11 @@ and a test can check — the ACE-style item from the analysis:
 ---
 kind: preference            # fact | preference | episode | lesson
 status: confirmed           # confirmed | proposed | retired
-scope: organiser            # organiser (the owner of this tree) | person:<email> | all
+scope: organiser:jettro@rag4p.org   # organiser:<email> (whose tree) | person:<email> | all
 situation: focus sessions
 reason: "always the Library for focus" — said in conversation
 exception: workshops need a bigger room
-evidence: team 46c39651… message 7f2e…   # the run and message that taught it
+evidence: conversation 46c39651…   # the conversation (team) that taught it
 review_when: the Library is renovated or closes
 supersedes: null
 ---
@@ -213,8 +213,9 @@ Propose the Library first for this group's focus sessions.
 ```
 
 The body is the advice; the front matter is what lets code decide whether it *may* apply. The tree
-already says whose it is, so `scope` only has to tell `person:<email>` from `all` in the shared
-tree; in a personal tree it is always `organiser`. Every item also records **who said it**
+already says whose it is, but a person reading the file - in the console, say - should not have to
+know that: in a personal tree `scope` is `organiser:<email>`, naming the owner. In the shared tree
+it tells `person:<email>` from `all`. Every item also records **who said it**
 (`said_by: <email>`), because in the shared tree the writer and the subject can differ: Sanne saying
 she is vegetarian is not the same evidence as her organiser saying so.
 
@@ -257,7 +258,7 @@ subject keeps the window small, and nothing is ever merged textually.
 **M4 — what a person said is written at once, as confirmed.** `@Intake` gets `remember(kind,
 scope, situation, text)`. It may only store what the person said in this conversation, with their
 words as the evidence and their email as `said_by`; the tool refuses booking ids, secrets and
-anything without a scope. `scope: organiser` goes to their own tree, `person:` and `all` to the
+anything without a scope. `scope: organiser:<email>` goes to their own tree, `person:` and `all` to the
 shared one. Correcting the same item again *supersedes* it — the journal keeps the old one.
 
 **M5 — episodes are a later step, and when they come, code writes them, not a model.**
@@ -549,6 +550,10 @@ if not, the index in `episodes/` and the small deterministic actor that writes i
   `@Intake`, memory with the lookup, `MemoryApplied` in the trace, M12 and M13 in the server. A
   lost update between two parallel `remember` calls of one agent was found live and fixed with a
   per-file lock. 378 tests pass.
+- 2026-11-02: **A record names its owner** (§4.3). Read in the console, `scope: organiser` and
+  `evidence: team …` looked like someone else's team. A personal item now says
+  `scope: organiser:<email>` and `evidence: conversation <id>`. No support for the old format:
+  start memory clean.
 
 ---
 

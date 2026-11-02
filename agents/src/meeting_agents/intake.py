@@ -179,7 +179,7 @@ class IntakeAgent(BaseAgent, Akgent[IntakeConfig, IntakeState]):
         organiser = str(self.user_id or "anonymous")
         about = about.strip().lower()
         if about == "organiser":
-            scope = "organiser"
+            scope = f"organiser:{organiser}"
         elif about == organiser or about in self.state.settled_emails:
             scope = f"person:{about}"
         else:
@@ -194,7 +194,7 @@ class IntakeAgent(BaseAgent, Akgent[IntakeConfig, IntakeState]):
             text=text,
             said_by=organiser,
             reason="said in conversation",
-            evidence=f"team {self.team_id}",
+            evidence=f"conversation {self.team_id}",
         )
         answer: str = memory.remember(item)
         return answer

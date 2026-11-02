@@ -153,7 +153,12 @@ def journal(root: Path, tree: str) -> list[str]:
 
 def item(situation: str, text: str, **fields) -> MemoryItem:
     return MemoryItem(
-        kind="preference", scope="organiser", situation=situation, text=text, said_by=JETTRO, **fields
+        kind="preference",
+        scope=f"organiser:{JETTRO}",
+        situation=situation,
+        text=text,
+        said_by=JETTRO,
+        **fields,
     )
 
 
@@ -301,9 +306,9 @@ def test_the_organisers_tree_is_theirs_and_the_shared_tree_is_everybodys(system,
         (root / "_shared" / "_id" / "memory-shared" / "people" / "sanne@rag4p.org.md").read_text()
     )
 
-    assert [(i.scope, i.said_by) for i in mine] == [("organiser", JETTRO)]
+    assert [(i.scope, i.said_by) for i in mine] == [(f"organiser:{JETTRO}", JETTRO)]
     assert [(i.scope, i.said_by, i.text) for i in ours] == [("person:sanne@rag4p.org", JETTRO, "vegetarian")]
-    assert ours[0].evidence.startswith("team ")
+    assert ours[0].evidence == f"conversation {jettro.team_id}"
 
 
 def test_every_application_is_an_event(system):

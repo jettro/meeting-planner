@@ -62,14 +62,15 @@ class MemoryItem(BaseModel):
     id: str = Field(default_factory=lambda: uuid.uuid4().hex[:12])
     kind: Kind
     status: Status = "confirmed"
-    #: `organiser` in a personal tree; `person:<email>` in the shared one.
+    #: `organiser:<email>` in a personal tree - whose tree it is, readable in the
+    #: file itself; `person:<email>` in the shared one.
     scope: str
     situation: str
     text: str
     #: Who said it - the writer and the subject can differ in the shared tree.
     said_by: str
     reason: str = ""
-    #: The run that taught it.
+    #: The conversation that taught it: `conversation <team id>`.
     evidence: str = ""
     review_when: str = ""
     supersedes: str | None = None
@@ -289,7 +290,7 @@ class MemoryTool(ToolCard):
         """Store what a person said. Returns what happened, for the model to read."""
         if (why := refusal(item.text)) is not None:
             return f"Not remembered: {why}."
-        if item.scope == "organiser":
+        if item.scope.startswith("organiser:"):
             self._write(False, ORGANISER_FILE, lambda items: with_item(items, item))
             return f"Remembered for {self.organiser}: {item.situation} - {item.text}"
         email = item.scope.removeprefix("person:")
