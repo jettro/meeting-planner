@@ -14,8 +14,9 @@ verified against the installed packages, and what this team needs.
 > **The one sentence to keep:** *remember only what will change a future decision — and say when
 > it stops being true.*
 
-**Status:** proposal. Nothing is built. §9 lists the questions still open, §10 the spike that comes
-first.
+**Status:** proposal, revised 2026-11-02 now that there is a login (`design_auth.md`). Nothing is
+built. §4.2 says exactly where memory is stored; §9 lists the questions still open, §10 the spike
+that comes first.
 
 ---
 
@@ -107,24 +108,71 @@ Two facts shape everything after this:
 
 ## 4. The proposal
 
-### 4.1 One store: a journaled workspace tree
+### 4.1 Two trees: mine, and ours
 
-**M1 — memory lives in one akgentic workspace tree, `workspace_id="memory"`, with
-`git_journal=True`.** It is reached by every team of the principal, so it outlives meetings; it is
-plain files a person can read and fix; the console already shows workspaces; and the journal is
-the provenance the analysis asks for — who changed what, when, and what it was before — without a
-table of our own.
+The login changes the shape of the store, and makes it simpler. A workspace with a `workspace_id`
+is resolved under the **owner of the team** — the logged-in person, since `design_auth.md` — so
+"per organiser" needs no field, no team metadata and no `organisers/<id>` folder: it is simply the
+owner's own tree. What is true whoever is asking — Sanne is vegetarian, the meadow room is noisy —
+must not be per organiser, or every organiser would have to learn it again. Hence two trees.
+
+**M1 — memory lives in two journaled akgentic workspace trees, both with `git_journal=True`:**
+
+- **`memory` — mine.** Per principal (the default). What *this* organiser said about how they work:
+  aliases, groups, defaults, place preferences (cases 1, 2, 4, 6) — and, later, their episodes
+  (M5). Nobody else's team can reach it.
+- **`memory-shared` — ours.** `workspace_sharable=True`. Facts about people and places, and the
+  agents' lessons (cases 3, 5, 8). Every team reaches it.
 
 ```
-memory/
-├── people/<email>.md          preferences a person stated about themselves (case 3)
-├── organisers/<id>.md         aliases, groups, defaults, place preferences (1, 2, 4, 6)
+memory/                        — one per person, under their own principal
+├── organiser.md               aliases, groups, defaults, place preferences (1, 2, 4, 6)
+└── episodes/                  reserved for the later step (M5) — not created now
+
+memory-shared/                 — one for everybody
+├── people/<email>.md          what a person prefers, said by them or about them (3)
 ├── places/<location_id>.md    facts about a location or a room, with validity (8)
-├── lessons/<agent>.md         procedural lessons, proposed or confirmed (5)
-└── episodes/                 reserved for the later step (M5) — not created now
+└── lessons/<agent>.md         procedural lessons, proposed or confirmed (5)
 ```
 
-### 4.2 One item format: a lesson bound to its situation
+Both outlive every meeting; both are plain files a person can read and fix; and each tree's journal
+is the provenance the analysis asks for — who changed what, when, and what it was before — without
+a table of our own.
+
+### 4.2 Where it is stored, concretely
+
+Memory is **files on the server's disk**, in the same place akgentic keeps every workspace. Nothing
+goes to a database or an outside service. The path is
+`<WORKSPACES_ROOT>/<scope>/_id/<workspace_id>`, where `<scope>` is the team owner's email for a
+personal tree and `_shared` for a shared one (`resolve_workspace_path`, verified in the auth spike):
+
+| Running as | `WORKSPACES_ROOT` | Jettro's own memory | Shared memory |
+|---|---|---|---|
+| compose (`make up`) | `/data/workspaces`, on the `server-data` volume | `/data/workspaces/jettro@rag4p.org/_id/memory/` | `/data/workspaces/_shared/_id/memory-shared/` |
+| host (`make run-server`) | `data/workspaces` in the repo, git-ignored | `data/workspaces/jettro@rag4p.org/_id/memory/` | `data/workspaces/_shared/_id/memory-shared/` |
+
+Beside each tree sits its **journal**, a git repository named after it — `memory.git`,
+`memory-shared.git` — and, once search is switched on, an `.index` directory for the RAG index.
+They are siblings, not children, so the tree an agent sees holds only the items.
+
+Three ways to look at it:
+
+- **the console** — its workspace tab shows a team's workspaces, through the framework's
+  `/workspace/{team_id}/tree` and `/file` routes (with `workspace_id=memory` or `memory-shared`);
+- **the Memory page** (M9) — ours, the same routes, through one of your own teams;
+- **the disk** — `docker compose exec server ls /data/workspaces/...`, and `git log` in the
+  journal to see every change with its author.
+
+Two consequences worth stating:
+
+- **Backups and resets.** It lives on `server-data` with the event store, so `make reset` wipes
+  memory too. Memory and meetings have different lifetimes; a reset that keeps memory would be a
+  separate target (§8).
+- **Sharing needs permission.** A shared tree is only created if the server allows it:
+  `AKGENTIC_WORKSPACE_SHARED_KINDS=id` in the server's environment. A card asking for a shared tree
+  without it fails loudly at team creation — never silently falls back to a personal tree.
+
+### 4.3 One item format: a lesson bound to its situation
 
 **M2 — every item says when it applies, why, and how we know**, in front matter a person can read
 and a test can check — the ACE-style item from the analysis:
@@ -133,7 +181,7 @@ and a test can check — the ACE-style item from the analysis:
 ---
 kind: preference            # fact | preference | episode | lesson
 status: confirmed           # confirmed | proposed | retired
-scope: organiser:jettro     # person:<email> | organiser:<id> | all
+scope: organiser            # organiser (the owner of this tree) | person:<email> | all
 situation: focus sessions
 reason: "always the Library for focus" — said in conversation
 exception: workshops need a bigger room
@@ -144,9 +192,13 @@ supersedes: null
 Propose the Library first for this group's focus sessions.
 ```
 
-The body is the advice; the front matter is what lets code decide whether it *may* apply.
+The body is the advice; the front matter is what lets code decide whether it *may* apply. The tree
+already says whose it is, so `scope` only has to tell `person:<email>` from `all` in the shared
+tree; in a personal tree it is always `organiser`. Every item also records **who said it**
+(`said_by: <email>`), because in the shared tree the writer and the subject can differ: Sanne saying
+she is vegetarian is not the same evidence as her organiser saying so.
 
-### 4.3 Selection: by code, at the moment of action
+### 4.4 Selection: by code, at the moment of action
 
 The analysis's most useful point for this team: **a hint for an action must arrive before the
 action.** Most of our actions are typed handlers, so selection can be done in code, by the action
@@ -154,10 +206,10 @@ being taken, without relying on a model to remember to look something up.
 
 | Agent | Moment | What is selected, by what | How it arrives |
 |---|---|---|---|
-| `@Intake` | conversation start | `organisers/<id>.md`: aliases, groups, defaults — confirmed only, bounded | an *always* block on the `LLM_CONTEXT` channel |
-| `@Intake` | a name or a group | `recall(...)` over people and organisers — episodes too, once M5 is taken up | a tool, because the trigger is in the words |
+| `@Intake` | conversation start | `memory/organiser.md` of the person it talks to (`self.user_id`): aliases, groups, defaults — confirmed only, bounded | an *always* block on the `LLM_CONTEXT` channel |
+| `@Intake` | a name or a group | `recall(...)` over the organiser's tree and `people/` — episodes too, once M5 is taken up | a tool, because the trigger is in the words |
 | `@Intake` | before `plan_meeting` | lunch preferences of the settled participants | folded into the `lunch_wish` it passes on — so `@Catering` needs no change (§9 Q2) |
-| `@FacilityManager` | `FindLocationAssignment` | `places/` and `lessons/facility_manager.md`, confirmed, matched on the wish | appended to the assignment's rendering by the handler, before `act()` |
+| `@FacilityManager` | `FindLocationAssignment` | `places/` and `lessons/facility_manager.md` in the shared tree, confirmed, matched on the wish; and the organiser's place preferences, passed down by `@Intake` in the wish, so the facility manager never reads a personal tree | appended to the assignment's rendering by the handler, before `act()` |
 | `@Catering`, `@Scheduler` | — | nothing in v1 | — |
 | `@Coordinator` | — | **nothing — it stays deterministic (D1)** | — |
 
@@ -166,12 +218,13 @@ its scope matches, it is `confirmed`, and its `review_when` has not been met; am
 plain matching on `situation` is enough at this size (a handful of files). RAG over the tree
 (`workspace_rag_search`) is available when volume justifies it, not before.
 
-### 4.4 Writing: two paths now, a third later
+### 4.5 Writing: two paths now, a third later
 
 **M4 — what a person said is written at once, as confirmed.** `@Intake` gets `remember(kind,
 scope, situation, text)`. It may only store what the person said in this conversation, with their
-words as the evidence; the tool refuses booking ids, secrets and anything without a scope.
-Correcting the same item again *supersedes* it — the journal keeps the old one.
+words as the evidence and their email as `said_by`; the tool refuses booking ids, secrets and
+anything without a scope. `scope: organiser` goes to their own tree, `person:` and `all` to the
+shared one. Correcting the same item again *supersedes* it — the journal keeps the old one.
 
 **M5 — episodes are a later step, and when they come, code writes them, not a model.**
 
@@ -212,7 +265,7 @@ justify a rule* is enforced by status, not by prompt wording.
 lessons and retiring stale items is the "memory keeper" agent from the notes. It is phase 3: until
 there is enough memory to consolidate, it would be a solution looking for a problem.
 
-### 4.5 Trust, privacy and the guarantees we already have
+### 4.6 Trust, privacy and the guarantees we already have
 
 - **M8 — memory is data, never authority.** It arrives labelled with its kind and status, below the
   agent's own instructions, and it can never approve a slot, choose a time or name a recipient.
@@ -221,17 +274,25 @@ there is enough memory to consolidate, it would be a solution looking for a prob
 - **Personal data is treated as such.** A person's preferences live in their own file, which can
   be shown, corrected and deleted as a whole. Nothing secret is stored, and no booking id — the
   meeting's record is the coordinator's state, not memory.
-- **One principal, honestly.** The community tier runs without authentication: every request is
-  the principal `anonymous`, so "per organiser" needs an identity we do not have yet (Q1). Until
-  then, `organisers/` holds one demo organiser and the design says so.
+- **M11 — who may see and change what follows the login.** Your own tree is yours: only your teams
+  reach it, so only you see it. In the shared tree, `people/<email>.md` is **about** a person, and
+  that person may always see, correct and delete it — whoever wrote it. Places and lessons are
+  everybody's to read; promoting a proposed lesson (M6) or deleting a place fact is for an admin
+  (`ADMIN_EMAILS`). The Memory page enforces this; the agents never delete.
+- **The demo login is not a privacy boundary.** Anyone can log in as anyone (`design_auth.md` A3),
+  so per-person memory shows the *mechanism*, not protection. That is acceptable for invented
+  people; it is the first thing to change before real names go in.
+- **Teams made before the login** belong to `anonymous`, and would have their own `anonymous` tree.
+  Memory only starts with teams made after the login.
 
-### 4.6 Seeing why
+### 4.7 Seeing why
 
 **M9 — every application is an event in the trace.** When memory is selected, the agent emits a
 `MemoryApplied(items, reason)` event, so the Trace screen answers "why did it propose the
 Library?". The journal answers "who wrote this and what did it say before". A **Memory** page
-lists items by scope, kind and status, links each to the run that wrote it, and lets a person
-edit, retire or promote it.
+lists, for the logged-in person, *my memory* (their own tree) and *about me* (their file in
+`people/`), plus places and lessons; it links each item to the run that wrote it and lets a person
+edit, retire or delete what M11 allows, and an admin promote.
 
 ---
 
@@ -240,6 +301,7 @@ edit, retire or promote it.
 | | Workspace tree + our tool (proposed) | `pydantic-ai-harness` `Memory` | `KnowledgeGraphTool` |
 |---|---|---|---|
 | Outlives a meeting | yes (`_id` scope) | yes (SQLite/Postgres) | **no** — team-scoped |
+| Per person, from the login | yes — resolved under the team owner | only if we pass a namespace ourselves | no |
 | Who writes | code, or a narrow typed tool | the model, freely (`write_memory`) | the model, via graph updates |
 | Confirmed vs proposed | in the item, enforced by code | not modelled | not modelled |
 | Selection before an action, by code | yes — the handler chooses | the notebook is injected each run; notes on the model's initiative | summary each turn; search on the model's initiative |
@@ -263,7 +325,8 @@ updates, abstaining without evidence — and adds two this team needs: **applyin
 | Scenario | Passes when |
 |---|---|
 | applied when it should be | case 1: a second conversation proposes Daan Jansen without asking |
-| not applied out of scope | case 4's Library preference does not reach a workshop, or another organiser |
+| not applied out of scope | case 4's Library preference does not reach a workshop, or another organiser — logged in as Daan, Jettro's Library preference is never proposed |
+| shared where it should be | Sanne's vegetarian lunch, said once in Jettro's conversation, reaches Daan's lunch for Sanne |
 | superseded | after "actually, the Loft for focus", the Library is not proposed again |
 | proposed is not applied | case 5's lesson, still proposed, changes nothing |
 | retired is not applied | after `review_when` is met, the item is skipped |
@@ -278,7 +341,7 @@ first cases of the evals the README roadmap lists.
 
 | # | Decision | Rationale |
 |---|---|---|
-| M1 | **One journaled workspace tree, `workspace_id="memory"`** | The only akgentic store that outlives a team; files a person can fix; the journal is provenance for free |
+| M1 | **Two journaled workspace trees: `memory` per person, `memory-shared` for everybody** | The only akgentic store that outlives a team; per person comes free from the login; facts about people and places must not be learned again per organiser |
 | M2 | **Every item states kind, status, scope, situation, reason, exception, evidence and when to review it** | So code can decide whether it *may* apply before anything decides whether it *helps* |
 | M3 | **Select by scope, status and validity first; similarity second; RAG only when volume needs it** | Relevance is not textual likeness, and a handful of files needs no index |
 | M4 | **What a person said is written at once, as confirmed, by a narrow `remember` tool** | Direct corrections should stop the same mistake at once; a narrow tool keeps ids and secrets out |
@@ -288,14 +351,16 @@ first cases of the evals the README roadmap lists.
 | M8 | **Memory is data, never authority; it cannot pass a gate** | The gates and the one-service rule are what make this team safe |
 | M9 | **Every application is a `MemoryApplied` event; a Memory page shows, edits, retires and promotes** | Managing memory means explaining it |
 | M10 | **`pydantic-ai-harness` `Memory` stays an option for scratch notes, not the store of record** | Status and code-driven selection are the point here; the harness pins pydantic-ai exactly |
+| M11 | **Your tree is yours; a file about a person is theirs to see and delete; admins promote and prune the shared tree** | The login gives every item an owner or a subject; the demo login shows the mechanism, not protection |
 
 ---
 
 ## 8. What it costs, honestly
 
-- **A second kind of durable data.** Meetings live in event-store snapshots; memory lives in a
-  workspace tree. Two stores, two backup stories — accepted, because they have different owners
-  (the team vs. the principal) and lifetimes.
+- **A second kind of durable data.** Meetings live in event-store snapshots; memory lives in
+  workspace trees. Both sit on the `server-data` volume today, so `make reset` takes both — a reset
+  that keeps memory is a separate target if it is wanted. Two kinds of data, two lifetimes —
+  accepted, because they have different owners (the team vs. the person).
 - **Our own tool card.** Reading and writing items, the always block and the events are code we
   write and test; the harness would have given us a notebook for free.
 - **Personal data, visibly.** The moment `people/` exists, deleting a person's preferences is a
@@ -305,10 +370,9 @@ first cases of the evals the README roadmap lists.
 
 ## 9. Questions open
 
-**Q1 — who is the organiser?** Without authentication every request is `anonymous`. Options: ask
-in the conversation and carry it as team metadata (then `workspace_metadata_keys` could even give
-each organiser a tree); or wait for an authenticated tier. *Recommendation:* team metadata, set by
-the page, for the demo.
+**Q1 — who is the organiser?** *Answered by the login (2026-11-02).* The team's owner — the person
+logged in — is the organiser: `@Intake` reads it as `self.user_id`, and the `memory` tree resolves
+under it by itself. The team-metadata workaround this question recommended is withdrawn.
 
 **Q2 — where do lunch preferences apply?** `OrderLunchAssignment` carries a headcount, not the
 participants, so `@Catering` cannot look anyone up. Folding preferences into `lunch_wish` at
@@ -334,7 +398,12 @@ nobody used is kept.
       `WorkspaceTool`'s own callables — and whether those writes are journaled and attributed;
    2. an always block through `get_context_states()` on the `LLM_CONTEXT` channel, and how it
       survives a restore;
-   3. what the console shows of the tree.
+   3. what the console shows of the tree;
+   4. a personal and a shared tree on one agent, with `AKGENTIC_WORKSPACE_SHARED_KINDS=id` —
+      that both resolve as §4.2 says, for two different owners, and that the shared one refuses
+      to bind without the permission;
+   5. two teams of different owners writing the same file in the shared tree at once — whether
+      the workspace's own locks serialise them, or the second write must re-read and retry.
 1. **Phase 1 — confirmed facts and preferences** (cases 1–4, 6): the item format, the store, the
    `remember` / `recall` tools and the always block on `@Intake`, `MemoryApplied`, the scenarios of
    §6 against the scripted model.
@@ -366,6 +435,12 @@ if not, the index in `episodes/` and the small deterministic actor that writes i
   over indexing them — but not in the plan: they serve one case nobody has asked for, would copy
   records we already keep, and accumulate who met whom. The spike item and phase that served them
   moved to a closing "later" note in §10.
+- 2026-11-02: **Revised for the login** (`design_auth.md`). One tree became two (M1): `memory` per
+  person, resolved under the team owner by the framework, and `memory-shared` for people, places
+  and lessons. `organisers/<id>` became the owner's own `organiser.md`; items record `said_by`.
+  New §4.2 says where memory is stored on disk, beside its git journal, and how to look at it. M11
+  sets who may see and change what. Q1 answered by the login; two spike items added for the shared
+  tree.
 
 ---
 
