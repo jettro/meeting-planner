@@ -240,7 +240,7 @@ This is the reason for the step, so it is worth saying exactly:
    cannot see, resume or cancel Daan's meeting — 404).
 3. GUI: login page, `credentials: "include"`, app bar.
 4. My agenda: `/me/agenda` and its page (A12).
-5. Agents: organiser in context and request (A10).
+5. Agents: organiser in context and request (A10; as checked in §12, A15–A19).
 6. API key login and the console's config (A14).
 7. Docs: README, `design_memory.md` Q1 answered here, M1's two trees.
 
@@ -322,6 +322,57 @@ page on another port in a browser. **Every seam holds; nothing in the framework 
   saw it at the slot gate. The console was not run against the gated server — its contract is
   read from source (§9.5) and held by the API-key tests.
 
+## 12. Step 5, checked against the code (2026-11-02)
+
+A10 read against `messages.py`, `plan.py`, `coordinator.py`, `intake.py`, the intake prompt and
+`PlanPage.tsx` before building, and against two things the memory demos showed live: a workshop
+for Sanne, Daan and the organiser went out *for 2 people*, and `@Intake` sometimes said what it
+was about to request and then waited for a *yes*.
+
+- **S1 — the headcount is `len(plan.participant_emails)`,** in three places in the coordinator:
+  the location, the room and lunch. Nothing adds the organiser, so a meeting is always one short,
+  and the organiser's own agenda is never searched for a free slot.
+- **S2 — a client can put anything in a request.** A10 had the form fill `organiser` from
+  `/auth/me`. But the form posts the `PlanMeetingRequest` itself, and so could name anyone - and
+  the console can post one too. The one party that knows who the owner is, and cannot be told
+  otherwise, is the team: every actor carries `user_id`, the owner, set at creation and kept on
+  restore (§9.4).
+- **S3 — `@Intake` refuses an unsettled participant,** so "me" must be looked up today, and the
+  organiser is not in the address book by name in its context.
+- **S4 — the pause is the prompt's.** *Before calling plan_meeting, say in one sentence what you
+  are about to request, so a mistake can be caught while it is free* - and the model ends its turn
+  on that sentence. But nothing is booked before the time is approved, and the slot card shows
+  the place, the day and the people: a mistake is still free there, and cancelling is one click.
+
+The decisions, replacing A10's mechanism and keeping its intent:
+
+**A15 — the organiser is the team's owner, filled in by the coordinator, never by the request.**
+`MeetingPlan` gets `organiser: str`, set in `receiveMsg_PlanMeetingRequest` from `self.user_id`;
+`anonymous` (no login, the command line) leaves it empty, which is today's behaviour. The request
+gets no `organiser` field at all.
+
+**A16 — the organiser attends unless told otherwise (Q2).** The request gets
+`organiser_attends: bool = True`; when it is true and there is an organiser, the coordinator adds
+the organiser to `participant_emails` - once, if they were already listed. From there every
+headcount, the slot search and the booked meeting include them, with no other change.
+
+**A17 — `@Intake` knows who it talks to.** An always block names the organiser: *you are arranging
+this meeting for `<email>`; they take part unless they say otherwise, so do not look them up or
+list them*. `request_meeting` accepts the organiser's own email without a lookup, and
+`plan_meeting` gets `organiser_attends`, false only when the person says it is not their meeting.
+
+**A18 — the form says who attends.** *I attend*, a checkbox on by default, labelled with the name
+from `/auth/me`; not shown when nobody is logged in (`AUTH=off`), because there is no organiser.
+
+**A19 — `@Intake` requests at once, and the slot card is where a mistake is caught.** The prompt
+says what it requests in the same turn as the call, instead of before it (S4). The demo script's
+*say go ahead* step goes.
+
+**Risk:** an organiser the meeting service does not know cannot have a free slot. The demo login
+only offers known people, but `API_KEYS` can name any email, so a console user who is not in the
+address book would see the slot search fail. The emails in `API_KEYS` should be people in the
+meeting service; `.env.example` says so.
+
 ---
 
 ## 10. Changelog
@@ -336,3 +387,6 @@ page on another port in a browser. **Every seam holds; nothing in the framework 
   1008 on the socket.
 - 2026-10-31 — steps 2, 3 and 6 built (§11): `DemoLogin`, `AuthModule`, the login page, the
   console's API-key login. 336 tests pass.
+- 2026-11-02 — §12: step 5 checked against the code. The organiser is the team's owner, set by
+  the coordinator, not sent by a client (A15); attends by default and so counts (A16); `@Intake`
+  knows who it talks to (A17); *I attend* on the form (A18); `@Intake` requests without a pause (A19).
