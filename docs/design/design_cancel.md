@@ -8,6 +8,8 @@
 > rather than to a new one, there is no plan store, and nothing is stopped first. The release saga
 > itself (§1, §2, §4's ordering and failure rules) is unchanged.
 >
+> **Now:** [`docs/durability.md`](../durability.md) describes cancelling as it is.
+>
 > **Still open:** §8.3: should a failed plan run its outstanding compensations itself, or only
 > report them?
 >

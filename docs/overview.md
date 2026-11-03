@@ -116,7 +116,7 @@ understood, and authorises nothing. ([`design_chat.md`](design/design_chat.md).)
 **The team is the meeting.** One team arranges one meeting, and the coordinator's state is the
 only record of it. There is no separate database of plans to keep in step: a stopped team is
 revived from what the server kept, and cancelling goes to the team that made the meeting.
-([`design_durability.md`](design/design_durability.md).)
+([Durability](durability.md).)
 
 **The framework decides who may see what.** The server already checks who owns a team; the sample
 only tells it who is asking. Your meetings and your memory are yours.

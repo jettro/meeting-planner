@@ -1,7 +1,7 @@
 # Design — the documentation
 
 > **Status:** agreed, 2026-11-03; questions answered (§8). Steps 1 to 3 of §6 are done - the move,
-> the index, the overview and the memory page - and step 4 has begun: the services, team and server pages.
+> the index, the overview and the memory page - and step 4 has begun: the services, team, server and durability pages.
 
 > **The one sentence to keep:** *the designs say what we decided and why, at the time; the docs
 > say what is there now, and why it is that way.* Everything below follows from it.
@@ -175,3 +175,5 @@ Each step is one commit, and you review each page before the next.
   `design_akgents.md`'s header has its *Now* line.
 - 2026-11-03: **Step 4, the server page.** `server.md`; `design_gui.md`'s header has its *Now*
   line.
+- 2026-11-03: **Step 4, the durability page.** `durability.md`, cancelling included;
+  `design_durability.md` and `design_cancel.md` have their *Now* lines.

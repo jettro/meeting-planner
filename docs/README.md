@@ -23,7 +23,7 @@ do, and where to find it in the code. They describe what is there now.
 | [The services](services.md) | three services, their MCP servers, one service per agent | |
 | [The team](team.md) | the agents, the plain-code coordinator, the booking saga, the two questions | |
 | [The server](server.md) | the team as a service, the planner, the console, the trace | |
-| Durability | the team is the meeting: revive, cancel, resume | to come |
+| [Durability](durability.md) | the team is the meeting: revive, cancel, resume | |
 | The conversation | `@Intake`, a team you talk to, what the model may say | to come |
 | Who is asking | the login, what is yours, the organiser | to come |
 | Lessons | what building it taught us, across all steps | to come |

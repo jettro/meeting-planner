@@ -4,6 +4,8 @@
 >
 > **Lessons:** §10.
 >
+> **Now:** [`docs/durability.md`](../durability.md) describes durability as it is.
+>
 > *A design records what was decided and why, at the time; it is not kept current.*
 
 Companion to `design_cancel.md` and `design_gui.md`. Appendix A of `design_cancel.md` measured
