@@ -63,7 +63,8 @@ From the bottom up:
   you talk instead of filling in the form. Each specialist can reach exactly one service.
   `@Coordinator` is not a model at all: it is plain code that knows the order of the steps.
 - **The team server.** It runs teams, keeps every message they send, lets a stopped team be
-  revived, and knows who you are. It is akgentic's own server, configured rather than written.
+  revived, and knows who you are. It is akgentic's own server, configured rather than written
+  ([the server](server.md)).
 - **Two browsers onto it.** The planner shows the *meeting*: the form, the conversation, the two
   questions, a readable trace, your meetings and your memory. The akgentic console shows the
   *team*: its agents, what each model was given, and what it cost.

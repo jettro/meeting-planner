@@ -7,6 +7,8 @@
 >
 > **Lessons:** §8.3.
 >
+> **Now:** [`docs/server.md`](../server.md) describes the server and the browsers as they are.
+>
 > *A design records what was decided and why, at the time; it is not kept current.*
 
 Companion to `design_akgents.md`. That document ends with a team that plans a meeting from a
