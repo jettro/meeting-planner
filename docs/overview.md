@@ -148,7 +148,8 @@ model. Every time memory is used, the trace says so. ([Memory](memory.md).)
 | `gui/` | the planner, a React app |
 | `console/` | how the akgentic console is run beside it |
 
-To see it working, follow the [demo script](demo.md).
+To see it working, follow the [demo script](demo.md). For what building it taught us, read the
+[lessons](lessons.md).
 
 ---
 

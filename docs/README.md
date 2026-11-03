@@ -8,6 +8,7 @@ finish, and the ideas behind it - in one page.
 | If you want to | Read |
 |---|---|
 | understand what the sample shows, and why it is built this way | the [overview](overview.md), then a topic below |
+| learn from what went wrong while building it | the [lessons](lessons.md) |
 | see it working, or present it | the [demo script](demo.md) |
 | run it | the [README](../README.md), *Quick start* |
 | know why a decision was made, or what was turned down | its design, in [`design/`](design/) |
@@ -26,7 +27,7 @@ do, and where to find it in the code. They describe what is there now.
 | [Durability](durability.md) | the team is the meeting: revive, cancel, resume | |
 | [The conversation](conversation.md) | `@Intake`, a team you talk to, what the model may say | |
 | [Who is asking](who-is-asking.md) | the login, what is yours, the organiser | |
-| Lessons | what building it taught us, across all steps | to come |
+| [Lessons](lessons.md) | what building it taught us, across all steps | |
 
 ## The designs
 
