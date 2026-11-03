@@ -2,8 +2,9 @@
 
 > **Status:** phases 1 and 2 built, 2026-11-02, and verified live: confirmed facts and preferences
 > remembered by `@Intake`, per person and shared, and what people said about places, read by the
-> facility manager before it chooses. Phase 3 - proposed lessons, editing on the Memory page, the
-> memory keeper - is still a proposal.
+> facility manager before it chooses. Phase 3 is designed in §10.4 (M21-M31,
+> Q6-Q11): 3a, editing and deleting on the Memory page, first; 3b, suggestions - a team for a
+> group, a meal for a kind of meeting - in outline; the memory keeper sketched.
 >
 > **Where to look:** §4.2 says where memory is stored; §9 lists the questions still open.
 >
@@ -476,6 +477,17 @@ first cases of the evals the README roadmap lists.
 | M18 | **Place facts are selected by code in both facility-manager handlers, on a `remembered` field the coordinator never fills** | A room is chosen at booking, not when the location is found (P2); the coordinator stays deterministic |
 | M19 | **The facility manager binds the shared tree only: `MemoryTool(personal=False)`** | An organiser's own memory must not reach the model that holds `book_room` (P5) |
 | M20 | **The organiser's place preferences reach the wish through `@Intake`'s prompt** | Code cannot tell which items are about places; the slot gate shows the choice anyway (P3) |
+| M21 | **Phase 3 in three parts: a person manages (3a), agents propose (3b), the memory keeper (3c)** | Each relies on the one before; an agent may suggest, a person decides |
+| M22 | **Who may see and change each list, decided by the server from the session; 404 otherwise** | M11 made concrete; a button is not a check |
+| M23 | **A fourth list, *Said by me*** | What you said about someone else was invisible to you once said |
+| M24 | **An edit is a new version that supersedes, with the editor as `said_by`** | The history shows the old words and who changed them |
+| M25 | **A delete removes the item from the file, not from the journal** | Deleting is not erasing; erasing waits for real names (Q6) |
+| M26 | **The server writes as an agent does - both locks, re-read, atomic write - and commits as the person** | The journal names who changed it; an agent's gate sees the change |
+| M27 | **`PUT` and `DELETE /me/memory/items/{id}`, looked up only in files the session may change** | No path from the request; the page redraws from disk |
+| M28 | **No *retired* in 3a** | The journal keeps old versions; `retired` is left for the keeper (3c) |
+| M29 | **A suggestion is a question; an accepted one is stored as said, confirmed** | Keeps "a person decides" without a *proposed* status |
+| M30 | **Offer in the conversation, and on the Memory page from the person's own earlier meetings, read by code** | What is new, and what has piled up; nothing stored until yes |
+| M31 | **A remembered meal for a kind of meeting settles the lunch wish, and `@Intake` says so** | Like M20 for places; today's words win |
 
 ---
 
@@ -703,6 +715,188 @@ and the CLI's `load_team_card` both call it. Verified live, against the running 
 Seen on the way, not changed: the headcount counts the participants and not the organiser, and
 `@Intake` sometimes announces a request and waits for a "yes" before calling `plan_meeting`.
 
+### 10.4 Phase 3, checked against the code (2026-11-03)
+
+Phase 3 is where a person takes control of what is remembered: they see it, change it and
+remove it, and - later - accept or refuse what an agent suggests. The Campus run showed why it
+matters: a memory written as an order (*choose Campus*) can today only be fixed by telling the
+planner again. Checked against `meeting_server/memory_page.py`, `meeting_agents/memory.py` and
+akgentic-tool's workspace journal and write gate, as installed.
+
+**What the code offers.** Everything a write from the server needs is in the framework, and
+public:
+
+- `write.gate.lock_file_for(meta_dir, path)` and `locks.hold(...)` - the per-file `flock` the
+  agents' own write gate takes, across processes;
+- `locks.atomic_write(target, payload)`;
+- `journal.GitJournal(root, enabled=, timeout_s=, meta_dir=)` with `commit_out_of_band()` and
+  `commit_paths(paths, identity, capability)`, and `models.Identity(name, email_local)` for any
+  author - not only an agent;
+- `workspace.meta_dir_for(workspace_path)` for the lock and journal directory beside a tree.
+
+The agents' gate checks a file's digest before it replaces it, so a page edit between an agent's
+read and its write is refused, and `MemoryTool._write` already reads again and retries once. Teams
+run in the server process, so the per-file lock `_lock_for` in `meeting_agents.memory` is shared
+with the page as well. The request user carries `roles`, and `admin` is among them for
+`ADMIN_EMAILS` (`auth.py`).
+
+**What is missing.** The page only reads. There is no list of what *I* said about other people -
+an item in `people/sanne@….md` written by Jettro is shown to Sanne, never to Jettro. Nothing sets
+`status: proposed`, and nothing reads it but `applies()`.
+
+**M21 — phase 3 comes in three parts, each built and shown before the next.**
+
+| Part | What it gives | Why in this order |
+|---|---|---|
+| **3a — a person manages** | edit and delete on the Memory page, under M22 | it is the control every later part relies on, and the obligation M14 left open |
+| **3b — suggestions** | the planner offers what you keep repeating - a team for a group, a meal for a kind of meeting - and stores it only on your yes | a suggestion is only safe once a person can manage what it becomes |
+| **3c — the memory keeper** | an agent that reads a file and proposes merges and retirements, as 3b proposals | it needs 3b to say anything at all |
+
+The rule across all three is the one from the notes: *an agent may suggest, a person decides.*
+Nothing an agent concludes is applied before a person accepted it.
+
+This section designs 3a in full and 3b in outline (M29-M31); 3c is sketched. 3b and 3c get their
+own check against the code when 3a is built.
+
+**M22 — who may do what, made concrete (M11).**
+
+| Item | Who sees it | Who may change or delete it |
+|---|---|---|
+| **Mine** - `organiser.md` in your tree | you | you |
+| **About me** - `people/<you>.md` | you, and whoever said it | you |
+| **Said by me** - an item in `people/<other>.md` with `said_by` you | you, and the person it is about | you, and the person it is about |
+| **Places** - `places/<id>.md` | everybody | whoever said it, and an admin |
+
+The server decides, from the session, for every change; the page shows a button only where the
+server would allow it, but the button is not the check. A change to an item the person may not
+change answers **404**, as the framework does for a team that is not yours - it does not say that
+the item exists.
+
+**M23 — *Said by me* is a fourth list.** What you said about other people is yours to see and
+withdraw: today it is invisible to you once said. The route finds it by reading `people/*.md` -
+a handful of files - for items with `said_by` you.
+
+**M24 — an edit is a new version, never an overwrite.** The page changes the *situation* or the
+*text*. The new item keeps the kind and the scope, and gets `said_by` the person who edited it,
+`reason: changed on the Memory page`, `evidence: memory page`, and `supersedes` the item it
+replaces - so the history shows the old words, struck through, and who changed them. The same
+refusals as `remember` apply: no secrets, no ids, nothing empty.
+
+**M25 — a delete removes the item from the file; the journal keeps it.** The item stops being
+applied at once, and the file - what is true now - no longer holds it. The history is not
+rewritten: the earlier version is still in the journal, which is what lets a person see what
+was there. **Deleting is therefore not erasing.** For invented people in a demo that is right;
+before real names go in, erasing an item about a person from the journal too is the first thing
+to add (Q6).
+
+**M26 — the server writes as an agent does, with the person as author.** For one change:
+
+1. take the in-process lock for the file (`_lock_for`), then the framework's per-file `flock`
+   (`lock_file_for`, `hold`) - the two the agents take;
+2. commit anything already changed by hand as `out-of-band`, as the gate does;
+3. read the file again, inside the locks; find the item by id; apply the one change;
+4. write it with `atomic_write`, and commit that path through `GitJournal` under an `Identity`
+   named after the person's email.
+
+The journal then says who changed it - *jettro@rag4p.org*, not `@Intake` and not `out-of-band` -
+and the history on the page reads *changed on the Memory page by you*. An agent writing the same
+file a moment later is refused once by its gate, reads again, and writes on top (§4.5).
+
+**M27 — two routes, the item by its id.** `PUT /me/memory/items/{id}` with `{situation, text}`,
+and `DELETE /me/memory/items/{id}`. The server looks for the id only in the files the session may
+change (M22), never in a path the request names. Both answer the new `MyMemory`, so the page
+redraws from what is on disk.
+
+**M28 — no *retired* in 3a.** A delete is enough while the journal keeps the old version; a status
+that hides an item without removing it adds a state to explain and a filter to every reader.
+`retired` stays in the format for 3c, where it means *the keeper suggests this is no longer
+true*.
+
+**3b — suggestions that make organising easier.** The aim is plain: fewer things to say every
+time. Two kinds of suggestion are wanted first, and both are things a person would otherwise
+repeat:
+
+- **a team for a group** - you keep inviting Sanne, Daan and Femke; call them *the design team*,
+  and next time *the design team* is enough;
+- **a meal for a kind of meeting** - workshops get soup, stand-ups get no lunch; then the lunch
+  question is answered before it is asked.
+
+Both already *work* once said: *my design team is Sanne, Daan and Femke* is an organiser fact
+today, and a remembered *lunch for workshops: soup* can reach the lunch wish as a place
+preference reaches the location wish (M20). What 3b adds is that the planner **offers** them,
+and that every offer ends in the person's own yes.
+
+**M29 — a suggestion is a question, and the answer is what the person said.** There is no
+*proposed* item for these: an offer the person accepts is something they said, stored as
+confirmed with `said_by` them, through the paths that already exist. Refused, nothing is written.
+That keeps M6's rule - nothing an agent concludes is applied before a person accepted it -
+without a new status to explain.
+
+**M30 — two places to offer, at the moment it is useful.**
+
+| Where | When | How it is found |
+|---|---|---|
+| **In the conversation** | after the request, at most once per conversation | `@Intake` looked three or more people up and no remembered group names them: *"Shall I remember Sanne, Daan and Femke as a team? What should I call it?"* Or the person gave a lunch wish for a meeting whose kind has none remembered: *"Shall I remember soup for workshops?"* A yes is `remember`; anything else is left. |
+| **On the Memory page** | when the page opens | **code**, not a model, reads the person's own earlier meetings - the coordinators' records the Meetings tab already reads - and offers what repeats: the same people in three or more meetings, the same lunch wish for meetings with the same kind of title. Each offer has *Remember this* and *Not now*. |
+
+The conversation catches what is new; the page catches what has piled up. Neither stores a
+suggestion: the page computes its offers each time, from the records, so there is nothing to keep
+in step. This is M5's preferred shape for episodes - *read the records, copy nothing* - used for
+the first thing that needed them.
+
+**M31 — a remembered meal settles the lunch wish, and `@Intake` says so.** As with M20: when a
+meal is remembered for this kind of meeting and the person said nothing about lunch, `@Intake`
+puts it in the lunch wish and says it in its one sentence - *"with soup, as remembered for
+workshops"*. The lunch question is then not asked, which is the point; nothing is booked before
+the time is approved, so a wrong meal is corrected by saying so, or by declining the time. The
+person's own words today always win.
+
+**What a *kind of meeting* is** is the open part (Q10): the title's main word (*workshop*,
+*stand-up*, *focus session*), as the person said it in the situation. Matching it is the model's
+job in the conversation and a plain, lower-case word match on the page - no similarity search,
+in keeping with M3.
+
+**Sketch: 3c — the memory keeper.** An agent started on request - *Tidy up* on the Memory page,
+not on a timer - that reads one file and proposes: two items that say the same thing as one, an
+item a later one contradicts, an item past its `review_when`. Because the keeper is a model, its
+suggestions are stored as `status: proposed`, shown beside 3b's offers with the same *Remember
+this* and *Not now*, and never applied until accepted; the keeper changes nothing itself. It is
+the "background consolidation" of the notes, kept small: one file, one run, a person accepts each
+change.
+
+**Spike, before building 3a.**
+
+- **S7** — a page write followed by `remember` on the same file: the agent's gate refuses once, it
+  reads again, and both changes are in the file.
+- **S8** — the journal's author for a page write is the person's email, and `_versions` shows it.
+- **S9** — the per-file `flock` from the server and from a team's actor in the same process do not
+  deadlock with the in-process lock (`_lock_for` is always taken first).
+- **S10** (for 3b) — the server can read the person's own teams and their coordinators' records
+  in process, through the framework's team service, without calling its own HTTP routes.
+
+**Order of work for 3a.** (1) the spike; (2) the write path in `memory_page.py` with its tests,
+against real journals as the read path's tests are; (3) the two routes and *Said by me*; (4) edit
+and delete on the page, with the history line for a page edit; (5) live run, then
+`docs/memory.md`, the demo's act 5 and the roadmap.
+
+**Questions for 3a.**
+
+- **Q6** — Should deleting an item about a person also remove it from the journal? Rewriting
+  history is real work and breaks every earlier version's link; not rewriting means a deleted
+  item can still be read from the repository. Proposed: not in 3a, recorded as the limit it is.
+- **Q7** (3b) — What signal proposes a lesson? *Answered by M30:* what repeats - in the
+  conversation and in the person's own earlier meetings - and the person's yes is the signal.
+- **Q10** (3b) — What is a *kind of meeting*: the title's main word, or something the person
+  names? Proposed: the word as the person said it in the situation (*workshops*), matched by the
+  model in the conversation and as a plain word on the page.
+- **Q11** (3b) — Should *Not now* on the page be remembered, so an offer is not made again?
+  Proposed: yes, as one small item per refused offer in the person's own tree, never applied to
+  a meeting.
+- **Q8** — May the person who said something about someone else still change it after the person
+  it is about has? Proposed: yes - both may, and the history shows both (M22).
+- **Q9** — May anyone change a place fact, or only whoever said it and an admin? Proposed: only
+  those two; anyone else tells the planner, which adds a version of their own.
+
 ---
 
 ## 11. Changelog
@@ -765,6 +959,15 @@ Seen on the way, not changed: the headcount counts the participants and not the 
   marketing outweigh what a person said. The block now calls it first-hand knowledge that counts
   when it speaks to the request, still not an instruction, and the chosen location's reason says
   whether it was followed.
+
+- 2026-11-03: **Phase 3 designed** (§10.4, M21-M28, Q6-Q9), checked against the installed
+  workspace journal and write gate: the server can write as an agent does, with the person as the
+  journal's author. 3a - edit, delete and a *Said by me* list on the Memory page - first; 3b
+  proposals and 3c the memory keeper sketched. Three spike items, S7-S9.
+- 2026-11-03: **3b given its first cases** (M29-M31, Q10, Q11), at the person's request: suggest a
+  team when several people are invited, and a meal per kind of meeting. A suggestion is a
+  question, offered in the conversation or computed on the Memory page from the person's own
+  earlier meetings, and stored only on their yes. Q7 answered.
 
 ---
 

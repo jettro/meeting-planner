@@ -21,10 +21,11 @@ says what is done, what is next, and what is not planned.
 
 Each with a design first.
 
-- **Memory, phase 3.** Editing and deleting on the Memory tab, with rules for who may change
-  what: your own items, items about you, items about places (`design_memory.md` M11). Then
-  lessons an agent proposes and a person accepts (M6), and a *memory keeper* that tidies what has
-  piled up (M7). The Campus run showed why editing comes first: a memory written as an order can now only
+- **Memory, phase 3** (`design_memory.md` §10.4). First, editing and deleting on the Memory tab,
+  with rules for who may change what. Then suggestions that make organising easier - *call
+  Sanne, Daan and Femke the design team?*, *soup for workshops?* - offered in the conversation
+  or on the Memory tab, and kept only when you say yes. Last, a *memory keeper* that suggests
+  tidying what has piled up. The Campus run showed why editing comes first: a memory written as an order can now only
   be fixed by telling the planner again.
 - **Guardrails.** A check before an agent books or orders - *may this lunch for twenty be ordered
   on Sanne's behalf?* The hook is known: a capability on the agent, like `TalkOnlyToHuman`, can
