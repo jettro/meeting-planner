@@ -5,6 +5,8 @@
 >
 > **Lessons:** §14.
 >
+> **Now:** [`docs/conversation.md`](../conversation.md) describes `@Intake` as it is.
+>
 > **Still open:** Q2–Q4 in §11.
 >
 > *A design records what was decided and why, at the time; it is not kept current.*

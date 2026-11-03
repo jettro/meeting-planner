@@ -111,7 +111,7 @@ and what lets the browser show a trace that reads like a story.
 
 **The human approves; the model cannot.** The two questions are messages to you and answers from
 you. `@Intake` can talk about the time, but it cannot approve it: *the second one* in the chat is
-understood, and authorises nothing. ([`design_chat.md`](design/design_chat.md).)
+understood, and authorises nothing. ([The conversation](conversation.md).)
 
 **The team is the meeting.** One team arranges one meeting, and the coordinator's state is the
 only record of it. There is no separate database of plans to keep in step: a stopped team is

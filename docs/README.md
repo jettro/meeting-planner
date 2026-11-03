@@ -24,7 +24,7 @@ do, and where to find it in the code. They describe what is there now.
 | [The team](team.md) | the agents, the plain-code coordinator, the booking saga, the two questions | |
 | [The server](server.md) | the team as a service, the planner, the console, the trace | |
 | [Durability](durability.md) | the team is the meeting: revive, cancel, resume | |
-| The conversation | `@Intake`, a team you talk to, what the model may say | to come |
+| [The conversation](conversation.md) | `@Intake`, a team you talk to, what the model may say | |
 | Who is asking | the login, what is yours, the organiser | to come |
 | Lessons | what building it taught us, across all steps | to come |
 
