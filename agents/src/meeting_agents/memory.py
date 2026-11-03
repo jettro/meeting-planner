@@ -48,6 +48,10 @@ logger = logging.getLogger(__name__)
 
 #: The organiser's own file, in their personal tree.
 ORGANISER_FILE = "organiser.md"
+#: The memory keeper's proposals, beside it; nothing applies them (design_memory.md M41).
+PROPOSED_FILE = "proposed.md"
+#: Offers and proposals the person answered *Not now*, beside it; nothing applies them (M35, M43).
+DECLINED_FILE = "declined.md"
 
 Kind = Literal["fact", "preference"]
 Status = Literal["confirmed", "proposed", "retired"]
@@ -89,19 +93,50 @@ class MemoryItem(BaseModel):
         return f"- {self.situation}: {self.text}"
 
 
+class Proposal(BaseModel):
+    """One change the memory keeper suggests to *Mine*, never applied by itself (M40, M41).
+
+    Kept in `proposed.md` in the same form as an item: fields a person can read,
+    then the words. `items` names what it would change, by id; for a merge
+    `situation` and `text` are the one item that replaces them, for a reword the
+    new words, for a retire nothing.
+    """
+
+    id: str = Field(default_factory=lambda: uuid.uuid4().hex[:12])
+    kind: Literal["merge", "retire", "reword"]
+    items: list[str]
+    situation: str = ""
+    reason: str
+    #: The keeper run that proposed it: `keeper <team id>`.
+    evidence: str = ""
+    written: date = Field(default_factory=date.today)
+    text: str = ""
+
+    @property
+    def key(self) -> str:
+        """What it proposes, as a digest - so a declined proposal is not made again (M43)."""
+        parts = [self.kind, *sorted(self.items), self.situation.strip().lower(), self.text.strip().lower()]
+        return hashlib.sha256("\x1f".join(parts).encode()).hexdigest()[:16]
+
+
 _FRONT = re.compile(r"^---\n(.*?)\n---\n(.*?)(?=^---\n|\Z)", re.DOTALL | re.MULTILINE)
 
 
-def parse_items(content: str) -> list[MemoryItem]:
-    """Every item in a file: front matter a person can read, then the advice."""
-    items = []
+def parse_blocks[Block: BaseModel](content: str, model: type[Block]) -> list[Block]:
+    """Every block in a file: front matter a person can read, then the words."""
+    blocks = []
     for front, body in _FRONT.findall(content):
         fields = yaml.safe_load(front) or {}
-        items.append(MemoryItem.model_validate({**fields, "text": body.strip()}))
-    return items
+        blocks.append(model.model_validate({**fields, "text": body.strip()}))
+    return blocks
 
 
-def render_items(items: list[MemoryItem]) -> str:
+def parse_items(content: str) -> list[MemoryItem]:
+    """Every item in a memory file."""
+    return parse_blocks(content, MemoryItem)
+
+
+def render_items(items: list[Any]) -> str:
     blocks = []
     for item in items:
         front = item.model_dump(mode="json", exclude={"text"})
@@ -216,6 +251,9 @@ class MemoryTool(ToolCard):
     personal_workspace: str = "memory"
     shared_workspace: str = "memory-shared"
     personal: bool = True
+    #: False binds the personal tree only: for `@Keeper`, which tidies *Mine*
+    #: and reads nothing about other people or places (M39).
+    shared: bool = True
     #: Most items the always block carries; the newest win. Bounded, so memory
     #: cannot crowd out the conversation (the notes' "keep it limited").
     max_always_items: int = 20
@@ -229,10 +267,11 @@ class MemoryTool(ToolCard):
         if self.personal:
             self._mine = WorkspaceTool(workspace_id=self.personal_workspace, git_journal=True)
             self._mine.observer(observer)
-        self._ours = WorkspaceTool(
-            workspace_id=self.shared_workspace, workspace_sharable=True, git_journal=True
-        )
-        self._ours.observer(observer)
+        if self.shared:
+            self._ours = WorkspaceTool(
+                workspace_id=self.shared_workspace, workspace_sharable=True, git_journal=True
+            )
+            self._ours.observer(observer)
         return self
 
     # -- who is asking --------------------------------------------------------
@@ -251,11 +290,14 @@ class MemoryTool(ToolCard):
     # -- reading ----------------------------------------------------------------
 
     def _read(self, shared: bool, path: str) -> list[MemoryItem]:
+        return self._read_as(shared, path, MemoryItem)
+
+    def _read_as[Block: BaseModel](self, shared: bool, path: str, model: type[Block]) -> list[Block]:
         backend = self._tree(shared).workspace
         if not backend.exists(path):
             return []
         try:
-            return parse_items(backend.read(path).decode())
+            return parse_blocks(backend.read(path).decode(), model)
         except Exception:  # a hand-edited file a person broke must not break the team
             logger.exception("memory file %s could not be read", path)
             return []
@@ -279,7 +321,13 @@ class MemoryTool(ToolCard):
 
     # -- writing ------------------------------------------------------------------
 
-    def _write(self, shared: bool, path: str, change: Callable[[list[MemoryItem]], list[MemoryItem]]) -> None:
+    def _write(
+        self,
+        shared: bool,
+        path: str,
+        change: Callable[[list[Any]], list[Any]],
+        model: type[BaseModel] = MemoryItem,
+    ) -> None:
         """Apply `change` to what is on disk *now*, through the gate (§4.5).
 
         The gate refuses to replace a file this card has not read, or that
@@ -300,7 +348,7 @@ class MemoryTool(ToolCard):
             for attempt in (1, 2):
                 if tree.workspace.exists(path):
                     read(path)
-                content = render_items(change(self._read(shared, path)))
+                content = render_items(change(self._read_as(shared, path, model)))
                 try:
                     write(path, content)
                     return
@@ -322,6 +370,16 @@ class MemoryTool(ToolCard):
         email = item.scope.removeprefix("person:")
         self._write(True, person_file(email), lambda items: with_item(items, item))
         return f"Remembered about {email}: {item.situation} - {item.text}"
+
+    # -- the memory keeper (M41, M43) -----------------------------------------------
+
+    def declined_keys(self) -> set[str]:
+        """What the person answered *Not now* to: the digests kept in `declined.md`."""
+        return {item.situation for item in self._read(False, DECLINED_FILE)}
+
+    def propose(self, proposals: list[Proposal]) -> None:
+        """Replace the last run's proposals with these. Nothing reads them to apply them."""
+        self._write(False, PROPOSED_FILE, lambda _: list(proposals), Proposal)
 
     # -- applying (M9) --------------------------------------------------------------
 

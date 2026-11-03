@@ -5,8 +5,8 @@
 > facility manager before it chooses. Phase 3 is designed in §10.4 (M21-M31,
 > Q6-Q11). 3a - editing and deleting on the Memory page, and *Said by me* - is built
 > (2026-11-03) and verified live; 3b, suggestions - a team for a group, a meal for a kind of
-> meeting - is built (2026-11-03, §10.5, M32-M37) and verified live; the memory keeper is
-> sketched.
+> meeting - is built (2026-11-03, §10.5, M32-M37) and verified live; 3c, the memory keeper, is
+> built (2026-11-03, §10.6, M38-M44) and verified live. Phase 3 is done.
 >
 > **Where to look:** §4.2 says where memory is stored; §9 lists the questions still open.
 >
@@ -496,6 +496,13 @@ first cases of the evals the README roadmap lists.
 | M35 | ***Not now* goes to `declined.md` in the person's own tree, which no agent reads** | Q11: an offer refused is not made again |
 | M36 | **`@Intake` offers once, after the request, by its prompt** | An offer is a question; the page catches what it misses |
 | M37 | **A remembered meal fills the lunch wish, said in `@Intake`'s one sentence** | M31 made concrete, like M20 |
+| M38 | **The keeper is a team of its own, `memory-keeper`, started by *Tidy up* on the Memory tab** | One model call a person asks for, traced and costed like any run |
+| M39 | **It reads only *Mine*, put in its request by code** | One owner per list it tidies; shared lists wait (Q14) |
+| M40 | **Merge, retire or reword - at most five, each checked by code before it is shown** | The model judges; code decides what may be shown |
+| M41 | **Proposals live in `proposed.md`, which no agent applies** | A separate file says *not yet* more plainly than a status |
+| M42 | **Accepting changes *Mine* through 3a's path, as the person** | The history says the keeper proposed it and who accepted |
+| M43 | ***Not now* goes to `declined.md`, and is not proposed again** | As for suggestions (M35) |
+| M44 | **The page watches the keeper's state until it is done** | The framework's `agent-states`; nothing new on the server |
 
 ---
 
@@ -1044,6 +1051,132 @@ wordy.
 - **Q13** — Should an offer accepted on the page also be offered no more in the conversation?
   It is, by M36's rule: once *Mine* names the group, nothing is offered.
 
+### 10.6 Phase 3c, checked against the code (2026-11-03)
+
+The memory keeper tidies what has piled up - and, like everything in phase 3, only suggests.
+It is the one part of memory where a model *concludes* something from memory itself, so it is
+the part where "an agent may suggest, a person decides" matters most. Checked against the
+framework's `TeamService` and `POST /teams`, the planner's `client.ts` and Meetings tab, the
+specialists' handler shape, `MemoryTool`, and 3a's and 3b's write paths.
+
+**What the code offers.** The planner already starts teams itself: `POST /teams` with a
+`catalog_namespace`, then a typed message from `@Human` - that is how the form and the
+conversation begin, and the team belongs to whoever is logged in. A third namespace is a third
+kind of team, with nothing new on the server to start it. A team's agents are read back through
+`GET /teams/{id}/agent-states`, which the Meetings tab already uses for the coordinator. The
+Meetings tab lists only the form's and the conversation's namespaces, and suggestions read only
+`@Coordinator`, so a keeper run appears in neither. Every specialist already has the shape the
+keeper needs: an assignment in, `act(message, output_type)`, and code that acts on the typed
+answer.
+
+**M38 — the keeper is a team of its own, `memory-keeper`, started from the Memory tab.**
+*Tidy up* on the *Mine* list creates a team in that namespace and sends it a
+`KeepMemoryRequest` from `@Human` to `@Keeper` - one agent, one model call, owned by the person,
+in the trace and the console like any other run, with what it cost. Not on a timer: a person
+asks, and is there to read the answer (M7, the sketch in §10.4).
+
+**M39 — it reads one list: your own, *Mine*.** `@Keeper` holds a `MemoryTool` on the personal
+tree only - like the facility manager's card the other way round - so it reads `organiser.md`
+and nothing about other people or places. Its handler, in code, puts the items in the request
+with their ids, situations, words and dates; the model reads nothing else. Shared lists have
+more than one owner, and tidying them waits for rules about whose say counts (Q14).
+
+**M40 — three kinds of proposal, and code checks each one.** The model answers a
+`KeeperAdvice`: a list of proposals, at most five, each one of
+
+| Proposal | When | What it names |
+|---|---|---|
+| **merge** | two or more items say the same thing | the items, and the one item that replaces them |
+| **retire** | a later item contradicts it, or it is plainly out of date | the item, and why |
+| **reword** | the words are unclear, or say an order where a fact is meant | the item, and the new words |
+
+Each with a reason a person can check. Code then drops what does not hold: an id that is not in
+*Mine*, a merge of fewer than two items, new words that `refusal()` refuses, a proposal declined
+before (M43). The model judges; code decides what may be shown.
+
+**M41 — proposals are a file of their own, `proposed.md`, never applied.** `@Keeper` writes
+them beside `organiser.md`, in the same front-matter form, each run replacing the last run's
+proposals. `MemoryTool` reads only `organiser.md` to apply memory, so a proposal reaches no model
+until a person accepts it. The `proposed` and `retired` statuses in the item format stay unused:
+a separate file says *not yet* more plainly than a status every reader must remember to skip -
+which is what M28 left `retired` for, now settled the other way.
+
+**M42 — accepting changes *Mine* through 3a's write path, as the person.** The page shows the
+proposals above *Mine*, each with what it would change - the old items struck through, the new
+words beside them - and *Accept* or *Not now*:
+
+- **merge**: one new item, said by the person, superseding the first of the merged items; the
+  others leave the file. All of them stay in the journal.
+- **retire**: the item leaves the file, as a delete does (M25).
+- **reword**: a new version of the item, as an edit does (M24).
+
+`reason` records *accepted the memory keeper's proposal: …*, so the history says where the
+change came from; the journal names the person.
+
+**M43 — *Not now* is kept, so the keeper does not propose it again.** As for suggestions (M35):
+a digest of the proposal - its kind, its items, its words - goes to `declined.md`, and the
+keeper's handler leaves out anything declined before it writes `proposed.md`.
+
+**M44 — the page shows the run.** After *Tidy up*, the page watches `@Keeper`'s state - *done*,
+how many proposals, or why it failed - through `agent-states`, and reloads the memory when it is
+done. *Nothing to tidy* is an answer too.
+
+**What changes.**
+
+| Where | What |
+|---|---|
+| `agents/src/meeting_agents/keeper.py` (new) | `MemoryKeeper`: the handler, the checks of M40, writing `proposed.md`; `KeeperState` |
+| `agents/src/meeting_agents/messages.py`, `outputs.py` | `KeepMemoryRequest`; `KeeperAdvice` and `Proposal` |
+| `agents/src/meeting_agents/memory.py` | the `Proposal` file format, `PROPOSED_FILE`, writing it through the card |
+| `agents/catalog/memory-keeper/` (new) | the team, `@Keeper`, its prompt, its personal-only memory card |
+| `server/src/meeting_server/memory_page.py` | `proposals` on `MyMemory`; accept and decline routes, through `_rewrite` |
+| `gui/src/pages/MemoryPage.tsx`, `api/client.ts` | *Tidy up*, the run's state, the proposals with *Accept* and *Not now* |
+
+**Spike, before building.**
+
+- **S11** — a team in the third namespace, created by `POST /teams` as a logged-in person, binds
+  that person's own tree for `@Keeper` and no one else's.
+- **S12** — `@Keeper`'s state is readable through `agent-states` while it runs and when it is
+  done, and a stopped keeper team is not revived by anything the page does.
+
+**Order of work.** (1) the spike; (2) the format, the handler and its checks, with a scripted
+model - every kind of proposal, and every way one is dropped; (3) the catalog namespace and its
+card tests; (4) accept and decline on the server; (5) the page; (6) a live run on a *Mine* with
+a duplicate and a contradiction in it; (7) the docs.
+
+**3c built (2026-11-03).** As above, with two choices made while building:
+
+- `KeepMemoryRequest`, `KeeperAdvice` and the keeper's state live in `meeting_agents/keeper.py`
+  rather than in `messages.py` and `outputs.py`: the keeper team shares no message with the
+  meeting teams, and keeping them apart leaves the meeting cards' `MESSAGE_TYPES` as they were.
+- `MemoryTool` gained `shared: bool`; the keeper's card sets it false, so the shared tree is not
+  even bound (S11, held by a test that finds no `_shared` folder after a run). `parse_blocks` and
+  the card's `_read_as` read a proposal file in the same front-matter form as items.
+
+Tests: `agents/tests/test_keeper.py`, seventeen - the card, every way `checked()` drops a
+proposal, and runs of the real `@Keeper` with a scripted model (proposals written by `@Keeper`,
+*Mine* untouched, nothing to ask with an empty *Mine*, a failed call in the state) - and
+`server/tests/test_memory_proposals.py`, nine. 459 tests pass.
+
+Verified live, against a copy of the stack's memory with a contradicting stand-up item and a
+lunch item worded as an order added by hand: *Tidy up* showed *Tidying…*, then one proposal -
+*Retire* the 30-minute stand-up item, *the later item says stand-ups last 15 minutes, which
+conflicts with this item's 30-minute default*. Accepted: *Mine* lost it, and the journal read
+`out-of-band`, `@Keeper | write: proposed.md`, then the person for `organiser.md` and
+`proposed.md` (S12: the page read the keeper's state through `agent-states` until done). A
+second run answered *Nothing to tidy*. It did not propose rewording *Choose soup for every
+workshop* - a judgement it may make; the prompt names the case. Fixed on the way: the note
+beside *Tidy up* counted the run's proposals, not the ones still open.
+
+**Questions for 3c.**
+
+- **Q14** — Only *Mine*, or also the shared lists? Proposed: only *Mine* for now. A place fact
+  has many readers and one writer; whose yes would accept a proposal about it is a rule of its
+  own, and the Campus case shows a reword there would be worth having.
+- **Q15** — Five proposals at most per run? Proposed: yes - a person reads them all, or none.
+- **Q16** — Should the keeper look at `review_when`? Nothing sets it today; proposed: not until
+  something does.
+
 ---
 
 ## 11. Changelog
@@ -1126,6 +1259,13 @@ wordy.
   meetings, accepted into *Mine* or declined into `declined.md`; `@Intake` offers once after the
   request and fills a remembered meal into the lunch wish. Verified live; one prompt fix found
   there (*about "organiser"*). 433 tests pass.
+- 2026-11-03: **3c checked against the code** (§10.6, M38-M44, Q14-Q16): the memory keeper as a
+  team of its own that the Memory tab starts, reading only *Mine*, proposing merges, retirements
+  and rewordings that code checks, kept in `proposed.md` until the person accepts. M41 settles
+  M28's open end: proposals are a file, not a status. Spike items S11 and S12.
+- 2026-11-03: **3c built** (§10.6): the `memory-keeper` team, `@Keeper` reading only *Mine* and
+  proposing through code's checks, proposals accepted or declined on the Memory page. Verified
+  live. 459 tests pass. Phase 3 is done.
 
 ---
 

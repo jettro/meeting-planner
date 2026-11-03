@@ -20,6 +20,9 @@ const BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8200";
 export const TEAM_NAMESPACE = "meeting-planner";
 /** The team you talk to: @Intake in front of the same agents (design_chat.md). */
 export const CHAT_NAMESPACE = "meeting-planner-chat";
+/** The memory keeper's team: one run per *Tidy up* (design_memory.md M38). */
+export const KEEPER_NAMESPACE = "memory-keeper";
+export const KEEPER = "@Keeper";
 export const HUMAN = "@Human";
 export const COORDINATOR = "@Coordinator";
 export const INTAKE = "@Intake";
@@ -249,6 +252,29 @@ export interface Suggestion {
   wish: string;
 }
 
+/** A change the memory keeper proposes to Mine, never applied by itself (M40, M41). */
+export interface Proposal {
+  id: string;
+  kind: "merge" | "retire" | "reword";
+  items: string[];
+  situation: string;
+  text: string;
+  reason: string;
+}
+
+/** A proposal with the items of Mine it would change. */
+export interface ProposalView {
+  proposal: Proposal;
+  targets: MemoryItem[];
+}
+
+/** How a keeper run went (M44). */
+export interface KeeperState {
+  done: boolean;
+  proposed: number;
+  failure: string;
+}
+
 /** `GET /me/memory` (design_memory.md §4.8). */
 export interface MyMemory {
   email: string;
@@ -260,6 +286,8 @@ export interface MyMemory {
   places: Remembered[];
   /** Worked out from your own meetings on every read; nothing is kept until you answer (M32). */
   suggestions: Suggestion[];
+  /** What the memory keeper proposes for Mine, still to be answered (M41). */
+  proposals: ProposalView[];
   /** False when no history could be read: no git on the server, or nothing recorded yet. */
   journal: boolean;
 }
@@ -376,6 +404,38 @@ export const api = {
   /** Not now: the suggestion is not made again (M35). */
   declineSuggestion: (key: string) =>
     call<MyMemory>(`/me/memory/suggestions/${encodeURIComponent(key)}`, { method: "DELETE" }),
+
+  /**
+   * *Tidy up*: start a memory-keeper team and ask it to look at Mine (M38).
+   * The team is yours, like a meeting's; it answers through its state.
+   */
+  startKeeper: async (): Promise<string> => {
+    const { team_id } = await call<{ team_id: string }>("/teams", {
+      method: "POST",
+      body: JSON.stringify({ catalog_namespace: KEEPER_NAMESPACE }),
+    });
+    await call<null>(`/teams/${team_id}/message/from/${HUMAN}/to/${KEEPER}`, {
+      method: "POST",
+      body: JSON.stringify({ message: { __model__: "meeting_agents.keeper.KeepMemoryRequest" } }),
+    });
+    return team_id;
+  },
+
+  /** The keeper run's state, or `null` before it has one (M44). */
+  keeperState: async (teamId: string): Promise<KeeperState | null> => {
+    const body = await call<{ states: { name: string | null; state: KeeperState }[] }>(
+      `/teams/${teamId}/agent-states`,
+    );
+    return body.states.find((snapshot) => snapshot.name === KEEPER)?.state ?? null;
+  },
+
+  /** Apply one of the keeper's proposals to Mine (M42). */
+  acceptProposal: (id: string) =>
+    call<MyMemory>(`/me/memory/proposals/${encodeURIComponent(id)}`, { method: "POST" }),
+
+  /** Not now: the keeper does not propose it again (M43). */
+  declineProposal: (id: string) =>
+    call<MyMemory>(`/me/memory/proposals/${encodeURIComponent(id)}`, { method: "DELETE" }),
 
   /** Take an item out of memory; the journal keeps its history (M25). */
   deleteMemoryItem: (id: string) =>

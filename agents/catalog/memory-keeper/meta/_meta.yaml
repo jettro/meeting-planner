@@ -1,0 +1,10 @@
+id: _meta
+kind: meta
+namespace: memory-keeper
+user_id: anonymous
+model_type: akgentic.catalog.models.namespace_meta.NamespaceMeta
+description: "The memory keeper: tidies a person's own memory, and only suggests (design_memory.md §10.6)."
+payload:
+  name: memory-keeper
+  description: "Reads the person's own memory and proposes merges, retirements and rewordings; changes nothing."
+  shareable: false

@@ -1,0 +1,10 @@
+id: own_memory
+kind: tool
+namespace: memory-keeper
+user_id: anonymous
+model_type: meeting_agents.memory.MemoryTool
+description: "The person's own memory tree only, for the keeper (design_memory.md M39)."
+payload:
+  personal_workspace: memory
+  shared: false
+  max_always_items: 20

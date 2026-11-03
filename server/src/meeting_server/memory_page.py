@@ -35,6 +35,12 @@ or a lunch wish that came back for meetings with the same title. Accepting one
 writes it to *Mine* through the same path as an edit; *Not now* is kept in
 `declined.md` beside `organiser.md`, which no agent reads. Nothing about a
 suggestion is stored until the person answers it.
+
+**The memory keeper's proposals** (phase 3c, M41-M43). `@Keeper` writes them to
+`proposed.md`; this module shows each with the items it would change, and on
+*Accept* applies it to *Mine* the way an edit or a delete would - said by the
+person, the journal naming them - or on *Not now* keeps its digest in
+`declined.md`, so the keeper does not propose it again.
 """
 
 from __future__ import annotations
@@ -62,11 +68,15 @@ from akgentic.tool.workspace.models import DEFAULT_GIT_TIMEOUT_S, META_DIR_SUFFI
 from akgentic.tool.workspace.write.gate import lock_file_for
 from fastapi import APIRouter, Depends, HTTPException
 from meeting_agents.memory import (
+    DECLINED_FILE,
     ORGANISER_FILE,
     PLACES_FOLDER,
+    PROPOSED_FILE,
     MemoryItem,
     MemoryTool,
+    Proposal,
     file_lock,
+    parse_blocks,
     parse_items,
     person_file,
     refusal,
@@ -90,8 +100,6 @@ PAGE_CAPABILITY = "memory-page"
 #: Who may change any place fact (M22): the framework's admin role.
 ADMIN = "admin"
 PEOPLE_FOLDER = "people"
-#: Where a declined suggestion is kept, in the person's own tree; no agent reads it (M35).
-DECLINED_FILE = "declined.md"
 #: How often something must repeat before it is offered (M33, Q12).
 GROUP_AT = 2
 MEAL_AT = 2
@@ -139,6 +147,13 @@ class Suggestion(BaseModel):
     wish: str = ""
 
 
+class ProposalView(BaseModel):
+    """A keeper's proposal, with the items of *Mine* it would change (M42)."""
+
+    proposal: Proposal
+    targets: list[MemoryItem]
+
+
 class MyMemory(BaseModel):
     email: str
     mine: list[Remembered] = Field(default_factory=list)
@@ -147,6 +162,8 @@ class MyMemory(BaseModel):
     places: list[Remembered] = Field(default_factory=list)
     #: What the person keeps repeating, worked out from their own meetings (M32).
     suggestions: list[Suggestion] = Field(default_factory=list)
+    #: What the memory keeper proposes for *Mine*, still to be answered (M41).
+    proposals: list[ProposalView] = Field(default_factory=list)
     #: False when no history could be read for any file: no git, or no journal yet.
     journal: bool = False
 
@@ -318,7 +335,9 @@ def my_memory(root: Path, user: RequestUser, store: MeetingStore | None = None) 
             ]
         lists[name] = shown
     offered = suggestions(store, user, root) if store is not None else []
-    return MyMemory(email=_email(user), journal=journal, suggestions=offered, **lists)
+    return MyMemory(
+        email=_email(user), journal=journal, suggestions=offered, proposals=_proposals(root, user), **lists
+    )
 
 
 # -- changing (M24-M27) -----------------------------------------------------------
@@ -355,8 +374,9 @@ def _rewrite(
     root: Path,
     workspace: str,
     path: str,
-    change: Callable[[list[MemoryItem]], list[MemoryItem]],
+    change: Callable[[list[Any]], list[Any]],
     author: str,
+    model: type[BaseModel] = MemoryItem,
 ) -> None:
     """Apply one change to a memory file the way an agent's write would (M26).
 
@@ -380,7 +400,7 @@ def _rewrite(
         if journal is not None:
             journal.commit_out_of_band()
         with hold([lock_file_for(meta, path)], on_failure=_unlocked):
-            items = parse_items(file.read_text()) if file.is_file() else []
+            items = parse_blocks(file.read_text(), model) if file.is_file() else []
             atomic_write(file, render_items(change(items)))
         if journal is not None:
             journal.commit_paths([path], Identity(author, author.split("@")[0]), PAGE_CAPABILITY)
@@ -615,6 +635,114 @@ def decline_suggestion(root: Path, user: RequestUser, key: str, store: MeetingSt
     return my_memory(root, user, store)
 
 
+# -- the memory keeper's proposals (M41-M43) ---------------------------------------
+
+
+def _proposals(root: Path, user: RequestUser) -> list[ProposalView]:
+    """The proposals still open, each with the items it names - those still in *Mine*."""
+    tree = _tree(root, user.user_id, shared=False)
+    file = tree / PROPOSED_FILE
+    if not file.is_file():
+        return []
+    try:
+        proposals = parse_blocks(file.read_text(), Proposal)
+    except Exception:  # a broken file shows nothing to answer
+        logger.exception("proposals in %s could not be read", file)
+        return []
+    mine = {item.id: item for item in _items(tree, ORGANISER_FILE)}
+    return [
+        ProposalView(proposal=proposal, targets=[mine[item_id] for item_id in proposal.items])
+        for proposal in proposals
+        if proposal.items and all(item_id in mine for item_id in proposal.items)
+    ]
+
+
+def _open_proposal(root: Path, user: RequestUser, proposal_id: str) -> ProposalView:
+    view = next((view for view in _proposals(root, user) if view.proposal.id == proposal_id), None)
+    if view is None:
+        raise NotYours(proposal_id)
+    return view
+
+
+def _without_proposal(root: Path, user: RequestUser, proposal_id: str) -> None:
+    _rewrite(
+        root,
+        _workspace_path(user.user_id, shared=False),
+        PROPOSED_FILE,
+        lambda proposals: [proposal for proposal in proposals if proposal.id != proposal_id],
+        _email(user),
+        Proposal,
+    )
+
+
+def accept_proposal(
+    root: Path, user: RequestUser, proposal_id: str, store: MeetingStore | None = None
+) -> MyMemory:
+    """Apply a keeper's proposal to *Mine*, as the person who accepted it (M42)."""
+    proposal = _open_proposal(root, user, proposal_id).proposal
+    email = _email(user)
+    reason = f"accepted the memory keeper's proposal: {proposal.reason}"
+
+    def apply(items: list[MemoryItem]) -> list[MemoryItem]:
+        by_id = {item.id: item for item in items}
+        if not all(item_id in by_id for item_id in proposal.items):
+            raise NotYours(proposal_id)  # changed since it was proposed
+        if proposal.kind == "retire":
+            return [item for item in items if item.id not in proposal.items]
+        first = by_id[proposal.items[0]]
+        key = (first.kind, proposal.situation.strip().lower())
+        if any(
+            item.id not in proposal.items and (item.kind, item.situation.strip().lower()) == key
+            for item in items
+        ):
+            raise Refused(f"another {first.kind} in Mine is already about {proposal.situation!r}")
+        new = first.model_copy(
+            update={
+                "id": uuid.uuid4().hex[:12],
+                "status": "confirmed",
+                "situation": proposal.situation,
+                "text": proposal.text,
+                "said_by": email,
+                "reason": reason,
+                "evidence": ON_THE_PAGE,
+                "supersedes": first.id,
+                "written": date.today(),
+            }
+        )
+        return [
+            new if item.id == first.id else item
+            for item in items
+            if item.id == first.id or item.id not in proposal.items
+        ]
+
+    _rewrite(root, _workspace_path(user.user_id, shared=False), ORGANISER_FILE, apply, email)
+    _without_proposal(root, user, proposal_id)
+    return my_memory(root, user, store)
+
+
+def decline_proposal(
+    root: Path, user: RequestUser, proposal_id: str, store: MeetingStore | None = None
+) -> MyMemory:
+    """*Not now*: keep its digest, so the keeper does not propose it again (M43)."""
+    proposal = _open_proposal(root, user, proposal_id).proposal
+    email = _email(user)
+    item = MemoryItem(
+        kind="fact",
+        status="retired",
+        scope=f"organiser:{email}",
+        situation=proposal.key,
+        text=f"declined: {proposal.kind} of {', '.join(proposal.items)} - {proposal.reason}",
+        said_by=email,
+        reason="not now, on the Memory page",
+        evidence=ON_THE_PAGE,
+    )
+    _rewrite(
+        root, _workspace_path(user.user_id, shared=False), DECLINED_FILE, lambda items: [*items, item], email
+    )
+    _without_proposal(root, user, proposal_id)
+    return my_memory(root, user, store)
+
+
 # -- the route ------------------------------------------------------------------
 
 
@@ -676,6 +804,24 @@ def build_router(workspaces_root: Path, store: MeetingStore | None = None) -> AP
             return decline_suggestion(root, user, key, store)
         except NotYours:
             raise HTTPException(status_code=404, detail="no such suggestion") from None
+
+    @router.post("/me/memory/proposals/{proposal_id}", response_model=MyMemory)
+    def accept_keepers(proposal_id: str, user: RequestUser = Depends(get_request_user)) -> MyMemory:  # noqa: B008
+        """Apply one of the memory keeper's proposals to *Mine* (M42)."""
+        try:
+            return accept_proposal(root, user, proposal_id, store)
+        except NotYours:
+            raise HTTPException(status_code=404, detail="no such proposal") from None
+        except Refused as why:
+            raise HTTPException(status_code=422, detail=f"Not changed: {why}.") from None
+
+    @router.delete("/me/memory/proposals/{proposal_id}", response_model=MyMemory)
+    def decline_keepers(proposal_id: str, user: RequestUser = Depends(get_request_user)) -> MyMemory:  # noqa: B008
+        """*Not now*: the keeper does not propose it again (M43)."""
+        try:
+            return decline_proposal(root, user, proposal_id, store)
+        except NotYours:
+            raise HTTPException(status_code=404, detail="no such proposal") from None
 
     return router
 

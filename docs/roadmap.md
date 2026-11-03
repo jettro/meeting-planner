@@ -17,15 +17,13 @@ says what is done, what is next, and what is not planned.
 | Memory, phases 1 and 2 | yours, about people, about places; the Memory tab with history | [memory](memory.md) |
 | Memory, phase 3a | edit and delete on the Memory tab, and what you said about others | [memory](memory.md) |
 | Memory, phase 3b | suggestions: a team for a group, a meal for a kind of meeting, kept only on your yes | [memory](memory.md) |
+| Memory, phase 3c | the memory keeper: proposes merges, retirements and rewordings of Mine; you accept or refuse | [memory](memory.md) |
 | The documentation | these pages | [`design_docs.md`](design/design_docs.md) |
 
 ## Next
 
 Each with a design first.
 
-- **Memory, phase 3c** (`design_memory.md` §10.4). Editing (3a) and suggestions (3b) are done.
-  Last, a *memory keeper* that suggests tidying what has piled up - two items that say the same,
-  one a later one contradicts - each a suggestion you accept or refuse.
 - **Guardrails.** A check before an agent books or orders - *may this lunch for twenty be ordered
   on Sanne's behalf?* The hook is known: a capability on the agent, like `TalkOnlyToHuman`, can
   look at a tool call before it runs and refuse it. Possibly with a decision model for the rules.
@@ -42,6 +40,8 @@ Each with a design first.
   (`design_chat.md` §11, Q2-Q4)
 - Where should lunch preferences apply, when is search worth it, and how long is a memory kept?
   (`design_memory.md` §9, Q2, Q3, Q5)
+- Should the memory keeper tidy the shared lists too - what is said about people and places - and
+  whose yes would accept a change there? (`design_memory.md` §10.6, Q14)
 - Participants opening the team behind a meeting someone else arranged
   (`design_auth.md` A13).
 

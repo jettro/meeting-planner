@@ -13,7 +13,7 @@ Times are rough: the whole script is about 40 minutes, act 5 alone about 15.
 | [2](#2-who-is-asking) | the login: your meetings are yours | 4 |
 | [3](#3-the-framework-underneath) | the akgentic console: the team, not the meeting | 4 |
 | [4](#4-the-team-you-talk-to) | a meeting from a conversation | 5 |
-| [5](#5-it-remembers) | memory: yours, about a person, about a place, suggestions, and its limits | 15 |
+| [5](#5-it-remembers) | memory: yours, about a person, about a place, suggestions, the keeper, and its limits | 15 |
 | [6](#6-cancelling) | cancelling releases everything | 2 |
 
 ---
@@ -225,7 +225,19 @@ There are four kinds, each in its own place:
 4. **Say:** a suggestion is a question, never a conclusion. Code works out what repeats; nothing
    is used until a person said yes; *Not now* is kept so it is not asked again.
 
-### 5.7 What it will not do
+### 5.7 The memory keeper - tidying, only suggested
+
+1. Make *Mine* a little untidy first: say *my stand-ups last 15 minutes* in a conversation, after
+   the 30 minutes from 5.1 - or edit one item so two say the same.
+2. **Memory tab → Mine → Tidy up.** One agent, `@Keeper`, reads only your own list - the console
+   shows the run and what it cost. A moment later: *Proposed by the memory keeper* - for example,
+   *Retire* the 30 minutes, because the later 15 minutes contradicts it.
+3. **Accept** it. *Mine* changes, as you; the journal shows `@Keeper` writing the proposal and
+   you applying it. **Not now** on another keeps it from being proposed again.
+4. **Say:** the one agent that concludes something from memory is the one that may only suggest.
+   Code checks every proposal before you see it, and nothing changes without your yes.
+
+### 5.8 What it will not do
 
 Each takes under a minute; pick one or two.
 
@@ -242,7 +254,7 @@ Each takes under a minute; pick one or two.
   a room or passes a gate. The facility manager - the agent that can book - is given only facts
   about places, never what you said about yourself.
 
-### 5.8 Where it lives
+### 5.9 Where it lives
 
 - **On disk**, in the server's `/data/workspaces` volume - your tree under your email, the shared
   one under `_shared`:

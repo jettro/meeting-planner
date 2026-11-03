@@ -1,0 +1,28 @@
+id: keeper
+kind: agent
+namespace: memory-keeper
+user_id: anonymous
+model_type: akgentic.core.AgentCard
+description: "Reads the person's own memory and proposes what to merge, retire or reword."
+payload:
+  description: "Tidies a person's own memory. No MCP, no tools for the model: code reads and writes."
+  agent_class: meeting_agents.keeper.MemoryKeeper
+  can_be_hired: false
+  skills:
+    - memory
+  config:
+    name: "@Keeper"
+    role: Keeper
+    human_name: "@Human"
+    prompt:
+      template:
+        __ref__: keeper_prompt
+      params: {}
+    runtime_cfg:
+      http_client_config:
+        timeout: 240.0
+    model_cfg:
+      __ref__: meeting-planner.default_model
+    tools:
+      # The person's own tree only (M39): nothing about other people or places.
+      - __ref__: own_memory

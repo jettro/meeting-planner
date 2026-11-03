@@ -140,6 +140,26 @@ Femke, Lotte and Thijs as a team? What should I call it?"* - and remembers only 
 A suggestion is a question, never a conclusion: nothing an agent noticed is used until you said
 yes to it.
 
+### The memory keeper: tidying what piled up
+
+Over time *Mine* fills up: the same thing said twice, an old item a newer one contradicts, words
+that read as an order. **Tidy up**, beside *Mine*, starts the memory keeper - one agent, `@Keeper`,
+in a team of its own, owned by you. Code puts your items in front of it; it may propose at most
+five changes, each with a reason you can check:
+
+| Proposal | When |
+|---|---|
+| **merge** | two or more items say the same thing - one item replaces them |
+| **retire** | a later item contradicts it, or it is plainly out of date |
+| **reword** | it is unclear, or says an order where a fact is meant |
+
+Code drops any proposal that does not hold - an item that is not yours, a merge of one item,
+words memory would refuse, something you declined before. What is left is written to a file
+of its own, beside yours, that nothing applies. The page shows each one with the items it would
+change struck through; **Accept** changes *Mine* the way an edit or a delete would, as you, and
+**Not now** keeps it from being proposed again. The keeper reads only *Mine* - never what anyone
+said about other people or places.
+
 ### Seeing it, and changing it
 
 The planner's **Memory** tab shows four lists: *Mine*, *About me* - what anyone said about you -
@@ -218,9 +238,10 @@ sport facilities*), because the prompt tells the model not to take orders from m
 
 - **Erase.** Deleting takes an item out of memory, not out of the journal's history (M25 - the
   first thing to add before real names go in).
-- **Learn on its own.** Nothing is remembered that nobody said yes to. A *memory keeper* that
-  suggests tidying - two items that say the same, one a later one contradicts - is the last part
-  of phase 3 (M7).
+- **Learn on its own.** Nothing is remembered that nobody said yes to - not a suggestion, not
+  the memory keeper's proposals.
+- **Tidy the shared lists.** The keeper looks only at *Mine*; what is said about people and places
+  has more than one reader, and whose yes would count is a rule still to make (Q14).
 - **Remember meetings.** What happened in earlier meetings - *last time the Library was full* - is
   in their records, not in memory. Using it is a later step (M5).
 - **Forget by itself.** An item stays until it is replaced. There is no expiry yet (Q5 in the
@@ -236,6 +257,7 @@ sport facilities*), because the prompt tells the model not to take orders from m
 | `agents/src/meeting_agents/specialists.py` | `FacilityManager._place_facts`: the facility manager's selection |
 | `agents/src/meeting_agents/messages.py` | `remembered_block`: how place facts are worded for the model |
 | `server/src/meeting_server/memory_page.py` | `/me/memory`: the four lists and their history; who may change what; edit and delete, written as an agent writes; suggestions from your own meetings |
+| `agents/src/meeting_agents/keeper.py`, `agents/catalog/memory-keeper/` | the memory keeper: its team, its checks, its prompt |
 | `gui/src/pages/MemoryPage.tsx` | the Memory tab |
 
 The design, with every decision and what was turned down: [`design_memory.md`](design/design_memory.md).
@@ -243,4 +265,4 @@ To show it: act 5 of the [demo script](demo.md).
 
 ---
 
-*Last checked against the code: 2026-11-03, phase 3b.*
+*Last checked against the code: 2026-11-03, phase 3c.*

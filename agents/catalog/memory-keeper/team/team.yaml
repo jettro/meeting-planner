@@ -1,0 +1,31 @@
+id: team
+kind: team
+namespace: memory-keeper
+user_id: anonymous
+model_type: akgentic.team.TeamCard
+description: "One run of the memory keeper, started by Tidy up on the Memory tab."
+payload:
+  name: memory-keeper
+  description: >-
+    Tidies the person's own memory: reads Mine, proposes what to merge, retire
+    or reword, and writes the proposals where nothing applies them. The person
+    accepts or refuses each one on the Memory tab (design_memory.md M38-M44).
+  welcome_message: "Tidying your memory."
+
+  # The human proxy is the entry point, as in the meeting teams, so the page
+  # sends the request the way it sends every other: from @Human.
+  entry_point:
+    card:
+      __ref__: meeting-planner.human
+    headcount: 1
+    members:
+      - card:
+          __ref__: keeper
+        headcount: 1
+        members: []
+  members: []
+
+  message_types:
+    - __type__: meeting_agents.keeper.KeepMemoryRequest
+
+  agent_profiles: []

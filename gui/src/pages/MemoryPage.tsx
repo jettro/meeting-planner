@@ -18,7 +18,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   api,
@@ -26,7 +26,9 @@ import {
   conversationOf,
   ON_THE_PAGE,
   type MemoryVersion,
+  type MemoryItem,
   type MyMemory,
+  type ProposalView,
   type Remembered,
   type Suggestion,
 } from "../api/client";
@@ -43,6 +45,21 @@ import {
  */
 export default function MemoryPage() {
   const memory = useQuery({ queryKey: ["my-memory"], queryFn: api.myMemory });
+  const queryClient = useQueryClient();
+  // The keeper run being watched, if any: its state is polled until it is done (M44).
+  const [keeperTeam, setKeeperTeam] = useState<string | null>(null);
+  const tidy = useMutation({ mutationFn: api.startKeeper, onSuccess: setKeeperTeam });
+  const keeper = useQuery({
+    queryKey: ["keeper", keeperTeam],
+    queryFn: () => api.keeperState(keeperTeam as string),
+    enabled: keeperTeam !== null,
+    refetchInterval: (query) => (query.state.data?.done ? false : 1500),
+  });
+  const keeperDone = keeper.data?.done ?? false;
+  useEffect(() => {
+    if (keeperDone) void queryClient.invalidateQueries({ queryKey: ["my-memory"] });
+  }, [keeperDone, queryClient]);
+  const tidying = tidy.isPending || (keeperTeam !== null && !keeperDone);
   // Names for the emails in `said_by`; an unknown email is shown as it is.
   const people = useQuery({ queryKey: ["people"], queryFn: auth.people, retry: false });
   const name = (email: string) => people.data?.find((person) => person.email === email)?.name ?? email;
@@ -91,12 +108,60 @@ export default function MemoryPage() {
               </Stack>
             </Box>
           )}
+          {memory.data.proposals.length > 0 && (
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Proposed by the memory keeper
+              </Typography>
+              <Typography color="text.secondary" sx={{ mb: 2 }}>
+                Ways to tidy what is in Mine. Nothing changes until you accept it.
+              </Typography>
+              <Stack spacing={2}>
+                {memory.data.proposals.map((view) => (
+                  <ProposalCard key={view.proposal.id} view={view} />
+                ))}
+              </Stack>
+            </Box>
+          )}
           <Section
             title="Mine"
             empty="Nothing yet. Tell the planner who your team is, or how long your stand-ups last."
             items={memory.data.mine}
             me={memory.data.email}
             name={name}
+            action={
+              memory.data.mine.length > 0 && (
+                <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                  {keeper.data?.done && !keeper.data.failure && (
+                    <Typography variant="body2" color="text.secondary">
+                      {/* What is still open, not what the run found: answered ones are gone. */}
+                      {keeper.data.proposed === 0
+                        ? "Nothing to tidy."
+                        : memory.data.proposals.length > 0
+                          ? `${memory.data.proposals.length} proposal${memory.data.proposals.length === 1 ? "" : "s"} above.`
+                          : "All answered."}
+                    </Typography>
+                  )}
+                  {keeper.data?.failure && (
+                    <Typography variant="body2" color="error">
+                      The keeper could not finish: {keeper.data.failure}
+                    </Typography>
+                  )}
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    disabled={tidying}
+                    startIcon={tidying ? <CircularProgress size={14} /> : undefined}
+                    onClick={() => {
+                      setKeeperTeam(null);
+                      tidy.mutate();
+                    }}
+                  >
+                    {tidying ? "Tidying…" : "Tidy up"}
+                  </Button>
+                </Stack>
+              )
+            }
           />
           <Section
             title="About me"
@@ -134,14 +199,19 @@ interface SectionProps {
   name: (email: string) => string;
   /** Name the person each item is about - for what you said about others. */
   showWho?: boolean;
+  /** Something to do with the whole list, beside its title. */
+  action?: React.ReactNode;
 }
 
-function Section({ title, empty, items, me, name, showWho = false }: SectionProps) {
+function Section({ title, empty, items, me, name, showWho = false, action }: SectionProps) {
   return (
     <Box>
-      <Typography variant="h6" gutterBottom>
-        {title}
-      </Typography>
+      <Stack direction="row" spacing={2} sx={{ alignItems: "center", mb: 1 }}>
+        <Typography variant="h6" sx={{ flexGrow: 1 }}>
+          {title}
+        </Typography>
+        {action}
+      </Stack>
       {items.length === 0 ? (
         <Typography color="text.secondary">{empty}</Typography>
       ) : (
@@ -152,6 +222,61 @@ function Section({ title, empty, items, me, name, showWho = false }: SectionProp
         </Stack>
       )}
     </Box>
+  );
+}
+
+/** What a proposal would change, in words (design_memory.md M40). */
+const PROPOSAL_TITLE = { merge: "Merge", retire: "Retire", reword: "Reword" } as const;
+
+/**
+ * One of the keeper's proposals: the items it would change struck through, the
+ * new words beside them, its reason, and the answer (M42, M43).
+ */
+function ProposalCard({ view }: { view: ProposalView }) {
+  const queryClient = useQueryClient();
+  const redraw = (memory: MyMemory) => queryClient.setQueryData(["my-memory"], memory);
+  const accept = useMutation({ mutationFn: () => api.acceptProposal(view.proposal.id), onSuccess: redraw });
+  const decline = useMutation({ mutationFn: () => api.declineProposal(view.proposal.id), onSuccess: redraw });
+  const { proposal, targets } = view;
+  const struck = (item: MemoryItem) => (
+    <Typography key={item.id} variant="body2" sx={{ textDecoration: "line-through" }}>
+      <strong>{item.situation}</strong>: {item.text}
+    </Typography>
+  );
+
+  return (
+    <Card variant="outlined" sx={{ borderColor: "primary.main" }}>
+      <CardContent>
+        <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1 }}>
+          <Typography sx={{ fontWeight: 600, flexGrow: 1 }}>{PROPOSAL_TITLE[proposal.kind]}</Typography>
+          <Chip label="memory keeper" size="small" variant="outlined" />
+        </Stack>
+        <Typography color="text.secondary" sx={{ mb: 1 }}>
+          {proposal.reason}
+        </Typography>
+        <Stack spacing={0.5} sx={{ pl: 2, borderLeft: 2, borderColor: "divider", mb: 1 }}>
+          {targets.map(struck)}
+          {proposal.kind !== "retire" && (
+            <Typography variant="body2">
+              <strong>{proposal.situation}</strong>: {proposal.text}
+            </Typography>
+          )}
+        </Stack>
+        <Stack direction="row" spacing={1}>
+          <Button variant="contained" size="small" disabled={accept.isPending} onClick={() => accept.mutate()}>
+            Accept
+          </Button>
+          <Button size="small" disabled={decline.isPending} onClick={() => decline.mutate()}>
+            Not now
+          </Button>
+        </Stack>
+        {(accept.error || decline.error) && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {reasonOf(accept.error ?? decline.error)}
+          </Alert>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
