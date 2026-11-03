@@ -19,7 +19,7 @@ do, and where to find it in the code. They describe what is there now.
 
 | Topic | What it covers | |
 |---|---|---|
-| Memory | four kinds of memory, chosen by code, the journal, the Memory page, the limits | to come |
+| [Memory](memory.md) | four kinds of memory, chosen by code, the journal, the Memory page, the limits | |
 | The services | three services, their MCP servers, one service per agent | to come |
 | The team | the agents, the plain-code coordinator, the booking saga, the two questions | to come |
 | The server | the team as a service, the planner, the console, the trace | to come |

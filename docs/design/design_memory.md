@@ -9,6 +9,8 @@
 >
 > **Lessons:** §10.2, and §10.3 for phase 2.
 >
+> **Now:** [`docs/memory.md`](../memory.md) describes memory as it is.
+>
 > *A design records what was decided and why, at the time; it is not kept current.*
 
 Companion to `design_durability.md` and `design_chat.md`. Those documents gave every meeting a

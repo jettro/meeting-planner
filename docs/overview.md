@@ -123,7 +123,7 @@ only tells it who is asking. Your meetings and your memory are yours.
 
 **Memory is evidence, chosen by code.** What a team remembers is shown to a model as *what someone
 said before*, never as an order, and code decides which items an agent sees and when - not the
-model. Every time memory is used, the trace says so. ([`design_memory.md`](design/design_memory.md).)
+model. Every time memory is used, the trace says so. ([Memory](memory.md).)
 
 ## What it does not do
 
