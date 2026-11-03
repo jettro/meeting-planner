@@ -102,7 +102,8 @@ def create_meeting_app(settings: ServerSettings | None = None, *, people: People
     modules = [
         *server_modules(services, infra_settings),
         PlatformModule(settings),
-        MemoryPageModule(settings.workspaces_root),
+        # Suggestions read the person's own meetings from the event store (design_memory.md M32).
+        MemoryPageModule(settings.workspaces_root, services.event_store),
     ]
     if settings.auth.mode == "demo":
         strategy = DemoLogin(

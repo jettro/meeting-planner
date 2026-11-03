@@ -182,7 +182,7 @@ Each step is one commit, and you review each page before the next.
   its *Now* line.
 - 2026-11-03: **Step 4 done.** `who-is-asking.md`, the last topic page; the services and server
   pages link to it instead of the README; `design_auth.md`'s header has its *Now* line.
-- 2026-11-03: **Step 5 done.** `lessons.md`: twenty-five lessons from six designs and the live runs,
+- 2026-11-03: **Step 5 done.** `lessons.md`: twenty-five lessons (twenty-six since 3b) from six designs and the live runs,
   grouped as models and prompts, where code ends, the framework, memory, and testing.
 - 2026-11-03: **Step 6 done.** The README keeps what it is, what runs, the quick start, the
   layout, the tasks and the development notes, and points to `docs/`; its explanations live in

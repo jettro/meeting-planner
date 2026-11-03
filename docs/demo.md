@@ -13,7 +13,7 @@ Times are rough: the whole script is about 40 minutes, act 5 alone about 15.
 | [2](#2-who-is-asking) | the login: your meetings are yours | 4 |
 | [3](#3-the-framework-underneath) | the akgentic console: the team, not the meeting | 4 |
 | [4](#4-the-team-you-talk-to) | a meeting from a conversation | 5 |
-| [5](#5-it-remembers) | memory: yours, about a person, about a place, and its limits | 15 |
+| [5](#5-it-remembers) | memory: yours, about a person, about a place, suggestions, and its limits | 15 |
 | [6](#6-cancelling) | cancelling releases everything | 2 |
 
 ---
@@ -210,7 +210,22 @@ There are four kinds, each in its own place:
 3. `@Intake` says it will be *at the Library, as remembered for focus sessions*, and the time
    card names the Library.
 
-### 5.6 What it will not do
+### 5.6 Suggestions - less to say next time
+
+1. **Memory tab → Suggestions.** If you planned two meetings with the same people, it offers
+   them as a team: give a name - *the review crew* - and **Remember this**. It moves to *Mine*,
+   said by you. (Nothing to offer yet? Plan two meetings with Sanne and Daan first.)
+2. **New conversation:** *A workshop with the review crew on Thursday 26 November, two hours.*
+   The name is enough. If a lunch was remembered for workshops - accept one the same way, after
+   two workshops with a lunch wish - `@Intake` says *"with soup, as remembered for Workshop"* and
+   the lunch question is not asked.
+3. **New conversation** with three people nobody named as a group, and a lunch: *A retro with
+   Femke, Lotte and Thijs on Monday 30 November, at yuma, with pizza.* After the request it
+   offers once - a team, or the meal. Say *yes, call them the retro group*.
+4. **Say:** a suggestion is a question, never a conclusion. Code works out what repeats; nothing
+   is used until a person said yes; *Not now* is kept so it is not asked again.
+
+### 5.7 What it will not do
 
 Each takes under a minute; pick one or two.
 
@@ -227,7 +242,7 @@ Each takes under a minute; pick one or two.
   a room or passes a gate. The facility manager - the agent that can book - is given only facts
   about places, never what you said about yourself.
 
-### 5.7 Where it lives
+### 5.8 Where it lives
 
 - **On disk**, in the server's `/data/workspaces` volume - your tree under your email, the shared
   one under `_shared`:

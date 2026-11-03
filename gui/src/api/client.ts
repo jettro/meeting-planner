@@ -236,6 +236,19 @@ export interface Remembered {
   can_change: boolean;
 }
 
+/** Something you keep repeating, offered to be remembered (design_memory.md M33). */
+export interface Suggestion {
+  key: string;
+  kind: "team" | "meal";
+  /** How many of your meetings it was seen in. */
+  meetings: number;
+  /** For a team: everyone besides you, as emails. */
+  people: string[];
+  /** For a meal: the meetings' title and the most recent lunch wish. */
+  title: string;
+  wish: string;
+}
+
 /** `GET /me/memory` (design_memory.md §4.8). */
 export interface MyMemory {
   email: string;
@@ -245,6 +258,8 @@ export interface MyMemory {
   said_by_me: Remembered[];
   /** What anyone said about a place - everybody's to read. */
   places: Remembered[];
+  /** Worked out from your own meetings on every read; nothing is kept until you answer (M32). */
+  suggestions: Suggestion[];
   /** False when no history could be read: no git on the server, or nothing recorded yet. */
   journal: boolean;
 }
@@ -350,6 +365,17 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(change),
     }),
+
+  /** Remember a suggestion in Mine: a team with the name you give, or a meal as you want it (M34). */
+  acceptSuggestion: (key: string, answer: { name?: string; text?: string }) =>
+    call<MyMemory>(`/me/memory/suggestions/${encodeURIComponent(key)}`, {
+      method: "POST",
+      body: JSON.stringify(answer),
+    }),
+
+  /** Not now: the suggestion is not made again (M35). */
+  declineSuggestion: (key: string) =>
+    call<MyMemory>(`/me/memory/suggestions/${encodeURIComponent(key)}`, { method: "DELETE" }),
 
   /** Take an item out of memory; the journal keeps its history (M25). */
   deleteMemoryItem: (id: string) =>

@@ -5,7 +5,8 @@
 > facility manager before it chooses. Phase 3 is designed in §10.4 (M21-M31,
 > Q6-Q11). 3a - editing and deleting on the Memory page, and *Said by me* - is built
 > (2026-11-03) and verified live; 3b, suggestions - a team for a group, a meal for a kind of
-> meeting - is in outline; the memory keeper is sketched.
+> meeting - is built (2026-11-03, §10.5, M32-M37) and verified live; the memory keeper is
+> sketched.
 >
 > **Where to look:** §4.2 says where memory is stored; §9 lists the questions still open.
 >
@@ -489,6 +490,12 @@ first cases of the evals the README roadmap lists.
 | M29 | **A suggestion is a question; an accepted one is stored as said, confirmed** | Keeps "a person decides" without a *proposed* status |
 | M30 | **Offer in the conversation, and on the Memory page from the person's own earlier meetings, read by code** | What is new, and what has piled up; nothing stored until yes |
 | M31 | **A remembered meal for a kind of meeting settles the lunch wish, and `@Intake` says so** | Like M20 for places; today's words win |
+| M32 | **Suggestions are computed on each page read from the person's own meetings, in process** | S10: the owner filter is the framework's; nothing copied |
+| M33 | **Repeating: the same people in 2+ meetings, the same title with a lunch wish 2+ times** | Plain and checkable; two so a demo can show it |
+| M34 | **Accepting writes to *Mine* through 3a's path, a team with the name the person gives** | Said by the person; the journal names them |
+| M35 | ***Not now* goes to `declined.md` in the person's own tree, which no agent reads** | Q11: an offer refused is not made again |
+| M36 | **`@Intake` offers once, after the request, by its prompt** | An offer is a question; the page catches what it misses |
+| M37 | **A remembered meal fills the lunch wish, said in `@Intake`'s one sentence** | M31 made concrete, like M20 |
 
 ---
 
@@ -919,6 +926,124 @@ Jettro said about him, and the Campus fact - not his - offered neither.
 - **Q9** — May anyone change a place fact, or only whoever said it and an admin? Proposed: only
   those two; anyone else tells the planner, which adds a version of their own.
 
+### 10.5 Phase 3b, checked against the code (2026-11-03)
+
+3b makes the planner offer what a person keeps repeating, and keeps it only on their yes
+(M29-M31). Checked against `meeting_server/memory_page.py` and `app.py` as 3a left them, the
+framework's `TeamService` and event store, `@Intake`'s prompt and tools, and - for S10 - a copy of
+the running stack's event store.
+
+**S10 — passed.** The server can read a person's own meetings in its own process:
+`services.event_store.list_teams(user_id=<email>, status=None, metadata=None)` answers the teams
+that person owns - the same owner filter the framework applies to `GET /teams` - and
+`load_agent_states(team_id)` gives each team's snapshots, among them `@Coordinator`'s, whose
+`plan` holds the title, the participants and the lunch wish. Against the stack's copy it found
+nine of Jettro's teams, form and chat alike, and in two of them the same four people: Daan, Femke,
+Lotte and Bram. Older plans have no `organiser` (it came with step 5), so *the person themselves*
+is recognised by email, not by that field.
+
+**M32 — the Memory page computes suggestions from the person's own meetings, in process.** The
+module is handed the framework's `services` (it already exists in `create_meeting_app`) and reads
+only `list_teams(user_id=<the session's>)`: nobody's meetings but your own, as on the Meetings
+tab. Nothing is copied or stored; every `GET /me/memory` works them out again, and adds a fifth
+list, `suggestions`.
+
+**M33 — what counts as repeating, in code, with two constants.**
+
+| Suggestion | Repeats when | Not offered when |
+|---|---|---|
+| **a team** | the same people besides you - two or more - are in at least `GROUP_AT = 2` of your meetings | an item in *Mine* already names all of them, by name or email |
+| **a meal** | meetings with the same title, ignoring case, had a lunch wish at least `MEAL_AT = 2` times | an item in *Mine* is already about lunch for that title |
+
+Two, not three, so that a demo can show it after two meetings; the constants say where to change
+it. The meal offered is the most recent wish for that title. A *kind of meeting* is its title
+(Q10): plain and checkable, and *Design review* twice is the case worth catching - a word match
+inside titles is left until a live run shows it is needed.
+
+**M34 — accepting writes to *Mine*, through 3a's write path.** `POST
+/me/memory/suggestions/{key}` with what the person settled:
+
+- **a team** needs a name, which only the person can give - *the design team*. It becomes a fact,
+  situation *who "the design team" is*, text the people's names and emails;
+- **a meal** is a preference, situation *lunch for "Design review"*, text the wish - which the
+  person may change before accepting.
+
+Both are written with `said_by` the person, `reason: accepted a suggestion from N earlier
+meetings`, `evidence: memory page`, through `_rewrite` - so the journal names the person, and
+the item replaces any earlier one about the same situation, as `remember` would.
+
+**M35 — *Not now* is remembered, in the person's own tree, where no agent reads it** (Q11).
+`DELETE /me/memory/suggestions/{key}` adds one line to `declined.md` beside `organiser.md`: the
+offer's key and what it was. `MemoryTool` reads only `organiser.md`, so a declined offer never
+reaches a model. The key is a digest of what was offered - the set of emails, or the title and
+the wish - so a *different* meal for the same title is a new offer.
+
+**M36 — in the conversation, `@Intake` offers once, after the request, by its prompt.** Two
+rules join the memory paragraph:
+
+- when three or more people were looked up and nothing remembered names them as a group: *"Shall
+  I remember Sanne, Daan and Femke as a team? What should I call it?"*;
+- when the person gave a lunch wish and nothing is remembered about lunch for this kind of
+  meeting: *"Shall I remember 'soup' for workshops?"*
+
+At most one offer per conversation, never before the request, and only `remember` on a clear
+yes. This is the model's judgement, not code's, and that is acceptable here: an offer is a
+question, and nothing is applied until the person answers it. The page catches what the
+conversation missed.
+
+**M37 — a remembered meal reaches the lunch wish by `@Intake`'s prompt** (M31 made concrete). A
+third rule beside the location one: if a lunch is remembered for this kind of meeting and the
+person said nothing about lunch, put it in the lunch wish and say so - *"with soup, as
+remembered for workshops"*. The coordinator then does not ask about lunch; the person's own words
+today always win.
+
+**What changes.**
+
+| Where | What |
+|---|---|
+| `server/src/meeting_server/memory_page.py` | `suggestions(...)` from the event store; `Suggestion` on `MyMemory`; accept and decline routes; `declined.md` |
+| `server/src/meeting_server/app.py` | `MemoryPageModule(settings.workspaces_root, services)` |
+| `agents/catalog/meeting-planner-chat/prompt/intake_prompt.yaml` | the two offers (M36) and the meal rule (M37) |
+| `gui/src/pages/MemoryPage.tsx` | a **Suggestions** list at the top: *Remember this* - with a name field for a team and an editable wish for a meal - and *Not now* |
+| tests | suggestions from scripted plans in a real event store; accept writes as the person; decline is remembered and never applied; the prompt renders with the new rules |
+
+**Order of work.** (1) suggestions in code and their tests; (2) accept and decline, and
+`declined.md`; (3) the page; (4) the prompt rules, with a scripted-model test that the rules are
+in the prompt; (5) a live run - two meetings with the same people, then the page; two meetings
+titled alike with soup, then a third conversation with no word about lunch; (6) `docs/memory.md`,
+the demo's act 5, the roadmap.
+
+**3b built (2026-11-03).** As above: `suggestions`, `accept_suggestion` and `decline_suggestion`
+in `memory_page.py`, the module handed `services.event_store` in `app.py`, the **Suggestions**
+list on the page, and the three prompt rules. Tests: `server/tests/test_memory_suggestions.py`,
+twelve, with a stand-in for the two store reads S10 checked against the real one; and a prompt
+test in `test_chat_team_card.py`.
+
+Verified live, against a copy of the stack's meetings and memory:
+
+- the page offered *Daan and Sanne* - both design reviews - and **not** Daan, Femke, Lotte and
+  Bram, whom *who my team is* already names; accepted as *the review crew*;
+- two *Workshop* requests with soup, and the page offered *lunch for "Workshop"*; accepted;
+- a new conversation, *a workshop with the review crew, … no word about lunch*: `@Intake` answered
+  *"with you, Daan Jansen and Sanne de Vries, somewhere quiet, with soup as remembered for
+  Workshop"* (M37);
+- three people and a lunch wish: one offer after the request, *"Shall I remember sandwiches for
+  planning sessions?"* (M36).
+
+**Found live, and fixed:** the yes to that offer was remembered with `about` set to the person's
+own email, not `organiser` - so it went to `people/<me>.md`, a fact *about* them, which their
+own conversations never apply. The offer rule now says *with about "organiser"*, and the prompt
+test pins it; the next run filed *who the retro group is* in *Mine*. Seen, not changed: with a
+remembered place fact in front of it, the facility manager now explains why it did *not* follow
+an item that had nothing to do with the request (M18's reason rule) - correct, and a little
+wordy.
+
+**Questions for 3b.**
+
+- **Q12** — Two meetings, or three, before an offer? Proposed: two, for now, in one constant each.
+- **Q13** — Should an offer accepted on the page also be offered no more in the conversation?
+  It is, by M36's rule: once *Mine* names the group, nothing is offered.
+
 ---
 
 ## 11. Changelog
@@ -993,6 +1118,14 @@ Jettro said about him, and the Campus fact - not his - offered neither.
 - 2026-11-03: **3a built** (§10.4): edit, delete and *Said by me* on the Memory page, the server
   writing as an agent does and committing as the person. Spike S7-S9 passed first; sixteen tests;
   verified live. 420 tests pass.
+- 2026-11-03: **3b checked against the code** (§10.5, M32-M37, Q12-Q13). Spike S10 passed: the
+  server reads a person's own meetings and their plans in process. Suggestions are computed from
+  them on each read, accepted through 3a's write path, and a *Not now* is kept where no agent
+  reads it; `@Intake` offers in the conversation by its prompt.
+- 2026-11-03: **3b built** (§10.5): suggestions on the Memory page from the person's own
+  meetings, accepted into *Mine* or declined into `declined.md`; `@Intake` offers once after the
+  request and fills a remembered meal into the lunch wish. Verified live; one prompt fix found
+  there (*about "organiser"*). 433 tests pass.
 
 ---
 

@@ -32,6 +32,12 @@ and the agent now says in its reason whether it followed it. A memory written as
 has sport facilities*) is stronger than one written as an order, because the prompt tells the
 model not to take orders from memory. ([Memory](memory.md).)
 
+**A rule that leaves an argument open gets it filled in.** The offer rule said *call remember on
+a clear yes*, and the model did - with `about` set to the person's own email rather than
+`organiser`. The meal was kept as a fact *about* the person, where their own conversations never
+apply it. Naming the argument in the rule fixed it, and a test now holds the wording.
+([`design_memory.md`](design/design_memory.md) §10.5.)
+
 **Delivered is not used.** In one run the model knew Sanne was vegetarian and still asked *what
 kind of lunch?* without mentioning it. Code can guarantee that memory reaches the model, and the
 trace can prove it; whether the model *uses* it is a question only evaluations can answer.

@@ -79,6 +79,7 @@ is the framework's. The routes the planner uses:
 | `/auth/...` | the login | ours |
 | `GET /me/memory` | the Memory tab | ours |
 | `PUT`, `DELETE /me/memory/items/{id}` | edit or delete an item you may change | ours |
+| `POST`, `DELETE /me/memory/suggestions/{key}` | remember a suggestion, or *Not now* | ours |
 
 ### The console
 

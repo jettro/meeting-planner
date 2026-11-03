@@ -122,6 +122,15 @@ def test_the_intake_prompt_renders(chat: TeamCard):
     assert "only to @Human" in prompt
 
 
+def test_intake_offers_once_after_the_request_and_uses_a_remembered_meal(chat: TeamCard):
+    """Phase 3b in the conversation (design_memory.md M36, M37): an offer is a question."""
+    prompt = " ".join(by_name(chat)["@Intake"].card.config.prompt.render().split())
+    assert "After the meeting is requested - never before" in prompt
+    assert "once in this conversation" in prompt
+    assert 'Call remember only on a clear yes, with about "organiser"' in prompt
+    assert '"with soup, as remembered for workshops"' in prompt
+
+
 def test_intake_allows_a_slow_model_call(chat: TeamCard):
     assert by_name(chat)["@Intake"].card.config.runtime_cfg.http_client_config.timeout == 240.0
 

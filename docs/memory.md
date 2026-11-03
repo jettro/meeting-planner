@@ -116,7 +116,29 @@ items. *How did it know?* always has an answer.
 Your place preferences take one more step. They are among your own items, so `@Intake` sees them
 always; when you ask for a focus session, it puts *the Library, as remembered for focus sessions*
 into the request it sends. The facility manager then reads that in the wish, like anything else
-you asked for.
+you asked for. A remembered meal works the same way: *lunch for "Workshop": soup* fills the lunch
+wish when you ask for a workshop and say nothing about lunch, and `@Intake` says so - *"with
+soup, as remembered for Workshop"* - so the lunch question is not asked.
+
+### Suggestions: what you keep repeating
+
+The planner also **offers** to remember things, so you have less to say every time. Two kinds,
+for now:
+
+- **a team** - the same people in two or more of your meetings: give them a name, and next time
+  *the review crew* is enough;
+- **a meal** - meetings with the same title that had a lunch wish twice: remember it, and it is
+  filled in next time.
+
+They are offered in two places. **On the Memory tab**, code works them out from your own
+earlier meetings - the records the Meetings tab reads - each time the page opens; nothing is
+stored until you answer. *Remember this* writes it to *Mine* as said by you; *Not now* is kept
+in a file beside yours that no agent reads, so the same offer is not made again. **In a
+conversation**, `@Intake` may offer one of them once, after the request - *"Shall I remember
+Femke, Lotte and Thijs as a team? What should I call it?"* - and remembers only on a clear yes.
+
+A suggestion is a question, never a conclusion: nothing an agent noticed is used until you said
+yes to it.
 
 ### Seeing it, and changing it
 
@@ -196,10 +218,9 @@ sport facilities*), because the prompt tells the model not to take orders from m
 
 - **Erase.** Deleting takes an item out of memory, not out of the journal's history (M25 - the
   first thing to add before real names go in).
-- **Suggest.** Offering to remember a team for a group, or a meal for a kind of meeting, is the
-  next part of phase 3 (M29-M31).
-- **Learn on its own.** Nothing is remembered that nobody said. Lessons an agent proposes, for a
-  person to accept, are the next phase (M6, M7).
+- **Learn on its own.** Nothing is remembered that nobody said yes to. A *memory keeper* that
+  suggests tidying - two items that say the same, one a later one contradicts - is the last part
+  of phase 3 (M7).
 - **Remember meetings.** What happened in earlier meetings - *last time the Library was full* - is
   in their records, not in memory. Using it is a later step (M5).
 - **Forget by itself.** An item stays until it is replaced. There is no expiry yet (Q5 in the
@@ -214,7 +235,7 @@ sport facilities*), because the prompt tells the model not to take orders from m
 | `agents/src/meeting_agents/intake.py` | `remember_said` and its checks, and what a lookup brings along |
 | `agents/src/meeting_agents/specialists.py` | `FacilityManager._place_facts`: the facility manager's selection |
 | `agents/src/meeting_agents/messages.py` | `remembered_block`: how place facts are worded for the model |
-| `server/src/meeting_server/memory_page.py` | `/me/memory`: the four lists and their history; who may change what; edit and delete, written as an agent writes |
+| `server/src/meeting_server/memory_page.py` | `/me/memory`: the four lists and their history; who may change what; edit and delete, written as an agent writes; suggestions from your own meetings |
 | `gui/src/pages/MemoryPage.tsx` | the Memory tab |
 
 The design, with every decision and what was turned down: [`design_memory.md`](design/design_memory.md).
@@ -222,4 +243,4 @@ To show it: act 5 of the [demo script](demo.md).
 
 ---
 
-*Last checked against the code: 2026-11-03, phase 3a.*
+*Last checked against the code: 2026-11-03, phase 3b.*

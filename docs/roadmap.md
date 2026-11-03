@@ -16,16 +16,16 @@ says what is done, what is next, and what is not planned.
 | Who is asking | the login, what is yours, the organiser who attends | [who is asking](who-is-asking.md) |
 | Memory, phases 1 and 2 | yours, about people, about places; the Memory tab with history | [memory](memory.md) |
 | Memory, phase 3a | edit and delete on the Memory tab, and what you said about others | [memory](memory.md) |
+| Memory, phase 3b | suggestions: a team for a group, a meal for a kind of meeting, kept only on your yes | [memory](memory.md) |
 | The documentation | these pages | [`design_docs.md`](design/design_docs.md) |
 
 ## Next
 
 Each with a design first.
 
-- **Memory, phase 3** (`design_memory.md` §10.4). Editing and deleting is done (3a). Next,
-  suggestions that make organising easier - *call Sanne, Daan and Femke the design team?*,
-  *soup for workshops?* - offered in the conversation or on the Memory tab, and kept only when
-  you say yes (3b). Last, a *memory keeper* that suggests tidying what has piled up (3c).
+- **Memory, phase 3c** (`design_memory.md` §10.4). Editing (3a) and suggestions (3b) are done.
+  Last, a *memory keeper* that suggests tidying what has piled up - two items that say the same,
+  one a later one contradicts - each a suggestion you accept or refuse.
 - **Guardrails.** A check before an agent books or orders - *may this lunch for twenty be ordered
   on Sanne's behalf?* The hook is known: a capability on the agent, like `TalkOnlyToHuman`, can
   look at a tool call before it runs and refuse it. Possibly with a decision model for the rules.

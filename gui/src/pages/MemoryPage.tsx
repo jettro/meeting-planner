@@ -28,6 +28,7 @@ import {
   type MemoryVersion,
   type MyMemory,
   type Remembered,
+  type Suggestion,
 } from "../api/client";
 
 /**
@@ -74,6 +75,21 @@ export default function MemoryPage() {
               No history is recorded for these items: the server has no git, or nothing was
               written through the planner yet.
             </Alert>
+          )}
+          {memory.data.suggestions.length > 0 && (
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Suggestions
+              </Typography>
+              <Typography color="text.secondary" sx={{ mb: 2 }}>
+                Things you keep repeating in your meetings. Nothing is remembered until you say so.
+              </Typography>
+              <Stack spacing={2}>
+                {memory.data.suggestions.map((suggestion) => (
+                  <SuggestionCard key={suggestion.key} suggestion={suggestion} name={name} />
+                ))}
+              </Stack>
+            </Box>
           )}
           <Section
             title="Mine"
@@ -136,6 +152,79 @@ function Section({ title, empty, items, me, name, showWho = false }: SectionProp
         </Stack>
       )}
     </Box>
+  );
+}
+
+/** A list of names: "A, B and C". */
+function listed(names: string[]): string {
+  return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
+/**
+ * One offer, answered here (design_memory.md M34, M35). A team needs a name -
+ * only you can give it; a meal can be changed before it is remembered.
+ */
+function SuggestionCard({ suggestion, name }: { suggestion: Suggestion; name: (email: string) => string }) {
+  const queryClient = useQueryClient();
+  const [teamName, setTeamName] = useState("");
+  const [wish, setWish] = useState(suggestion.wish);
+  const redraw = (memory: MyMemory) => queryClient.setQueryData(["my-memory"], memory);
+  const accept = useMutation({
+    mutationFn: () =>
+      api.acceptSuggestion(suggestion.key, suggestion.kind === "team" ? { name: teamName } : { text: wish }),
+    onSuccess: redraw,
+  });
+  const decline = useMutation({ mutationFn: () => api.declineSuggestion(suggestion.key), onSuccess: redraw });
+  const team = suggestion.kind === "team";
+  const ready = team ? teamName.trim() !== "" : wish.trim() !== "";
+
+  return (
+    <Card variant="outlined" sx={{ borderColor: "primary.main" }}>
+      <CardContent>
+        <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1 }}>
+          <Typography sx={{ fontWeight: 600, flexGrow: 1 }}>
+            {team ? "A team?" : `Lunch for "${suggestion.title}"?`}
+          </Typography>
+          <Chip label={`${suggestion.meetings} meetings`} size="small" variant="outlined" />
+        </Stack>
+        <Typography sx={{ mb: 2 }}>
+          {team
+            ? `You met with ${listed(suggestion.people.map(name))} in ${suggestion.meetings} meetings. Give them a name, and next time the name is enough.`
+            : `Your meetings called "${suggestion.title}" had a lunch wish ${suggestion.meetings} times. Remember it, and the planner fills it in next time.`}
+        </Typography>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ alignItems: { sm: "center" } }}>
+          {team ? (
+            <TextField
+              label="Team name"
+              placeholder="the design team"
+              size="small"
+              value={teamName}
+              onChange={(event) => setTeamName(event.target.value)}
+              sx={{ flexGrow: 1 }}
+            />
+          ) : (
+            <TextField
+              label="Lunch"
+              size="small"
+              value={wish}
+              onChange={(event) => setWish(event.target.value)}
+              sx={{ flexGrow: 1 }}
+            />
+          )}
+          <Button variant="contained" size="small" disabled={!ready || accept.isPending} onClick={() => accept.mutate()}>
+            Remember this
+          </Button>
+          <Button size="small" disabled={decline.isPending} onClick={() => decline.mutate()}>
+            Not now
+          </Button>
+        </Stack>
+        {(accept.error || decline.error) && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {reasonOf(accept.error ?? decline.error)}
+          </Alert>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

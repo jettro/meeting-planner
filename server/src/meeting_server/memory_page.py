@@ -27,19 +27,31 @@ the journal as it was. The server writes the way an agent does - the
 in-process lock, the framework's per-file `flock`, a re-read, an atomic write -
 and commits under the person's own name, so the journal says who changed it.
 An item the person may not change answers 404, as if it were not there.
+
+**Suggestions** (phase 3b, M32-M35). What a person keeps repeating is worked
+out on every read from their own meetings - the coordinators' records the
+Meetings tab reads, in this process: the same people in two or more meetings,
+or a lunch wish that came back for meetings with the same title. Accepting one
+writes it to *Mine* through the same path as an edit; *Not now* is kept in
+`declined.md` beside `organiser.md`, which no agent reads. Nothing about a
+suggestion is stored until the person answers it.
 """
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
+import re
 import shutil
 import subprocess
 import uuid
+from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
+from typing import Any, Literal, Protocol
 
 from akgentic.infra.server.assembly import BaseAppModule, RouteSpec
 from akgentic.infra.server.auth import RequestUser, get_request_user
@@ -59,6 +71,7 @@ from meeting_agents.memory import (
     person_file,
     refusal,
     render_items,
+    with_item,
 )
 from pydantic import BaseModel, Field, computed_field
 
@@ -77,6 +90,12 @@ PAGE_CAPABILITY = "memory-page"
 #: Who may change any place fact (M22): the framework's admin role.
 ADMIN = "admin"
 PEOPLE_FOLDER = "people"
+#: Where a declined suggestion is kept, in the person's own tree; no agent reads it (M35).
+DECLINED_FILE = "declined.md"
+#: How often something must repeat before it is offered (M33, Q12).
+GROUP_AT = 2
+MEAL_AT = 2
+COORDINATOR = "@Coordinator"
 
 
 class Version(BaseModel):
@@ -105,12 +124,29 @@ class Remembered(BaseModel):
     can_change: bool = False
 
 
+class Suggestion(BaseModel):
+    """Something the person keeps repeating, offered to be remembered (M33)."""
+
+    #: A digest of what is offered, so a declined offer is not made again (M35).
+    key: str
+    kind: Literal["team", "meal"]
+    #: How many of the person's meetings it was seen in.
+    meetings: int
+    #: For a team: everyone besides the person, as emails.
+    people: list[str] = Field(default_factory=list)
+    #: For a meal: the meetings' title, and the most recent lunch wish for it.
+    title: str = ""
+    wish: str = ""
+
+
 class MyMemory(BaseModel):
     email: str
     mine: list[Remembered] = Field(default_factory=list)
     about_me: list[Remembered] = Field(default_factory=list)
     said_by_me: list[Remembered] = Field(default_factory=list)
     places: list[Remembered] = Field(default_factory=list)
+    #: What the person keeps repeating, worked out from their own meetings (M32).
+    suggestions: list[Suggestion] = Field(default_factory=list)
     #: False when no history could be read for any file: no git, or no journal yet.
     journal: bool = False
 
@@ -266,7 +302,7 @@ def _lists(user: RequestUser) -> dict[str, _List]:
     }
 
 
-def my_memory(root: Path, user: RequestUser) -> MyMemory:
+def my_memory(root: Path, user: RequestUser, store: MeetingStore | None = None) -> MyMemory:
     lists: dict[str, list[Remembered]] = {}
     journal = False
     for name, spec in _lists(user).items():
@@ -281,7 +317,8 @@ def my_memory(root: Path, user: RequestUser) -> MyMemory:
                 if spec.shows(entry.item)
             ]
         lists[name] = shown
-    return MyMemory(email=_email(user), journal=journal, **lists)
+    offered = suggestions(store, user, root) if store is not None else []
+    return MyMemory(email=_email(user), journal=journal, suggestions=offered, **lists)
 
 
 # -- changing (M24-M27) -----------------------------------------------------------
@@ -331,6 +368,7 @@ def _rewrite(
     written; the page says *no history* then, as it does for reading.
     """
     tree = (root / workspace).resolve()
+    tree.mkdir(parents=True, exist_ok=True)  # a first suggestion accepted before anything was said
     meta = tree.parent / f"{tree.name}{META_DIR_SUFFIX}"  # the framework's `meta_dir_for`, from our root
     journal = None
     if (git_dir_for(tree) / "HEAD").is_file():
@@ -353,7 +391,9 @@ def _unlocked(exc: OSError) -> None:
     logger.warning("memory file lock could not be taken, writing unserialised: %s", exc)
 
 
-def change_item(root: Path, user: RequestUser, item_id: str, change: ItemChange) -> MyMemory:
+def change_item(
+    root: Path, user: RequestUser, item_id: str, change: ItemChange, store: MeetingStore | None = None
+) -> MyMemory:
     """Edit an item: a new version that supersedes it, said by whoever edited it (M24)."""
     situation, text = change.situation.strip(), change.text.strip()
     if not situation:
@@ -388,10 +428,10 @@ def change_item(root: Path, user: RequestUser, item_id: str, change: ItemChange)
         return [new if item.id == item_id else item for item in items]
 
     _rewrite(root, workspace, path, edit, email)
-    return my_memory(root, user)
+    return my_memory(root, user, store)
 
 
-def delete_item(root: Path, user: RequestUser, item_id: str) -> MyMemory:
+def delete_item(root: Path, user: RequestUser, item_id: str, store: MeetingStore | None = None) -> MyMemory:
     """Take an item out of the file; the journal keeps it (M25)."""
     workspace, path = _locate(root, user, item_id)
 
@@ -401,13 +441,184 @@ def delete_item(root: Path, user: RequestUser, item_id: str) -> MyMemory:
         return [item for item in items if item.id != item_id]
 
     _rewrite(root, workspace, path, without, _email(user))
-    return my_memory(root, user)
+    return my_memory(root, user, store)
+
+
+# -- suggestions (M32-M35) --------------------------------------------------------
+
+
+class MeetingStore(Protocol):
+    """The two reads of the framework's event store that suggestions need (S10)."""
+
+    def list_teams(self, user_id: str | None = ..., status: Any = ..., metadata: Any = ...) -> list[Any]: ...
+
+    def load_agent_states(self, team_id: uuid.UUID) -> list[Any]: ...
+
+
+@dataclass(frozen=True)
+class _Meeting:
+    title: str
+    people: frozenset[str]
+    lunch_wish: str
+
+
+def _meetings(store: MeetingStore, user: RequestUser) -> list[_Meeting]:
+    """The person's own meetings, oldest first, read from each coordinator's record.
+
+    `list_teams` by the session's id is the framework's owner filter - the
+    one `GET /teams` applies - so nobody else's meetings are read.
+    """
+    email = _email(user)
+    rows = sorted(
+        store.list_teams(user_id=user.user_id, status=None, metadata=None), key=lambda row: row.created_at
+    )
+    meetings = []
+    for row in rows:
+        try:
+            snapshots = store.load_agent_states(row.team_id)
+        except Exception:  # one unreadable team must not hide the rest
+            logger.exception("could not read the states of team %s", row.team_id)
+            continue
+        for snapshot in snapshots:
+            plan = (
+                getattr(getattr(snapshot, "state", None), "plan", None)
+                if snapshot.name == COORDINATOR
+                else None
+            )
+            if plan is None:
+                continue
+            others = frozenset(e.strip().lower() for e in plan.participant_emails) - {email}
+            wish = (plan.lunch_wish or "").strip() if plan.with_lunch else ""
+            meetings.append(_Meeting(title=plan.title.strip(), people=others, lunch_wish=wish))
+    return meetings
+
+
+def _key(*parts: str) -> str:
+    return hashlib.sha256("\x1f".join(parts).encode()).hexdigest()[:16]
+
+
+def _names(item: MemoryItem, email: str) -> bool:
+    """Whether an item names this person - by email, or by the name before the @."""
+    words = item.text.lower()
+    local = email.split("@")[0]
+    return email in words or re.search(rf"\b{re.escape(local)}\b", words) is not None
+
+
+def suggestions(store: MeetingStore, user: RequestUser, root: Path) -> list[Suggestion]:
+    """What the person keeps repeating and has not remembered or declined (M33)."""
+    mine = _items(_tree(root, user.user_id, shared=False), ORGANISER_FILE)
+    declined = {item.situation for item in _items(_tree(root, user.user_id, shared=False), DECLINED_FILE)}
+    meetings = _meetings(store, user)
+    offers: list[Suggestion] = []
+
+    groups = Counter(meeting.people for meeting in meetings if len(meeting.people) >= 2)
+    for people, count in groups.most_common():
+        if count < GROUP_AT:
+            continue
+        if any(all(_names(item, email) for email in people) for item in mine):
+            continue
+        key = _key("team", *sorted(people))
+        if key not in declined:
+            offers.append(Suggestion(key=key, kind="team", meetings=count, people=sorted(people)))
+
+    by_title: dict[str, list[_Meeting]] = {}
+    for meeting in meetings:
+        if meeting.lunch_wish:
+            by_title.setdefault(meeting.title.casefold(), []).append(meeting)
+    for folded, alike in by_title.items():
+        if len(alike) < MEAL_AT:
+            continue
+        if any("lunch" in item.situation.lower() and folded in item.situation.casefold() for item in mine):
+            continue
+        latest = alike[-1]
+        key = _key("meal", folded, latest.lunch_wish.casefold())
+        if key not in declined:
+            offers.append(
+                Suggestion(
+                    key=key, kind="meal", meetings=len(alike), title=latest.title, wish=latest.lunch_wish
+                )
+            )
+    return offers
+
+
+class SuggestionAnswer(BaseModel):
+    """What the person settles when accepting: a team's name, or the meal as they want it."""
+
+    name: str = ""
+    text: str = ""
+
+
+def _offered(store: MeetingStore, user: RequestUser, root: Path, key: str) -> Suggestion:
+    offer = next((offer for offer in suggestions(store, user, root) if offer.key == key), None)
+    if offer is None:
+        raise NotYours(key)
+    return offer
+
+
+def accept_suggestion(
+    root: Path, user: RequestUser, key: str, answer: SuggestionAnswer, store: MeetingStore
+) -> MyMemory:
+    """Remember an offer in *Mine*, said by the person who accepted it (M34)."""
+    offer = _offered(store, user, root, key)
+    email = _email(user)
+    if offer.kind == "team":
+        name = answer.name.strip()
+        if not name:
+            raise Refused("a team needs a name, so you can ask for it next time")
+        kind, situation, text = "fact", f'who "{name}" is', ", ".join(offer.people)
+    else:
+        kind, situation, text = (
+            "preference",
+            f'lunch for "{offer.title}"',
+            (answer.text.strip() or offer.wish),
+        )
+    for words in (situation, text):
+        if (why := refusal(words)) is not None:
+            raise Refused(why)
+    item = MemoryItem(
+        kind=kind,  # type: ignore[arg-type]
+        scope=f"organiser:{email}",
+        situation=situation,
+        text=text,
+        said_by=email,
+        reason=f"accepted a suggestion from {offer.meetings} earlier meetings",
+        evidence=ON_THE_PAGE,
+    )
+    _rewrite(
+        root,
+        _workspace_path(user.user_id, shared=False),
+        ORGANISER_FILE,
+        lambda items: with_item(items, item),
+        email,
+    )
+    return my_memory(root, user, store)
+
+
+def decline_suggestion(root: Path, user: RequestUser, key: str, store: MeetingStore) -> MyMemory:
+    """Keep *Not now*, so the offer is not made again; nothing an agent reads (M35)."""
+    offer = _offered(store, user, root, key)
+    email = _email(user)
+    what = ", ".join(offer.people) if offer.kind == "team" else f"{offer.wish} for {offer.title}"
+    item = MemoryItem(
+        kind="fact",
+        status="retired",
+        scope=f"organiser:{email}",
+        situation=key,
+        text=f"declined: {offer.kind} - {what}",
+        said_by=email,
+        reason="not now, on the Memory page",
+        evidence=ON_THE_PAGE,
+    )
+    _rewrite(
+        root, _workspace_path(user.user_id, shared=False), DECLINED_FILE, lambda items: [*items, item], email
+    )
+    return my_memory(root, user, store)
 
 
 # -- the route ------------------------------------------------------------------
 
 
-def build_router(workspaces_root: Path) -> APIRouter:
+def build_router(workspaces_root: Path, store: MeetingStore | None = None) -> APIRouter:
     router = APIRouter(tags=["memory"])
     root = Path(workspaces_root).resolve()
 
@@ -416,7 +627,7 @@ def build_router(workspaces_root: Path) -> APIRouter:
     @router.get("/me/memory", response_model=MyMemory)
     def read_my_memory(user: RequestUser = Depends(get_request_user)) -> MyMemory:  # noqa: B008
         """What is remembered for and about the person logged in, with its history."""
-        return my_memory(root, user)
+        return my_memory(root, user, store)
 
     @router.put("/me/memory/items/{item_id}", response_model=MyMemory)
     def edit_item(
@@ -426,7 +637,7 @@ def build_router(workspaces_root: Path) -> APIRouter:
     ) -> MyMemory:
         """Change where an item applies, or what it says (M24)."""
         try:
-            return change_item(root, user, item_id, change)
+            return change_item(root, user, item_id, change, store)
         except NotYours:
             raise HTTPException(status_code=404, detail="no such item") from None
         except Refused as why:
@@ -436,9 +647,35 @@ def build_router(workspaces_root: Path) -> APIRouter:
     def remove_item(item_id: str, user: RequestUser = Depends(get_request_user)) -> MyMemory:  # noqa: B008
         """Take an item out of memory; its history stays in the journal (M25)."""
         try:
-            return delete_item(root, user, item_id)
+            return delete_item(root, user, item_id, store)
         except NotYours:
             raise HTTPException(status_code=404, detail="no such item") from None
+
+    @router.post("/me/memory/suggestions/{key}", response_model=MyMemory)
+    def accept(
+        key: str,
+        answer: SuggestionAnswer,
+        user: RequestUser = Depends(get_request_user),  # noqa: B008
+    ) -> MyMemory:
+        """Remember a suggestion in *Mine* (M34)."""
+        if store is None:
+            raise HTTPException(status_code=404, detail="no such suggestion")
+        try:
+            return accept_suggestion(root, user, key, answer, store)
+        except NotYours:
+            raise HTTPException(status_code=404, detail="no such suggestion") from None
+        except Refused as why:
+            raise HTTPException(status_code=422, detail=f"Not remembered: {why}.") from None
+
+    @router.delete("/me/memory/suggestions/{key}", response_model=MyMemory)
+    def decline(key: str, user: RequestUser = Depends(get_request_user)) -> MyMemory:  # noqa: B008
+        """*Not now*: the suggestion is not made again (M35)."""
+        if store is None:
+            raise HTTPException(status_code=404, detail="no such suggestion")
+        try:
+            return decline_suggestion(root, user, key, store)
+        except NotYours:
+            raise HTTPException(status_code=404, detail="no such suggestion") from None
 
     return router
 
@@ -448,8 +685,9 @@ class MemoryPageModule(BaseAppModule):
 
     name = "meeting-memory-page"
 
-    def __init__(self, workspaces_root: Path) -> None:
+    def __init__(self, workspaces_root: Path, store: MeetingStore | None = None) -> None:
         self._root = workspaces_root
+        self._store = store
 
     def contribute_routes(self) -> list[RouteSpec]:
-        return [RouteSpec(router=build_router(self._root))]
+        return [RouteSpec(router=build_router(self._root, self._store))]
