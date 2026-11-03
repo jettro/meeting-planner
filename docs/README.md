@@ -11,6 +11,7 @@ finish, and the ideas behind it - in one page.
 | learn from what went wrong while building it | the [lessons](lessons.md) |
 | see it working, or present it | the [demo script](demo.md) |
 | run it | the [README](../README.md), *Quick start* |
+| know what is next | the [roadmap](roadmap.md) |
 | know why a decision was made, or what was turned down | its design, in [`design/`](design/) |
 
 ## Topics

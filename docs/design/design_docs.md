@@ -1,8 +1,8 @@
 # Design — the documentation
 
-> **Status:** agreed, 2026-11-03; questions answered (§8). Steps 1 to 5 of §6 are done - the move,
-> the index, the overview, all seven topic pages and the lessons. Still to do: the README and
-> the roadmap.
+> **Status:** agreed, 2026-11-03; questions answered (§8). All six steps of §6 are done: the move,
+> the index, the overview, seven topic pages, the lessons, and a shorter README with the roadmap
+> on its own page.
 
 > **The one sentence to keep:** *the designs say what we decided and why, at the time; the docs
 > say what is there now, and why it is that way.* Everything below follows from it.
@@ -184,3 +184,7 @@ Each step is one commit, and you review each page before the next.
   pages link to it instead of the README; `design_auth.md`'s header has its *Now* line.
 - 2026-11-03: **Step 5 done.** `lessons.md`: twenty-five lessons from six designs and the live runs,
   grouped as models and prompts, where code ends, the framework, memory, and testing.
+- 2026-11-03: **Step 6 done.** The README keeps what it is, what runs, the quick start, the
+  layout, the tasks and the development notes, and points to `docs/`; its explanations live in
+  the topic pages, and the server's route list moved to `server.md`. `roadmap.md` is current:
+  *My agenda* dropped, memory phase 3, guardrails and evaluations next.

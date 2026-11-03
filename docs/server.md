@@ -56,15 +56,28 @@ all show the same thing.
 
 ### What the sample adds to the server
 
-- **`/platform/health`** asks the three services' own `/health` and reports all three at once. The
-  server's own readiness says nothing about whether nomnom is down - and that failure would
-  otherwise arrive several turns later, dressed as a tool error.
+- **`/platform/health`** asks the three services' own `/health` and reports all three at once -
+  *up*, *degraded* (it answered, badly) or *unreachable* (it did not answer), because a 503 and a
+  silence have different causes. The server's own readiness says nothing about whether nomnom is
+  down - and that failure would otherwise arrive several turns later, dressed as a tool error.
 - **A login** - see [who is asking](who-is-asking.md).
 - **`/me/memory`** - see [memory](memory.md).
 - **Two fixes to the event store**, described below.
 
 Everything else - teams, messages, the socket, questions and answers, the store, reviving a team -
-is the framework's.
+is the framework's. The routes the planner uses:
+
+| Route | What it does | Whose |
+|---|---|---|
+| `POST /teams` | create a team from the catalog, with the meeting it is asked to arrange | framework |
+| `POST /teams/{id}/message/from/@Human/to/@Coordinator` | send a typed message: the request, or a cancel | framework |
+| `POST /teams/{id}/human-input` | answer a question, as text, with the question's id | framework |
+| `WS /ws/{id}`, `GET /teams/{id}/events` | the team's events, live or stored | framework |
+| `GET /teams`, `GET /teams/{id}/agent-states` | your teams, and each coordinator's record | framework |
+| `POST /teams/{id}/restore` | revive a stopped team | framework |
+| `GET /platform/health` | the three services at once | ours |
+| `/auth/...` | the login | ours |
+| `GET /me/memory` | the Memory tab | ours |
 
 ### The console
 
@@ -72,7 +85,8 @@ The console is the framework's own front end, run beside the planner and pointed
 server. It is built from upstream's repository and configured by a mounted file, never copied
 into this one. Log in with an API key from `.env`, and you see the team rather than the meeting:
 the hierarchy as a graph, each agent's system prompt and exactly what its model was given, and
-what the run cost.
+what the run cost. Each team carries the meeting it was asked to arrange as typed metadata, so the
+console can name the runs in its list and filter them by title, day and place.
 
 ## Why it is built this way
 
