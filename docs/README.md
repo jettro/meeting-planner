@@ -25,7 +25,7 @@ do, and where to find it in the code. They describe what is there now.
 | [The server](server.md) | the team as a service, the planner, the console, the trace | |
 | [Durability](durability.md) | the team is the meeting: revive, cancel, resume | |
 | [The conversation](conversation.md) | `@Intake`, a team you talk to, what the model may say | |
-| Who is asking | the login, what is yours, the organiser | to come |
+| [Who is asking](who-is-asking.md) | the login, what is yours, the organiser | |
 | Lessons | what building it taught us, across all steps | to come |
 
 ## The designs

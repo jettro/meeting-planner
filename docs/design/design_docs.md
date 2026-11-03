@@ -1,7 +1,8 @@
 # Design — the documentation
 
-> **Status:** agreed, 2026-11-03; questions answered (§8). Steps 1 to 3 of §6 are done - the move,
-> the index, the overview and the memory page - and step 4 has begun: the services, team, server, durability and conversation pages.
+> **Status:** agreed, 2026-11-03; questions answered (§8). Steps 1 to 4 of §6 are done - the move,
+> the index, the overview and all seven topic pages. Still to do: the lessons page, and the
+> README and roadmap.
 
 > **The one sentence to keep:** *the designs say what we decided and why, at the time; the docs
 > say what is there now, and why it is that way.* Everything below follows from it.
@@ -179,3 +180,5 @@ Each step is one commit, and you review each page before the next.
   `design_durability.md` and `design_cancel.md` have their *Now* lines.
 - 2026-11-03: **Step 4, the conversation page.** `conversation.md`; `design_chat.md`'s header has
   its *Now* line.
+- 2026-11-03: **Step 4 done.** `who-is-asking.md`, the last topic page; the services and server
+  pages link to it instead of the README; `design_auth.md`'s header has its *Now* line.

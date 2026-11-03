@@ -59,7 +59,7 @@ all show the same thing.
 - **`/platform/health`** asks the three services' own `/health` and reports all three at once. The
   server's own readiness says nothing about whether nomnom is down - and that failure would
   otherwise arrive several turns later, dressed as a tool error.
-- **A login** - see [who is asking](../README.md#who-is-asking).
+- **A login** - see [who is asking](who-is-asking.md).
 - **`/me/memory`** - see [memory](memory.md).
 - **Two fixes to the event store**, described below.
 

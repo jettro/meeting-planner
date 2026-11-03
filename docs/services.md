@@ -82,7 +82,7 @@ tool's *schema* says is part of the prompt, and models read it literally.
 
 - **Authentication on the REST APIs.** The web pages and REST APIs are open; only the MCP servers
   ask for a key. The login that decides whose meetings you see lives in the team server
-  ([who is asking](../README.md#who-is-asking)), not here.
+  ([who is asking](who-is-asking.md)), not here.
 - **Share code between services.** Each is self-contained. A little logic - working out free time
   in a day - exists twice, in the meeting and the location service, by choice: they are meant to
   stand alone.

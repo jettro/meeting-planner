@@ -8,6 +8,8 @@
 >
 > **Lessons:** §11.
 >
+> **Now:** [`docs/who-is-asking.md`](../who-is-asking.md) describes the login as it is.
+>
 > *A design records what was decided and why, at the time; it is not kept current.*
 
 Companion to `design_memory.md`, which stops at its Q1: *"Without authentication every request is

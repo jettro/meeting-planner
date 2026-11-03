@@ -120,7 +120,7 @@ revived from what the server kept, and cancelling goes to the team that made the
 
 **The framework decides who may see what.** The server already checks who owns a team; the sample
 only tells it who is asking. Your meetings and your memory are yours.
-([`design_auth.md`](design/design_auth.md).)
+([Who is asking](who-is-asking.md).)
 
 **Memory is evidence, chosen by code.** What a team remembers is shown to a model as *what someone
 said before*, never as an order, and code decides which items an agent sees and when - not the
