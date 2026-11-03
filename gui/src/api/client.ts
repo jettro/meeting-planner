@@ -212,7 +212,7 @@ export interface MemoryItem {
   text: string;
   said_by: string;
   reason: string;
-  /** `conversation <team id>`: where it was said. */
+  /** `conversation <team id>`: where it was said; `memory page` for an edit there. */
   evidence: string;
   review_when: string;
   supersedes: string | null;
@@ -232,6 +232,8 @@ export interface Remembered {
   recorded: MemoryVersion | null;
   /** What it replaced, newest first. */
   history: MemoryVersion[];
+  /** Whether you may edit or delete it (design_memory.md M22). The server checks again. */
+  can_change: boolean;
 }
 
 /** `GET /me/memory` (design_memory.md §4.8). */
@@ -239,11 +241,16 @@ export interface MyMemory {
   email: string;
   mine: Remembered[];
   about_me: Remembered[];
+  /** What you said about other people (M23). */
+  said_by_me: Remembered[];
   /** What anyone said about a place - everybody's to read. */
   places: Remembered[];
   /** False when no history could be read: no git on the server, or nothing recorded yet. */
   journal: boolean;
 }
+
+/** What an edit on the Memory page records as its evidence (M24). */
+export const ON_THE_PAGE = "memory page";
 
 /** The conversation an item names in its evidence, if it names one. */
 export function conversationOf(item: MemoryItem): string | null {
@@ -336,6 +343,17 @@ export const api = {
 
   /** What is remembered for and about the person logged in, with its history. */
   myMemory: () => call<MyMemory>("/me/memory"),
+
+  /** Change where an item applies, or what it says: a new version (design_memory.md M24). */
+  editMemoryItem: (id: string, change: { situation: string; text: string }) =>
+    call<MyMemory>(`/me/memory/items/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: JSON.stringify(change),
+    }),
+
+  /** Take an item out of memory; the journal keeps its history (M25). */
+  deleteMemoryItem: (id: string) =>
+    call<MyMemory>(`/me/memory/items/${encodeURIComponent(id)}`, { method: "DELETE" }),
 
   /**
    * A team's meeting, read from its coordinator's persisted state.

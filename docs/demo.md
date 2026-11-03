@@ -168,6 +168,10 @@ There are four kinds, each in its own place:
    ```
 
    The author is the agent that wrote (`@Intake`); who *said* it is in the item.
+5. **Change it yourself:** on the stand-ups item, **Edit**, make it *15 minutes*, **Save**. It now
+   says *changed on the Memory page by you*, and the 30 minutes joins the history. Run the
+   journal command again: the newest commit is yours, by email - not `@Intake`. Try an id in the
+   text (*booking id 123456*): it is refused, and says why.
 
 ### 5.3 About a person - true whoever books
 
@@ -179,7 +183,10 @@ There are four kinds, each in its own place:
    confirmation says what lunch arrived.
 3. **Trace:** `MemoryApplied`, *a lookup settled sanne@…*.
 4. **Log in as Sanne → Memory → About me:** *vegetarian*, said by you, *in their conversation* -
-   she sees what is said about her, but not your conversation.
+   she sees what is said about her, but not your conversation. It is about her, so she may
+   **Edit** or **Delete** it.
+5. **Log in as yourself → Memory → Said by me:** the same fact, *about Sanne de Vries*. You said
+   it, so you may withdraw it too. Daan sees neither.
 
 ### 5.4 About a place - before the choice
 
@@ -230,7 +237,7 @@ Each takes under a minute; pick one or two.
   ```
 
 - **The console's workspace tab** shows your own tree, as a file browser.
-- **The Memory tab** shows all three lists with their history - the only view of the shared tree,
+- **The Memory tab** shows all four lists with their history - the only view of the shared tree,
   because the framework's routes never serve a shared path.
 
 ---

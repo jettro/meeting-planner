@@ -7,28 +7,38 @@ import {
   Chip,
   CircularProgress,
   Collapse,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Link,
   Stack,
+  TextField,
   Typography,
 } from "@mui/material";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   api,
   auth,
   conversationOf,
+  ON_THE_PAGE,
   type MemoryVersion,
+  type MyMemory,
   type Remembered,
 } from "../api/client";
 
 /**
- * What the planner remembers for you, about you, and about places (design_memory.md §4.8, §10.3).
+ * What the planner remembers for you, about you, and about places (design_memory.md §4.8, §10.4).
  *
- * Read-only on purpose (M14): it answers "where did it learn that?" - who said
- * it, in which conversation, and what it said before - and changes nothing.
- * Correcting is done by telling the planner, which is the path that records
- * who said it; editing here waits for the rules about who may (M11).
+ * It answers "where did it learn that?" - who said it, in which conversation,
+ * and what it said before - and lets you change what is yours to change (M22):
+ * your own items, what is said about you, what you said about others, and the
+ * place facts you said. The buttons follow the server's `can_change`; the
+ * server checks again. An edit is a new version, so the history keeps the old
+ * words; a delete takes the item out of memory and leaves the history alone.
  */
 export default function MemoryPage() {
   const memory = useQuery({ queryKey: ["my-memory"], queryFn: api.myMemory });
@@ -43,8 +53,8 @@ export default function MemoryPage() {
       </Typography>
       <Typography color="text.secondary" sx={{ mb: 2 }}>
         What the planner remembers between conversations: how you like to meet, what people told
-        it about you, and what anyone told it about a place. To change something, tell the planner - it replaces the old version and
-        keeps it in the history.
+        it about you, what you told it about others, and what anyone told it about a place. You can
+        change or delete what is yours; the history keeps every earlier version.
       </Typography>
 
       {memory.isLoading && <CircularProgress />}
@@ -57,7 +67,9 @@ export default function MemoryPage() {
       {memory.data && (
         <Stack spacing={4}>
           {!memory.data.journal &&
-            [memory.data.mine, memory.data.about_me, memory.data.places].some((list) => list.length > 0) && (
+            [memory.data.mine, memory.data.about_me, memory.data.said_by_me, memory.data.places].some(
+              (list) => list.length > 0,
+            ) && (
             <Alert severity="warning">
               No history is recorded for these items: the server has no git, or nothing was
               written through the planner yet.
@@ -78,6 +90,14 @@ export default function MemoryPage() {
             name={name}
           />
           <Section
+            title="Said by me"
+            empty="You have not told the planner anything about someone else."
+            items={memory.data.said_by_me}
+            me={memory.data.email}
+            name={name}
+            showWho
+          />
+          <Section
             title="Places"
             empty="Nobody has told the planner anything about a place yet."
             items={memory.data.places}
@@ -96,9 +116,11 @@ interface SectionProps {
   items: Remembered[];
   me: string;
   name: (email: string) => string;
+  /** Name the person each item is about - for what you said about others. */
+  showWho?: boolean;
 }
 
-function Section({ title, empty, items, me, name }: SectionProps) {
+function Section({ title, empty, items, me, name, showWho = false }: SectionProps) {
   return (
     <Box>
       <Typography variant="h6" gutterBottom>
@@ -109,7 +131,7 @@ function Section({ title, empty, items, me, name }: SectionProps) {
       ) : (
         <Stack spacing={2}>
           {items.map((remembered) => (
-            <Item key={remembered.item.id} remembered={remembered} me={me} name={name} />
+            <Item key={remembered.item.id} remembered={remembered} me={me} name={name} showWho={showWho} />
           ))}
         </Stack>
       )}
@@ -117,44 +139,168 @@ function Section({ title, empty, items, me, name }: SectionProps) {
   );
 }
 
-function Item({ remembered, me, name }: { remembered: Remembered; me: string; name: (email: string) => string }) {
+/** The server's reason for a refused change, from its `{"detail": ...}`, or the raw message. */
+function reasonOf(error: unknown): string {
+  const message = String((error as Error)?.message ?? error);
+  try {
+    const detail = (JSON.parse(message) as { detail?: unknown }).detail;
+    return typeof detail === "string" ? detail : message;
+  } catch {
+    return message;
+  }
+}
+
+interface ItemProps {
+  remembered: Remembered;
+  me: string;
+  name: (email: string) => string;
+  showWho: boolean;
+}
+
+function Item({ remembered, me, name, showWho }: ItemProps) {
   const [open, setOpen] = useState(false);
-  const { item, recorded, history } = remembered;
+  const [editing, setEditing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [situation, setSituation] = useState("");
+  const [text, setText] = useState("");
+  const queryClient = useQueryClient();
+  const { item, recorded, history, can_change } = remembered;
+
+  // Each change answers with the whole memory as it is now on disk.
+  const redraw = (memory: MyMemory) => queryClient.setQueryData(["my-memory"], memory);
+  const edit = useMutation({
+    mutationFn: () => api.editMemoryItem(item.id, { situation, text }),
+    onSuccess: (memory) => {
+      setEditing(false);
+      redraw(memory);
+    },
+  });
+  const remove = useMutation({
+    mutationFn: () => api.deleteMemoryItem(item.id),
+    onSuccess: (memory) => {
+      setConfirming(false);
+      redraw(memory);
+    },
+  });
+
+  const startEditing = () => {
+    setSituation(item.situation);
+    setText(item.text);
+    edit.reset();
+    setEditing(true);
+  };
 
   return (
     <Card variant="outlined">
       <CardContent>
         <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1 }}>
           <Typography sx={{ fontWeight: 600, flexGrow: 1 }}>{item.situation}</Typography>
+          {showWho && item.scope.startsWith("person:") && (
+            <Chip label={`about ${name(item.scope.slice("person:".length))}`} size="small" />
+          )}
           {item.scope.startsWith("place:") && (
             <Chip label={item.scope.slice("place:".length)} size="small" />
           )}
           <Chip label={item.kind} size="small" variant="outlined" />
           {item.status !== "confirmed" && <Chip label={item.status} size="small" color="warning" />}
         </Stack>
-        <Typography sx={{ mb: 1 }}>{item.text}</Typography>
-        <Origin version={recorded ?? { item, changed: null, by: "", outside: false }} me={me} name={name} />
 
-        {history.length > 0 && (
+        {editing ? (
+          <Stack spacing={2} sx={{ my: 1 }}>
+            <TextField
+              label="When it applies"
+              size="small"
+              value={situation}
+              onChange={(event) => setSituation(event.target.value)}
+            />
+            <TextField
+              label="What to remember"
+              size="small"
+              multiline
+              minRows={2}
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+            />
+            {edit.error && <Alert severity="error">{reasonOf(edit.error)}</Alert>}
+            <Stack direction="row" spacing={1}>
+              <Button
+                variant="contained"
+                size="small"
+                disabled={edit.isPending || !situation.trim() || !text.trim()}
+                onClick={() => edit.mutate()}
+              >
+                Save
+              </Button>
+              <Button size="small" onClick={() => setEditing(false)}>
+                Cancel
+              </Button>
+            </Stack>
+          </Stack>
+        ) : (
           <>
-            <Button size="small" sx={{ mt: 1, px: 0 }} onClick={() => setOpen(!open)}>
-              {open ? "Hide history" : `History (${history.length})`}
-            </Button>
-            <Collapse in={open}>
-              <Stack spacing={1} sx={{ mt: 1, pl: 2, borderLeft: 2, borderColor: "divider" }}>
-                {history.map((version) => (
-                  <Box key={version.item.id}>
-                    <Typography variant="body2" sx={{ textDecoration: "line-through" }}>
-                      {version.item.text}
-                    </Typography>
-                    <Origin version={version} me={me} name={name} />
-                  </Box>
-                ))}
-              </Stack>
-            </Collapse>
+            <Typography sx={{ mb: 1 }}>{item.text}</Typography>
+            <Origin version={recorded ?? { item, changed: null, by: "", outside: false }} me={me} name={name} />
           </>
         )}
+
+        <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+          {history.length > 0 && (
+            <Button size="small" sx={{ px: 0 }} onClick={() => setOpen(!open)}>
+              {open ? "Hide history" : `History (${history.length})`}
+            </Button>
+          )}
+          <Box sx={{ flexGrow: 1 }} />
+          {can_change && !editing && (
+            <>
+              <Button size="small" onClick={startEditing}>
+                Edit
+              </Button>
+              <Button size="small" color="error" onClick={() => setConfirming(true)}>
+                Delete
+              </Button>
+            </>
+          )}
+        </Stack>
+
+        {history.length > 0 && (
+          <Collapse in={open}>
+            <Stack spacing={1} sx={{ mt: 1, pl: 2, borderLeft: 2, borderColor: "divider" }}>
+              {history.map((version) => (
+                <Box key={version.item.id}>
+                  <Typography variant="body2" sx={{ textDecoration: "line-through" }}>
+                    {version.item.situation !== item.situation && `${version.item.situation}: `}
+                    {version.item.text}
+                  </Typography>
+                  <Origin version={version} me={me} name={name} />
+                </Box>
+              ))}
+            </Stack>
+          </Collapse>
+        )}
       </CardContent>
+
+      <Dialog open={confirming} onClose={() => setConfirming(false)}>
+        <DialogTitle>Delete this from memory?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            <strong>{item.situation}</strong>: {item.text}
+          </DialogContentText>
+          <DialogContentText sx={{ mt: 2 }}>
+            The planner stops using it at once. Its earlier versions stay in the journal.
+          </DialogContentText>
+          {remove.error && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {reasonOf(remove.error)}
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirming(false)}>Keep it</Button>
+          <Button color="error" disabled={remove.isPending} onClick={() => remove.mutate()}>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Card>
   );
 }
@@ -163,7 +309,8 @@ function Item({ remembered, me, name }: { remembered: Remembered; me: string; na
  * Who said it, when, and where.
  *
  * The conversation is linked only when it is the reader's own: one someone
- * else had is theirs, and the server would answer 404 to anyone else.
+ * else had is theirs, and the server would answer 404 to anyone else. A change
+ * made on this page names the page instead.
  */
 function Origin({ version, me, name }: { version: MemoryVersion; me: string; name: (email: string) => string }) {
   const navigate = useNavigate();
@@ -171,10 +318,25 @@ function Origin({ version, me, name }: { version: MemoryVersion; me: string; nam
   const when = version.changed ? new Date(version.changed).toLocaleString() : item.written;
   const conversation = conversationOf(item);
   const mine = item.said_by === me;
+  const who = mine ? "you" : name(item.said_by);
 
+  if (version.outside) {
+    return (
+      <Typography variant="body2" color="text.secondary">
+        Changed outside the planner, {when}
+      </Typography>
+    );
+  }
+  if (item.evidence === ON_THE_PAGE) {
+    return (
+      <Typography variant="body2" color="text.secondary">
+        Changed on the Memory page by {who}, {when}
+      </Typography>
+    );
+  }
   return (
     <Typography variant="body2" color="text.secondary">
-      {version.outside ? "Changed outside the planner" : `Said by ${mine ? "you" : name(item.said_by)}`}, {when}
+      Said by {who}, {when}
       {conversation &&
         (mine ? (
           <>

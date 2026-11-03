@@ -3,8 +3,9 @@
 > **Status:** phases 1 and 2 built, 2026-11-02, and verified live: confirmed facts and preferences
 > remembered by `@Intake`, per person and shared, and what people said about places, read by the
 > facility manager before it chooses. Phase 3 is designed in §10.4 (M21-M31,
-> Q6-Q11): 3a, editing and deleting on the Memory page, first; 3b, suggestions - a team for a
-> group, a meal for a kind of meeting - in outline; the memory keeper sketched.
+> Q6-Q11). 3a - editing and deleting on the Memory page, and *Said by me* - is built
+> (2026-11-03) and verified live; 3b, suggestions - a team for a group, a meal for a kind of
+> meeting - is in outline; the memory keeper is sketched.
 >
 > **Where to look:** §4.2 says where memory is stored; §9 lists the questions still open.
 >
@@ -879,6 +880,27 @@ against real journals as the read path's tests are; (3) the two routes and *Said
 and delete on the page, with the history line for a page edit; (5) live run, then
 `docs/memory.md`, the demo's act 5 and the roadmap.
 
+**3a built (2026-11-03).** As above. The spike ran first and passed: a page edit between two
+`remember` calls kept all three changes, the journal read `@Intake`, `jettro@rag4p.org`,
+`@Intake` (S7, S8), and six page writes beside six agent writes, in parallel, lost nothing and
+stuck nowhere (S9). Built in `meeting_server/memory_page.py` (`_lists` holds M22, `_rewrite` M26,
+`change_item` and `delete_item` M24 and M25, the routes M27) and `pages/MemoryPage.tsx` (Edit and
+Delete where `can_change`, a confirmation for a delete, *Said by me*, and *changed on the Memory
+page by …* for a page edit). `meeting_agents.memory`'s per-file lock became public, `file_lock`,
+so the page and the agents take the same one. Tests: `server/tests/test_memory_edit.py`, sixteen,
+against real journals and, for S7 and S9, the real `@Intake`. Two things settled while building:
+
+- An edit that would put two items of the same kind on one situation is refused, not merged -
+  the history follows one `supersedes` chain, and a merge would hide one of them.
+- The page never creates a journal. It commits into one an agent's card made; a tree without one
+  is still written, and the page says *no history* as it already did.
+
+Verified live, against a copy of the stack's memory: the stand-ups item edited to 15 minutes
+showed the old words in its history and *changed on the Memory page by you*; an id in the text
+was refused on the page with its reason; the Campus place fact reworded as a fact; the journals
+named `jettro@rag4p.org` for both. Logged in as Bram, *About me* offered Edit and Delete on what
+Jettro said about him, and the Campus fact - not his - offered neither.
+
 **Questions for 3a.**
 
 - **Q6** — Should deleting an item about a person also remove it from the journal? Rewriting
@@ -968,6 +990,9 @@ and delete on the page, with the history line for a page edit; (5) live run, the
   team when several people are invited, and a meal per kind of meeting. A suggestion is a
   question, offered in the conversation or computed on the Memory page from the person's own
   earlier meetings, and stored only on their yes. Q7 answered.
+- 2026-11-03: **3a built** (§10.4): edit, delete and *Said by me* on the Memory page, the server
+  writing as an agent does and committing as the person. Spike S7-S9 passed first; sixteen tests;
+  verified live. 420 tests pass.
 
 ---
 

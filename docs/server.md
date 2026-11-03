@@ -78,6 +78,7 @@ is the framework's. The routes the planner uses:
 | `GET /platform/health` | the three services at once | ours |
 | `/auth/...` | the login | ours |
 | `GET /me/memory` | the Memory tab | ours |
+| `PUT`, `DELETE /me/memory/items/{id}` | edit or delete an item you may change | ours |
 
 ### The console
 

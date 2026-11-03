@@ -296,7 +296,7 @@ class MemoryTool(ToolCard):
         """
         tree = self._tree(shared)
         read, write = _callable(tree, "workspace_read"), _callable(tree, "workspace_write")
-        with _lock_for(str(tree.workspace.root / path)):
+        with file_lock(str(tree.workspace.root / path)):
             for attempt in (1, 2):
                 if tree.workspace.exists(path):
                     read(path)
@@ -368,7 +368,14 @@ _LOCKS: dict[str, threading.Lock] = {}
 _LOCKS_GUARD = threading.Lock()
 
 
-def _lock_for(path: str) -> threading.Lock:
+def file_lock(path: str) -> threading.Lock:
+    """The lock for one memory file, by its resolved path, shared by every writer in this process.
+
+    The Memory page takes it too (design_memory.md M26): teams run in the
+    server's process, so a page edit and an agent's `remember` on the same file
+    are serialised here before either reaches the framework's per-file `flock`.
+    Always taken first, so the two never wait on each other in two orders.
+    """
     with _LOCKS_GUARD:
         return _LOCKS.setdefault(path, threading.Lock())
 

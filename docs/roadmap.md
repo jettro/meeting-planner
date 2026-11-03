@@ -15,18 +15,17 @@ says what is done, what is next, and what is not planned.
 | The conversation | `@Intake`, a team you talk to | [the conversation](conversation.md) |
 | Who is asking | the login, what is yours, the organiser who attends | [who is asking](who-is-asking.md) |
 | Memory, phases 1 and 2 | yours, about people, about places; the Memory tab with history | [memory](memory.md) |
+| Memory, phase 3a | edit and delete on the Memory tab, and what you said about others | [memory](memory.md) |
 | The documentation | these pages | [`design_docs.md`](design/design_docs.md) |
 
 ## Next
 
 Each with a design first.
 
-- **Memory, phase 3** (`design_memory.md` §10.4). First, editing and deleting on the Memory tab,
-  with rules for who may change what. Then suggestions that make organising easier - *call
-  Sanne, Daan and Femke the design team?*, *soup for workshops?* - offered in the conversation
-  or on the Memory tab, and kept only when you say yes. Last, a *memory keeper* that suggests
-  tidying what has piled up. The Campus run showed why editing comes first: a memory written as an order can now only
-  be fixed by telling the planner again.
+- **Memory, phase 3** (`design_memory.md` §10.4). Editing and deleting is done (3a). Next,
+  suggestions that make organising easier - *call Sanne, Daan and Femke the design team?*,
+  *soup for workshops?* - offered in the conversation or on the Memory tab, and kept only when
+  you say yes (3b). Last, a *memory keeper* that suggests tidying what has piled up (3c).
 - **Guardrails.** A check before an agent books or orders - *may this lunch for twenty be ordered
   on Sanne's behalf?* The hook is known: a capability on the agent, like `TalkOnlyToHuman`, can
   look at a tool call before it runs and refuse it. Possibly with a decision model for the rules.

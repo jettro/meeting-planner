@@ -118,12 +118,28 @@ always; when you ask for a focus session, it puts *the Library, as remembered fo
 into the request it sends. The facility manager then reads that in the wish, like anything else
 you asked for.
 
-### Seeing it
+### Seeing it, and changing it
 
-The planner's **Memory** tab shows three lists: *Mine*, *About me* - what anyone said about
-you - and *Places*. Each item says who said it and when, links to the conversation if it was
-yours, and opens its history: the earlier versions, read from the journal. It only shows; to
-change something, you tell the planner, which is the path that records who said it.
+The planner's **Memory** tab shows four lists: *Mine*, *About me* - what anyone said about you -
+*Said by me* - what you said about other people - and *Places*. Each item says who said it and
+when, links to the conversation if it was yours, and opens its history: the earlier versions,
+read from the journal.
+
+You can **edit** or **delete** what is yours to change:
+
+| List | Who may change it |
+|---|---|
+| Mine | you |
+| About me | you - it is about you, whoever said it |
+| Said by me | you, and the person it is about |
+| Places | whoever said it, and an admin |
+
+An edit is a new version: the old words stay in the history, and the item now says *changed on
+the Memory page by you*. The same checks apply as when the planner remembers something - no
+secrets, no ids. A delete stops the item being used at once; its earlier versions stay in the
+journal, so deleting is not erasing. The server checks every change against who is logged in,
+and the journal records it under that person's name - so the history says who changed what,
+whether it was an agent or a person on this page.
 
 The akgentic console's workspace tab shows your own tree as files. The shared tree is only on the
 Memory tab: the framework never serves a shared path to a browser.
@@ -178,8 +194,10 @@ sport facilities*), because the prompt tells the model not to take orders from m
 
 ## What it does not do
 
-- **Edit or delete from the page.** The Memory tab only shows. Changing an item is done by telling
-  the planner; editing, deleting and who may do which is the next phase (M11, M14).
+- **Erase.** Deleting takes an item out of memory, not out of the journal's history (M25 - the
+  first thing to add before real names go in).
+- **Suggest.** Offering to remember a team for a group, or a meal for a kind of meeting, is the
+  next part of phase 3 (M29-M31).
 - **Learn on its own.** Nothing is remembered that nobody said. Lessons an agent proposes, for a
   person to accept, are the next phase (M6, M7).
 - **Remember meetings.** What happened in earlier meetings - *last time the Library was full* - is
@@ -196,7 +214,7 @@ sport facilities*), because the prompt tells the model not to take orders from m
 | `agents/src/meeting_agents/intake.py` | `remember_said` and its checks, and what a lookup brings along |
 | `agents/src/meeting_agents/specialists.py` | `FacilityManager._place_facts`: the facility manager's selection |
 | `agents/src/meeting_agents/messages.py` | `remembered_block`: how place facts are worded for the model |
-| `server/src/meeting_server/memory_page.py` | `GET /me/memory`: the three lists and their history |
+| `server/src/meeting_server/memory_page.py` | `/me/memory`: the four lists and their history; who may change what; edit and delete, written as an agent writes |
 | `gui/src/pages/MemoryPage.tsx` | the Memory tab |
 
 The design, with every decision and what was turned down: [`design_memory.md`](design/design_memory.md).
@@ -204,4 +222,4 @@ To show it: act 5 of the [demo script](demo.md).
 
 ---
 
-*Last checked against the code: 2026-11-03, `cd410ba`.*
+*Last checked against the code: 2026-11-03, phase 3a.*
