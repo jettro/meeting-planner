@@ -1,7 +1,7 @@
 # Design — the documentation
 
-> **Status:** agreed, 2026-11-03; questions answered (§8). Step 1 of §6, the move, is done; the
-> topic pages are not written yet.
+> **Status:** agreed, 2026-11-03; questions answered (§8). Steps 1 and 2 of §6 are done - the move,
+> the index and the overview; the topic pages are not written yet.
 
 > **The one sentence to keep:** *the designs say what we decided and why, at the time; the docs
 > say what is there now, and why it is that way.* Everything below follows from it.
@@ -166,3 +166,5 @@ Each step is one commit, and you review each page before the next.
   reader learning from the sample.
 - 2026-11-03: **Step 1 done.** The nine designs are in `docs/design/` under their own names, and
   each opens with the same status header; no link broke.
+- 2026-11-03: **Step 2 done.** `docs/README.md`, the index, and `overview.md`, with the pieces as
+  a diagram, one meeting from start to finish, and the seven ideas that carry over.
