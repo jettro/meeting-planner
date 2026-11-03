@@ -98,7 +98,7 @@ records the alternatives that were turned down.
 what to undo when one fails, when to ask the human - the system knows all of that, so
 `@Coordinator` is plain code and can be tested like code. Models do what needs reading and
 judgement: matching *somewhere quiet* to a place, *no bread* to a menu, a conversation to a
-request. ([`design_akgents.md`](design/design_akgents.md), D1.)
+request. ([The team](team.md).)
 
 **Each agent reaches one service.** An agent that can only call the location service cannot book
 a meeting or order food, however its prompt is worded. The limit is in how the team is put

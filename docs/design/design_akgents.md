@@ -8,6 +8,8 @@
 >
 > **Lessons:** §7.4 and §7.5.
 >
+> **Now:** [`docs/team.md`](../team.md) describes the team as it is.
+>
 > *A design records what was decided and why, at the time; it is not kept current.*
 
 Companion to [`design.md`](./design.md). That document covers the three Python microservices

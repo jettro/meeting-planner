@@ -21,7 +21,7 @@ do, and where to find it in the code. They describe what is there now.
 |---|---|---|
 | [Memory](memory.md) | four kinds of memory, chosen by code, the journal, the Memory page, the limits | |
 | [The services](services.md) | three services, their MCP servers, one service per agent | |
-| The team | the agents, the plain-code coordinator, the booking saga, the two questions | to come |
+| [The team](team.md) | the agents, the plain-code coordinator, the booking saga, the two questions | |
 | The server | the team as a service, the planner, the console, the trace | to come |
 | Durability | the team is the meeting: revive, cancel, resume | to come |
 | The conversation | `@Intake`, a team you talk to, what the model may say | to come |
