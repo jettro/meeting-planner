@@ -1,13 +1,17 @@
 # Cancelling a meeting — design
 
-> **Partly superseded by `design_durability.md`** (2026-10-28). The coordinator is durable now and
+> **Status:** built, 2026-10-29, and verified end to end: the meeting, the booking and the order
+> were really gone from the three services, and the release has its own trace.
+>
+> **Superseded:** partly, by `design_durability.md` (2026-10-28). The coordinator is durable and
 > its state is the meeting's only record, so a cancellation goes to the team that made the meeting
 > rather than to a new one, there is no plan store, and nothing is stopped first. The release saga
 > itself (§1, §2, §4's ordering and failure rules) is unchanged.
-
-Status: **built** (2026-10-29). Verified end to end against the running stack:
-the meeting, the booking and the order were really gone from the three
-services, and the release has its own trace.
+>
+> **Still open:** §8.3: should a failed plan run its outstanding compensations itself, or only
+> report them?
+>
+> *A design records what was decided and why, at the time; it is not kept current.*
 
 This document replaces two earlier drafts, both of which designed a way to
 *change* a plan: the first by mutating it inside the team that made it, the

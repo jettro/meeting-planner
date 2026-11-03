@@ -1,5 +1,11 @@
 # Design — the team is the meeting
 
+> **Status:** built, 2026-10-28, and verified live.
+>
+> **Lessons:** §10.
+>
+> *A design records what was decided and why, at the time; it is not kept current.*
+
 Companion to `design_cancel.md` and `design_gui.md`. Appendix A of `design_cancel.md` measured
 that `@Coordinator` comes back empty when a team is restored, and concluded that *"our
 deterministic agents are not durable, by construction"*. Most of the plan machinery was built on
@@ -12,8 +18,6 @@ a second home: **one team plans one meeting (G3), so the team is the meeting.** 
 state becomes the only record, the plan store goes, and the browser lists teams.
 
 > **The one sentence to keep:** *one meeting, one owner, one record.*
-
-**Status:** built (2026-10-28) and verified live — see §10 for what building it taught us.
 
 ---
 

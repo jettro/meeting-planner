@@ -1,6 +1,7 @@
 # Design — the documentation
 
-Status: **agreed** (2026-11-03), questions answered (§8). Nothing is moved or written yet.
+> **Status:** agreed, 2026-11-03; questions answered (§8). Step 1 of §6, the move, is done; the
+> topic pages are not written yet.
 
 > **The one sentence to keep:** *the designs say what we decided and why, at the time; the docs
 > say what is there now, and why it is that way.* Everything below follows from it.
@@ -130,7 +131,8 @@ added later over the same files; nothing here prevents it (Q1).
 Each step is one commit, and you review each page before the next.
 
 1. **The move** (W2, W3): `git mv` the eight designs, fix the path links, write the status
-   headers. Mechanical; checked by a link check over all Markdown.
+   headers. Mechanical; checked by a link check over all Markdown. Each header gets its *Now*
+   line - where the current picture is - with the topic page that holds it.
 2. **The index and the overview**: `docs/README.md`, `overview.md` with its diagram. Fixes the
    shape every other page follows.
 3. **`memory.md`** first of the topics: it is the freshest, the demo leans on it, and it has the
@@ -162,3 +164,5 @@ Each step is one commit, and you review each page before the next.
   references to the designs in the code.
 - 2026-11-03: Questions answered (§8). W4 became *no decision index*; W5 is written for the
   reader learning from the sample.
+- 2026-11-03: **Step 1 done.** The nine designs are in `docs/design/` under their own names, and
+  each opens with the same status header; no link broke.

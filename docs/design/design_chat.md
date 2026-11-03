@@ -1,5 +1,14 @@
 # Design — a team you talk to
 
+> **Status:** built, 2026-10-28, and verified live. §13 answers how places and people are found
+> from the person's own words.
+>
+> **Lessons:** §14.
+>
+> **Still open:** Q2–Q4 in §11.
+>
+> *A design records what was decided and why, at the time; it is not kept current.*
+
 Companion to `design_akgents.md`, `design_gui.md` and `design_durability.md`. Those documents built
 a team you *fill in*: a typed `PlanMeetingRequest`, a deterministic `@Coordinator`, two gates, and
 a team that is its meeting. This one adds a way to arrange a meeting **in your own words**, by
@@ -8,10 +17,6 @@ turns it into the request the coordinator already understands, and passes the co
 questions and answers back and forth.
 
 > **The one sentence to keep:** *the model listens; the coordinator decides; the human approves.*
-
-**Status:** built (2026-10-28) and verified live — §14 records what building it taught us.
-§13 answers how places and people are found from the person's own words; Q2–Q4 in §11 are still
-open.
 
 ---
 

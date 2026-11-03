@@ -1,5 +1,16 @@
 # Design — what the team should remember
 
+> **Status:** phases 1 and 2 built, 2026-11-02, and verified live: confirmed facts and preferences
+> remembered by `@Intake`, per person and shared, and what people said about places, read by the
+> facility manager before it chooses. Phase 3 - proposed lessons, editing on the Memory page, the
+> memory keeper - is still a proposal.
+>
+> **Where to look:** §4.2 says where memory is stored; §9 lists the questions still open.
+>
+> **Lessons:** §10.2, and §10.3 for phase 2.
+>
+> *A design records what was decided and why, at the time; it is not kept current.*
+
 Companion to `design_durability.md` and `design_chat.md`. Those documents gave every meeting a
 durable record and a way to ask for one in your own words. Each team still starts from nothing: it
 does not know that "Daan" usually means Daan Jansen, that this group always has soup, or that the
@@ -13,11 +24,6 @@ verified against the installed packages, and what this team needs.
 
 > **The one sentence to keep:** *remember only what will change a future decision — and say when
 > it stops being true.*
-
-**Status:** phase 1 built (2026-11-02) and verified live — confirmed facts and preferences,
-remembered by `@Intake` and applied in later conversations, per person and shared. Phases 2 and 3
-are still proposals. §4.2 says exactly where memory is stored; §10.2 is what building phase 1
-taught us; §9 lists the questions still open.
 
 ---
 

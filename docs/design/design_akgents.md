@@ -1,16 +1,18 @@
 # Design — Akgents Agent Layer
 
+> **Status:** built, 2026-10-26: all eight steps of §7.2.
+>
+> **Superseded:** D3 and §5.1 (b) by `design_durability.md` (the coordinator's state is the
+> meeting's only record); D5 withdrawn, because there is no change feature (`design_cancel.md`).
+> Free text arrives through `@Intake` (`design_chat.md`), as §4.2 rule 5 kept room for.
+>
+> **Lessons:** §7.4 and §7.5.
+>
+> *A design records what was decided and why, at the time; it is not kept current.*
+
 Companion to [`design.md`](./design.md). That document covers the three Python microservices
 (REST + UI + MCP). **This** document covers the next phase: an **Akgents multi-agent team** that
 drives those services through their MCP endpoints on behalf of a human.
-
-## Status
-
-**Built.** All eight steps of §7.2 are done, and the team has grown since: a server and a browser
-(`design_gui.md`), cancellation (`design_cancel.md`), a durable coordinator whose state is the
-meeting's only record (`design_durability.md`, which withdraws D3 and §5.1 (b)), and a second team
-you talk to (`design_chat.md`). v1's human entry point is a typed `PlanMeetingRequest`; free text
-now arrives through `@Intake` in front of it, as §4.2 rule 5 kept room for.
 
 ---
 

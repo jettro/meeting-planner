@@ -1,5 +1,15 @@
 # Design — who is asking: authentication and authorization
 
+> **Status:** built. Steps 2, 3 and 6 of §7 on 2026-10-31 - the login, the gate, the GUI's login
+> page and the console's API-key login; step 5, the organiser, on 2026-11-02 (§12).
+>
+> **Dropped:** step 4, the *My agenda* page (A12), on 2026-11-03: the meeting service's own UI
+> already shows a person's agenda. Step 7, the docs, is taken over by `design_docs.md`.
+>
+> **Lessons:** §11.
+>
+> *A design records what was decided and why, at the time; it is not kept current.*
+
 Companion to `design_memory.md`, which stops at its Q1: *"Without authentication every request is
 `anonymous`"*, so "per organiser" has no one to belong to. This document gives the sample real
 users, using only what the open-source (community) tier of akgentic-infra ships, and keeps it
@@ -7,11 +17,6 @@ simple enough to stay a demo.
 
 > **The one sentence to keep:** *the framework already checks who owns what; we only have to tell
 > it who is asking.*
-
-**Status:** partly built (2026-10-31). Steps 2, 3 and 6 of §7 are built and verified live: the
-login, the gate, the GUI's login page, and the console's API-key login. Still to build: step 4
-(*My agenda*, A12), step 5 (the organiser, A10) and step 7 (the memory doc). §11 is what building
-it taught us.
 
 ---
 

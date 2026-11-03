@@ -1,14 +1,20 @@
 # Design — the team as a service, and a browser to watch it
 
+> **Status:** built, 2026-10-27 to 2026-10-29.
+>
+> **Superseded:** G12, G23 and G25 by `design_durability.md`; the Plans screen and `/plans` became
+> a Meetings screen that lists teams.
+>
+> **Lessons:** §8.3.
+>
+> *A design records what was decided and why, at the time; it is not kept current.*
+
 Companion to `design_akgents.md`. That document ends with a team that plans a meeting from a
 terminal. This one moves runtime ownership into a **service** (`akgentic-infra`, community tier)
 and puts a **React single-page app** in front of it.
 
 > **The one sentence to keep:** *the server owns execution; the client observes it and sends
 > requests.* Everything below follows from it.
-
-**Status:** built (see the changelog). G12, G23 and G25 are superseded by `design_durability.md`,
-and the Plans screen and `/plans` are replaced by a Meetings screen that lists teams.
 
 ---
 

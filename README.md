@@ -1,7 +1,7 @@
 # Meeting Planner
 
 A Python rewrite of the original Java/Spring Boot "meeting-planner-embabel" project, split into
-independent, containerized microservices. See [`design.md`](./design.md) for the full analysis of
+independent, containerized microservices. See [`design.md`](docs/design/design.md) for the full analysis of
 the original project and the decisions behind this rewrite.
 
 ## What this is
@@ -17,7 +17,7 @@ see `design.md` section 3 for the design and rationale.
 | `location-service`  | Locations, rooms, and room bookings           | `8002` | `8102` |
 | `nomnom-service`    | Food/drinks catalogue and ordering            | `8003` | `8103` |
 
-**Current phase scope** (see `design.md` and [`design_akgents.md`](./design_akgents.md) for the
+**Current phase scope** (see `design.md` and [`design_akgents.md`](docs/design/design_akgents.md) for the
 roadmap): plain REST APIs, Pydantic/SQLModel domain models, agent-facing MCP servers that wrap
 each service's own REST API, and an **agent team** built on the in-house "Akgents" framework that
 plans a meeting end to end from the command line. There is **no** authentication/OAuth on the
@@ -204,12 +204,9 @@ so the console's protocol is already served. Nothing was written to support it.
 
 ```
 meeting-planner/
-├── design.md                 # Analysis of the old project + rewrite decisions
-├── design_akgents.md          # Design of the agent team (Akgents)
-├── design_gui.md              # Design of the team server + browser client
-├── design_cancel.md           # Design of cancelling a meeting (built)
-├── design_durability.md       # The team is the meeting: a durable coordinator, no plan store (built)
-├── design_chat.md             # Talking to the team in free text: @Intake (built)
+├── docs/
+│   ├── demo.md                # The demo script
+│   └── design/                # The design of each step, written before it was built
 ├── pyproject.toml             # uv workspace root (shared dev tooling config)
 ├── docker-compose.yml         # Runs all three services together
 ├── Makefile                   # Shortcuts for common dev tasks (see `make help`)
@@ -343,7 +340,7 @@ Run `make help` for the full list. Highlights:
 
 ## Roadmap
 
-Each step so far has a design document, written before it was built: `design.md` (the services
+Each step so far has a design document in `docs/design/`, written before it was built: `design.md` (the services
 and their MCP servers), `design_akgents.md` (the agent team), `design_gui.md` (the team as a
 service, the browser and the console), `design_cancel.md` (cancelling), `design_durability.md`
 (the team is the meeting), `design_chat.md` (the team you talk to), `design_auth.md` (who is

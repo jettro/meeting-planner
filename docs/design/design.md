@@ -1,10 +1,12 @@
 # Meeting Planner — Design Document
 
-## Status
-Built. This document covers the analysis of the old Java/Embabel "meeting-planner-embabel" project
-and the first two phases of its rewrite: the three services (§2) and their MCP servers (§3). The
-agent team and everything after it are designed in their own documents — `design_akgents.md`,
-`design_gui.md`, `design_cancel.md`, `design_durability.md` and `design_chat.md`.
+> **Status:** built, 2026-10-21 to 2026-10-26: the analysis of the old Java/Embabel project, the
+> three services (§2) and their MCP servers (§3).
+>
+> **Later steps:** the agent team and everything after it have their own designs, starting with
+> `design_akgents.md`.
+>
+> *A design records what was decided and why, at the time; it is not kept current.*
 
 Source project analyzed: `/Users/jettrocoenradie/Development/personal/agent4j/meeting-planner-embabel`
 
