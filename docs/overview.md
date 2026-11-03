@@ -102,7 +102,7 @@ request. ([`design_akgents.md`](design/design_akgents.md), D1.)
 
 **Each agent reaches one service.** An agent that can only call the location service cannot book
 a meeting or order food, however its prompt is worded. The limit is in how the team is put
-together, and a test checks it - not in instructions to the model.
+together, and a test checks it - not in instructions to the model. ([The services](services.md).)
 
 **Agents exchange typed messages, not text.** A request has fields: who, which day, how long.
 What a model may answer is a type too. That is what makes the plain-code coordinator possible,

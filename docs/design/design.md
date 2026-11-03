@@ -3,6 +3,8 @@
 > **Status:** built, 2026-10-21 to 2026-10-26: the analysis of the old Java/Embabel project, the
 > three services (§2) and their MCP servers (§3).
 >
+> **Now:** [`docs/services.md`](../services.md) describes the services as they are.
+>
 > **Later steps:** the agent team and everything after it have their own designs, starting with
 > `design_akgents.md`.
 >

@@ -1,7 +1,7 @@
 # Design — the documentation
 
 > **Status:** agreed, 2026-11-03; questions answered (§8). Steps 1 to 3 of §6 are done - the move,
-> the index, the overview and the memory page.
+> the index, the overview and the memory page - and step 4 has begun: the services page.
 
 > **The one sentence to keep:** *the designs say what we decided and why, at the time; the docs
 > say what is there now, and why it is that way.* Everything below follows from it.
@@ -170,3 +170,4 @@ Each step is one commit, and you review each page before the next.
   a diagram, one meeting from start to finish, and the seven ideas that carry over.
 - 2026-11-03: **Step 3 done.** `memory.md`, the first topic page, with the Campus run as its
   lesson; the memory design's header has its *Now* line.
+- 2026-11-03: **Step 4, the services page.** `services.md`; `design.md`'s header has its *Now* line.
