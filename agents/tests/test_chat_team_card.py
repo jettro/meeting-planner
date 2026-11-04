@@ -122,12 +122,21 @@ def test_the_intake_prompt_renders(chat: TeamCard):
     assert "only to @Human" in prompt
 
 
-def test_intake_offers_once_after_the_request_and_uses_a_remembered_meal(chat: TeamCard):
-    """Phase 3b in the conversation (design_memory.md M36, M37): an offer is a question."""
+def test_intake_offers_once_after_the_booking_and_uses_a_remembered_meal(chat: TeamCard):
+    """The conversation's one offer (design_memory.md M45-M47): a question, after the booking."""
     prompt = " ".join(by_name(chat)["@Intake"].card.config.prompt.render().split())
-    assert "After the meeting is requested - never before" in prompt
+    assert "When an update says the meeting is booked - not before" in prompt
     assert "once in this conversation" in prompt
+    for offer in (
+        "where this kind of meeting goes",
+        "lunch for this kind of meeting",
+        "lunch for these people",
+        "a team",
+    ):
+        assert f"- {offer}" in prompt
+    assert "Offer nothing about the time" in prompt
     assert 'Call remember only on a clear yes, with about "organiser"' in prompt
+    assert "or for meetings with these people" in prompt
     assert '"with soup, as remembered for workshops"' in prompt
 
 

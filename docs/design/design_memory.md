@@ -503,6 +503,9 @@ first cases of the evals the README roadmap lists.
 | M42 | **Accepting changes *Mine* through 3a's path, as the person** | The history says the keeper proposed it and who accepted |
 | M43 | ***Not now* goes to `declined.md`, and is not proposed again** | As for suggestions (M35) |
 | M44 | **The page watches the keeper's state until it is done** | The framework's `agent-states`; nothing new on the server |
+| M45 | **The one conversation offer comes after the booking, when code invites it** | The person has seen the place and the lunch; a failure invites nothing |
+| M46 | **One of four: a place or a lunch for this kind of meeting, a lunch for these people, a team** | Each can be used next time; a time cannot yet (Q17) |
+| M47 | **A remembered lunch for these people fills the wish like one for a kind of meeting** | M37, widened |
 
 ---
 
@@ -1177,6 +1180,58 @@ beside *Tidy up* counted the run's proposals, not the ones still open.
 - **Q16** — Should the keeper look at `review_when`? Nothing sets it today; proposed: not until
   something does.
 
+### 10.7 One offer after the meeting is arranged (2026-11-04)
+
+A refinement of 3b's conversation offer (M36), asked for after using it: the moment to offer
+something worth remembering is when the meeting is **arranged**, not when it is requested -
+then the person has seen the place that was chosen and the lunch that arrived, and *"shall I
+remember that?"* is about something real. Checked against `@Intake`: when the coordinator
+reports `PlanCompleted`, `receiveMsg_PlanCompleted` already tells the model *the meeting is
+booked* with the title, the time, the room, the place and what lunch arrived (`describe`).
+
+**M45 — the one offer moves to after the booking, and code says when.** The update for a booked
+meeting - and only that one, never a failure or a cancel - ends with the invitation to offer one
+thing, if something is worth remembering and is not remembered yet. Code decides the moment; the
+model decides what, or nothing. Still at most once per conversation, still only on a clear yes,
+still `about "organiser"`.
+
+**M46 — what may be offered: one of four, the most useful one.**
+
+| Offer | When |
+|---|---|
+| **a place for this kind of meeting** | the place was described, not named, and nothing remembered says where this kind goes - *"Shall I remember the Library for design reviews?"* |
+| **lunch for this kind of meeting** | lunch was ordered, and nothing remembered is about lunch for this kind |
+| **lunch for these people** | the same, for the people rather than the title - *"…soup when you meet with the review crew?"* |
+| **a team** | three or more people, and no group remembered names them |
+
+**Not a time.** A preferred time - *design reviews in the morning* - would be worth offering, but a
+request has no field for it: the scheduler finds free slots and the person picks one. A
+remembered time could not change anything yet, so it is not offered (Q17).
+
+**M47 — lunch for these people is applied like lunch for a kind of meeting.** M37's rule reads
+*for this kind of meeting, or for these people*: when the person says nothing about lunch, a
+remembered lunch for either fills the wish, and `@Intake` says so.
+
+**What changes.** `intake.py`: the booked update ends with the invitation (M45).
+`intake_prompt.yaml`: the offer paragraph names the four offers and the moment; the lunch rule
+reads *or for these people*. Tests: the invitation is in the update for a booked meeting and in
+no other; the prompt names the four offers.
+
+**Built (2026-11-04).** As above: `OFFER_NOW` ends the booked update in `intake.py`, and the
+prompt's offer paragraph names the four offers and the moment. Tests: the invitation is in the
+booked update and not in the cancelled or the time-question one (`test_intake.py`); the prompt
+names the four offers and *nothing about the time* (`test_chat_team_card.py`). Verified live
+against the running services: a design review *somewhere quiet, with soup* - no offer after the
+request; booked at the Library, and then *"Your design review is booked for 1 December,
+10:00-11:00, in the study room at the Library, with three soups; shall I remember the Library
+for design reviews?"*. On *yes* it went to *Mine* as a preference, *design reviews: Design
+reviews in the Library*. The meeting was cancelled afterwards, and the order, the room and the
+meeting were released.
+
+- **Q17** — Should a request carry a preferred time, so the scheduler offers those slots first?
+  Then *design reviews in the morning* could be remembered and used. A change to the request, the
+  coordinator and the scheduler; proposed as a step of its own.
+
 ---
 
 ## 11. Changelog
@@ -1266,6 +1321,10 @@ beside *Tidy up* counted the run's proposals, not the ones still open.
 - 2026-11-03: **3c built** (§10.6): the `memory-keeper` team, `@Keeper` reading only *Mine* and
   proposing through code's checks, proposals accepted or declined on the Memory page. Verified
   live. 459 tests pass. Phase 3 is done.
+- 2026-11-04: **One offer after the meeting is arranged** (§10.7, M45-M47, Q17), asked for after
+  using 3b: the conversation's offer moves from after the request to after the booking, and may be
+  a place or a lunch for this kind of meeting, a lunch for these people, or a team. Not a time:
+  a request cannot carry one yet. Built and verified live the same day.
 
 ---
 

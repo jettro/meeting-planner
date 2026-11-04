@@ -42,6 +42,8 @@ Each with a design first.
   (`design_memory.md` §9, Q2, Q3, Q5)
 - Should the memory keeper tidy the shared lists too - what is said about people and places - and
   whose yes would accept a change there? (`design_memory.md` §10.6, Q14)
+- Should a request carry a preferred time, so *design reviews in the morning* can be remembered
+  and the scheduler offers those slots first? (`design_memory.md` §10.7, Q17)
 - Participants opening the team behind a meeting someone else arranged
   (`design_auth.md` A13).
 

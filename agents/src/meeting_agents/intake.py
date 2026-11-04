@@ -321,7 +321,10 @@ class IntakeAgent(BaseAgent, Akgent[IntakeConfig, IntakeState]):
     ) -> None:
         self._remember(message.plan.plan_id)
         self._relay(message)
-        self._tell_the_model(f"the meeting is booked. {describe(message.plan)}", sender)
+        # The one moment to offer something worth remembering (design_memory.md M45):
+        # the person has just seen the place and the lunch. Code says when; the
+        # model says what, or nothing.
+        self._tell_the_model(f"the meeting is booked. {describe(message.plan)} {OFFER_NOW}", sender)
 
     def receiveMsg_PlanFailed(  # noqa: N802
         self, message: PlanFailed, sender: ActorAddress
@@ -405,6 +408,14 @@ class IntakeAgent(BaseAgent, Akgent[IntakeConfig, IntakeState]):
     ) -> None:
         """Only a lookup answers this agent with a failure; the saga reports through PlanFailed."""
         self._tell_the_model(f"a lookup failed: {message.reason}.", sender)
+
+
+#: Ends the update for a booked meeting, and no other (M45, M46).
+OFFER_NOW = (
+    "If one thing about this meeting is worth remembering for next time - where this kind of "
+    "meeting goes, its lunch, lunch with these people, or these people as a team - and you do not "
+    "remember it yet, you may offer it now, as your memory rules say. Otherwise just say it is booked."
+)
 
 
 def describe(plan: MeetingPlan) -> str:

@@ -219,9 +219,11 @@ There are four kinds, each in its own place:
    The name is enough. If a lunch was remembered for workshops - accept one the same way, after
    two workshops with a lunch wish - `@Intake` says *"with soup, as remembered for Workshop"* and
    the lunch question is not asked.
-3. **New conversation** with three people nobody named as a group, and a lunch: *A retro with
-   Femke, Lotte and Thijs on Monday 30 November, at yuma, with pizza.* After the request it
-   offers once - a team, or the meal. Say *yes, call them the retro group*.
+3. **New conversation** with a described place and a lunch: *A design review with Sanne and Daan
+   on Tuesday 1 December, somewhere quiet, with soup.* Pick a time on the card. Once it is
+   booked, `@Intake` offers one thing - here, *"shall I remember the Library for design
+   reviews?"*; with three new people it may offer them as a team instead. Say *yes*, and it is in
+   *Mine*. Cancel the meeting in act 6 if you do not want to keep it.
 4. **Say:** a suggestion is a question, never a conclusion. Code works out what repeats; nothing
    is used until a person said yes; *Not now* is kept so it is not asked again.
 

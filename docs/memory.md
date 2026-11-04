@@ -134,8 +134,12 @@ They are offered in two places. **On the Memory tab**, code works them out from 
 earlier meetings - the records the Meetings tab reads - each time the page opens; nothing is
 stored until you answer. *Remember this* writes it to *Mine* as said by you; *Not now* is kept
 in a file beside yours that no agent reads, so the same offer is not made again. **In a
-conversation**, `@Intake` may offer one of them once, after the request - *"Shall I remember
-Femke, Lotte and Thijs as a team? What should I call it?"* - and remembers only on a clear yes.
+conversation**, once the meeting is booked - when you have seen the place and the lunch - code
+invites `@Intake` to offer one thing, the most useful one it does not remember yet: where this
+kind of meeting goes, its lunch, lunch with these people, or these people as a team. *"Your
+design review is booked … in the study room at the Library, with three soups; shall I remember
+the Library for design reviews?"* It remembers only on a clear yes. It offers nothing about the
+time: a request cannot carry a preferred time yet, so a remembered one could not be used.
 
 A suggestion is a question, never a conclusion: nothing an agent noticed is used until you said
 yes to it.

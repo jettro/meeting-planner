@@ -24,7 +24,7 @@ from akgentic.core import ActorAddress, ActorSystem, AgentCard, Akgent, BaseConf
 from akgentic.team import TeamCard, TeamCardMember, TeamFactory
 from meeting_agents.coordinator import Coordinator, CoordinatorConfig
 from meeting_agents.human import ChannelHuman, QueueChannel, get_channel, set_channel
-from meeting_agents.intake import IntakeAgent, IntakeConfig, IntakeTools, TalkOnlyToHuman
+from meeting_agents.intake import OFFER_NOW, IntakeAgent, IntakeConfig, IntakeTools, TalkOnlyToHuman
 from meeting_agents.messages import (
     MESSAGE_TYPES,
     BookFacilitiesAssignment,
@@ -299,6 +299,17 @@ def test_the_answer_on_the_card_books_the_meeting(team, channel):
 
     assert "the meeting is booked" in wait_for_update("booked")
     assert "Meeting in Nature" in wait_for_update("booked")
+
+
+def test_the_booked_update_and_only_that_one_invites_one_offer(team, channel):
+    """design_memory.md M45: code says when to offer something worth remembering."""
+    book(team, channel)
+    assert intake(team).cancel().startswith("Asked the team to cancel")
+    expect(channel, PlanCancelled)
+
+    assert OFFER_NOW in wait_for_update("the meeting is booked")
+    assert OFFER_NOW not in wait_for_update("cancelled")
+    assert OFFER_NOW not in wait_for_update("choose a time")
 
 
 def test_the_model_is_told_what_is_on_the_screen(team, channel):
