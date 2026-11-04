@@ -135,6 +135,7 @@ def test_intake_offers_once_after_the_booking_and_uses_a_remembered_meal(chat: T
     ):
         assert f"- {offer}" in prompt
     assert "Offer nothing about the time" in prompt
+    assert '"Nothing new to remember from this one."' in prompt
     assert 'Call remember only on a clear yes, with about "organiser"' in prompt
     assert "or for meetings with these people" in prompt
     assert '"with soup, as remembered for workshops"' in prompt

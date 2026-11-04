@@ -414,7 +414,8 @@ class IntakeAgent(BaseAgent, Akgent[IntakeConfig, IntakeState]):
 OFFER_NOW = (
     "If one thing about this meeting is worth remembering for next time - where this kind of "
     "meeting goes, its lunch, lunch with these people, or these people as a team - and you do not "
-    "remember it yet, you may offer it now, as your memory rules say. Otherwise just say it is booked."
+    "remember it yet, you may offer it now, as your memory rules say. If there is nothing like "
+    "that, say it is booked and, in a few words, that you have nothing new to suggest remembering."
 )
 
 

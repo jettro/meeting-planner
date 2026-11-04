@@ -138,7 +138,8 @@ conversation**, once the meeting is booked - when you have seen the place and th
 invites `@Intake` to offer one thing, the most useful one it does not remember yet: where this
 kind of meeting goes, its lunch, lunch with these people, or these people as a team. *"Your
 design review is booked … in the study room at the Library, with three soups; shall I remember
-the Library for design reviews?"* It remembers only on a clear yes. It offers nothing about the
+the Library for design reviews?"* It remembers only on a clear yes. When there is nothing new to
+remember, it says that too - *"Nothing new to remember from this one."* It offers nothing about the
 time: a request cannot carry a preferred time yet, so a remembered one could not be used.
 
 A suggestion is a question, never a conclusion: nothing an agent noticed is used until you said

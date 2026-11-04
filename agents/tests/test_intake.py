@@ -308,6 +308,7 @@ def test_the_booked_update_and_only_that_one_invites_one_offer(team, channel):
     expect(channel, PlanCancelled)
 
     assert OFFER_NOW in wait_for_update("the meeting is booked")
+    assert "nothing new to suggest remembering" in OFFER_NOW
     assert OFFER_NOW not in wait_for_update("cancelled")
     assert OFFER_NOW not in wait_for_update("choose a time")
 

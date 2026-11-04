@@ -31,6 +31,19 @@ Each with a design first.
   cases are already written down: the three live conversations in `design_chat.md` §14, and the
   Campus memory - was it followed, and does the reason say so?
 
+### Smaller, for the planner
+
+- **The trace beside the conversation.** *Talk to the planner* shows the conversation, and the
+  trace of the same team is a click away on *Trace*. Showing it beside the chat - a panel next to
+  the messages, the same rows the Trace tab draws from the one socket the page already holds -
+  would let you watch the team work while you talk to it.
+- **Addresses you can reload and bookmark.** The planner keeps its place in memory, not in the
+  address bar (`MemoryRouter`, `design_gui.md` G9), so a reload starts at *Platform* and a page
+  cannot be bookmarked. G9 was chosen before a stopped team could be revived; now that a team is
+  the meeting and comes back on request (`design_durability.md`), a URL per tab - and per
+  meeting, as `/trace/<team>` already is - can work. nginx already serves `index.html` for every
+  path. It needs a design note that withdraws G9.
+
 ## Open questions
 
 - Should a failed plan release what it already booked by itself, or only report it?

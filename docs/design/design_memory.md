@@ -1228,6 +1228,13 @@ for design reviews?"*. On *yes* it went to *Mine* as a preference, *design revie
 reviews in the Library*. The meeting was cancelled afterwards, and the order, the room and the
 meeting were released.
 
+**And when there is nothing to offer, it says so** (2026-11-04, asked for after using it). The
+booked update's invitation ends: *if there is nothing like that, say it is booked and, in a few
+words, that you have nothing new to suggest remembering*; the prompt gives the line, *"Nothing
+new to remember from this one."* Verified live: a one-to-one with Daan at Yuma, no lunch, ended
+*"… in room room-a at Yuma, with no lunch. Nothing new to remember from this one."* - and was
+cancelled and released afterwards.
+
 - **Q17** — Should a request carry a preferred time, so the scheduler offers those slots first?
   Then *design reviews in the morning* could be remembered and used. A change to the request, the
   coordinator and the scheduler; proposed as a step of its own.
@@ -1325,6 +1332,8 @@ meeting were released.
   using 3b: the conversation's offer moves from after the request to after the booking, and may be
   a place or a lunch for this kind of meeting, a lunch for these people, or a team. Not a time:
   a request cannot carry one yet. Built and verified live the same day.
+- 2026-11-04: **Nothing to offer is said too** (§10.7): after a booking with nothing worth
+  remembering, `@Intake` says *nothing new to remember from this one*.
 
 ---
 
