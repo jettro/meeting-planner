@@ -24,9 +24,10 @@ says what is done, what is next, and what is not planned.
 
 Each with a design first.
 
-- **Guardrails.** A check before an agent books or orders - *may this lunch for twenty be ordered
-  on Sanne's behalf?* The hook is known: a capability on the agent, like `TalkOnlyToHuman`, can
-  look at a tool call before it runs and refuse it. Possibly with a decision model for the rules.
+- **Guardrails** - designed in [`design_guardrails.md`](design/design_guardrails.md). A check
+  between an agent's tool call and the service: rules in code that the call matches what was
+  approved, and a decision model (`gpt-6-luna` on OpenAI's Decisions API) for judgement - *does
+  this order fit the lunch wish?*
 - **Evaluations.** Tests check the code; nothing yet measures the models' choices. The first
   cases are already written down: the three live conversations in `design_chat.md` §14, and the
   Campus memory - was it followed, and does the reason say so?
