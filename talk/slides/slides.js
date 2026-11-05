@@ -48,10 +48,27 @@
   // Speaker notes (S7, S8): one panel on the slide, shown with `n` or the small button, and kept
   // open or closed from slide to slide. No second window - the notes are a safety net.
   deck.insertAdjacentHTML("beforeend", `
-    <button class="notes-toggle" title="Speaker notes (n)">notes</button>
+    <div class="controls">
+      <button class="notes-toggle" title="Speaker notes (n)">notes</button>
+      <button class="fast-toggle" title="Fast: every slide appears whole (a)">fast</button>
+    </div>
     <div class="notes-panel" hidden></div>`);
   const notesPanel = deck.querySelector(".notes-panel");
   const notesToggle = deck.querySelector(".notes-toggle");
+  const fastToggle = deck.querySelector(".fast-toggle");
+
+  // Fast mode (S15): no steps - a slide appears whole and the next key goes to the next slide.
+  // Remembered in this browser only, for a run-through; a failed storage call just means off.
+  let fast = false;
+  try { fast = localStorage.getItem("slides-fast") === "1"; } catch {}
+  fastToggle.classList.toggle("on", fast);
+  function toggleFast() {
+    fast = !fast;
+    fastToggle.classList.toggle("on", fast);
+    try { localStorage.setItem("slides-fast", fast ? "1" : "0"); } catch {}
+    if (fast) steps(slides[index]).forEach((el) => el.classList.add("shown"));
+  }
+  fastToggle.addEventListener("click", () => { toggleFast(); fastToggle.blur(); });
   function showNotes() {
     const notes = slides[index].querySelector(".notes");
     notesPanel.innerHTML = notes ? notes.innerHTML : "<em>No notes for this slide.</em>";
@@ -65,6 +82,7 @@
   function show(i, revealAll = false) {
     const previous = index;
     index = Math.max(0, Math.min(total - 1, i));
+    revealAll = revealAll || fast;
     loadDemo(slides[index]);
     showNotes();
     deck.classList.toggle("on-dark", slides[index].classList.contains("dark"));
@@ -89,6 +107,7 @@
   }
 
   function back() {
+    if (fast) { if (index > 0) show(index - 1, true); return; }
     const shown = steps(slides[index]).filter((el) => el.classList.contains("shown"));
     if (shown.length) shown[shown.length - 1].classList.remove("shown");
     else if (index > 0) show(index - 1, true);
@@ -102,6 +121,7 @@
       case "Home": show(0); break;
       case "End": show(total - 1, true); break;
       case "n": toggleNotes(); break;
+      case "a": toggleFast(); break;
       case "f":
         if (document.fullscreenElement) document.exitFullscreen();
         else document.documentElement.requestFullscreen();

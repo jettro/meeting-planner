@@ -45,12 +45,16 @@ html, body {
 .notes { display: none; }
 
 /* Speaker notes: a quiet button in the bottom corner, a panel over the slide's lower part. */
-.notes-toggle {
+.controls {
   position: absolute;
   left: 50%;
   bottom: 40px;
   transform: translateX(-50%);
   z-index: 20;
+  display: flex;
+  gap: 12px;
+}
+.notes-toggle, .fast-toggle {
   font-family: var(--mono);
   font-size: 20px;
   padding: 6px 16px;
@@ -61,8 +65,10 @@ html, body {
   opacity: 0.35;
   cursor: pointer;
 }
-.notes-toggle:hover, .notes-toggle.on { opacity: 1; }
-.on-dark .notes-toggle { color: #9a978f; }
+.notes-toggle:hover, .notes-toggle.on, .fast-toggle:hover { opacity: 1; }
+/* Fast mode stays as faint as off: only a filled dot inside tells you it is on. */
+.fast-toggle.on::before { content: "● "; }
+.on-dark .notes-toggle, .on-dark .fast-toggle { color: #9a978f; }
 .notes-panel {
   position: absolute;
   left: 160px;
