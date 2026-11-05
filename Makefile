@@ -7,7 +7,7 @@ SERVICES := meeting-service location-service nomnom-service
         run-meeting-mcp run-location-mcp run-nomnom-mcp \
         plan-meeting plan-meeting-docker run-server \
         gui-install gui-dev gui-build gui-lint \
-        up down build logs ps clean reset console
+        up down build logs ps clean reset console talk
 
 help: ## Show this help
 	@echo "Usage: make <target>"
@@ -122,6 +122,12 @@ console: ## Open the Akgentic console (http://localhost:8400)
 	docker compose up -d console
 	@echo "Console on http://localhost:8400 - talking to the server on 8200"
 	@command -v open >/dev/null && open http://localhost:8400 || true
+
+# The talk's slides (talk/design_slides.md S9): served from localhost, never
+# opened as a file, so a demo slide's iframe gets the planner's login cookie.
+talk: ## Serve the talk's slides (http://localhost:8500)
+	@echo "Slides on http://localhost:8500"
+	python3 -m http.server 8500 --bind localhost --directory talk/slides
 
 clean: ## Stop containers and remove volumes (destroys SQLite data!)
 	docker compose down -v

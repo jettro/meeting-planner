@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "talk",
+      "runtimeExecutable": "make",
+      "runtimeArgs": ["talk"],
+      "port": 8500
+    }
+  ]
+}
