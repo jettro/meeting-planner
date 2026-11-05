@@ -77,7 +77,32 @@
     <aside class="notes">One agent with every tool is overloaded. Split it - and now they have to talk.</aside>
   </section>
 
-  <!-- 9. Demo: the planner, live (design_slides.md S10) -->
+  <!-- 9. The repository - arranged by the crew, approved by the human (repo.js) -->
+  <section class="slide repo">
+    <h2>Before we go live: the code</h2>
+    <div class="repo-body">
+      <div class="repo-trace"></div>
+      <div class="repo-card">
+        <div class="gate">
+          <div class="gate-from">@Coordinator asks <span class="agent">@Human</span></div>
+          <div class="gate-question">Show the repository to the room?</div>
+          <div class="gate-hint">nothing is shown before you approve · press →</div>
+        </div>
+        <div class="approved step">
+          <img class="qr" src="img/qr-pulse.svg" alt="QR code for go.jettro.dev/pulse">
+          <div class="link">go.jettro.dev/<span class="accent">pulse</span></div>
+          <div class="approved-by">✓ approved by @Human</div>
+        </div>
+      </div>
+    </div>
+    <aside class="notes">
+      Let the trace play - the crew arranges the link like a meeting. The joke is the gate: even a
+      link waits for the human. Press → to approve. Then: everything you see tonight is in there,
+      with the demo script. It goes to github.com/jettro/meeting-planner.
+    </aside>
+  </section>
+
+  <!-- 10. Demo: the planner, live (design_slides.md S10) -->
   <section class="slide demo" data-src="http://localhost:8300" data-zoom="1.25">
     <aside class="notes">
       The planner, live, inside the deck. Click the bar above it to come back to the slides; the
@@ -85,7 +110,7 @@
     </aside>
   </section>
 
-  <!-- 10. Demo: the akgentic console - the team, not the meeting -->
+  <!-- 11. Demo: the akgentic console - the team, not the meeting -->
   <section class="slide demo" data-src="http://localhost:8400" data-zoom="1.25">
     <aside class="notes">
       The planner shows the meeting; the console shows the team. The framework's own front end,
@@ -96,6 +121,7 @@
 
 </main>
 <script src="anatomy.js"></script>
+<script src="repo.js"></script>
 <script src="slides.js"></script>
 <script src="title.js"></script>
 </body>

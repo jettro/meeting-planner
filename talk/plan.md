@@ -237,4 +237,6 @@ Proposed in draft 2, answered on 2026-11-06.
 
 1. Which part of the demo shows a guardrail (T4), and what goes on the guardrails slide.
 2. Whether the team's YAML gets a slide (T2).
-3. The repository's short link or QR code (T9), and where the slide goes.
+
+T9 is settled: <https://go.jettro.dev/pulse> (it redirects to the GitHub repository), on a slide
+just before the demo, with a QR code - see `design_slides.md`.

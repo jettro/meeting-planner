@@ -90,6 +90,27 @@ of gear, so a word changes in one place.
 - Not taken over: the pptx's own palette (teal, rust, cream) and its *1 / 6* counter; the deck's
   footer counts instead.
 
+## The repository slide (slide 9)
+
+Just before the demo: <https://go.jettro.dev/pulse>, which redirects to
+`github.com/jettro/meeting-planner`. To make it more than a link, the crew *arranges* it the way it
+arranges a meeting:
+
+- a short trace plays on its own, one message every 0.9 s - the coordinator asks the facility
+  manager for "somewhere they can clone it", catering offers lunch with it and is told *No.*;
+- then an approval card waits: *@Coordinator asks @Human - show the repository to the room?*
+  Nothing is shown before you approve;
+- **→ is the approval** (the slide's one step): the card turns into the QR code and the link,
+  *✓ approved by @Human*. The joke is the talk's own point - the human approves.
+
+`repo.js` plays it when the slide is shown; `slides.js` now sends a `shown` event to a slide when
+it becomes current, and says whether it arrived fully built (coming back from the demo), in which
+case everything shows at once. The QR code is `img/qr-pulse.svg`, generated once with Python's
+`qrcode` package (29 x 29, error correction M), so nothing is needed at the venue.
+
+Other ideas, not built: the three robots holding up the QR code as a sign; `git clone` typed in a
+terminal, letter by letter; the QR code assembling itself from the trace's characters.
+
 ## The iframe spike (S10) - it works
 
 A demo slide (`<section class="slide demo" data-src=… data-zoom=…>`) puts the planner in a frame

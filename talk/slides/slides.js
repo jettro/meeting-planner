@@ -63,6 +63,7 @@
   notesToggle.addEventListener("click", () => { toggleNotes(); notesToggle.blur(); });
 
   function show(i, revealAll = false) {
+    const previous = index;
     index = Math.max(0, Math.min(total - 1, i));
     loadDemo(slides[index]);
     showNotes();
@@ -73,7 +74,13 @@
     const counter = slides[index].querySelector(".slide-number");
     if (counter) counter.textContent = `${index + 1} / ${total}`;
     history.replaceState(null, "", `#/${index + 1}`);
+    // A slide with its own animation listens for this, and is told whether it arrived built.
+    if (index !== previous || !started) {
+      slides[index].dispatchEvent(new CustomEvent("shown", { detail: { built: revealAll } }));
+    }
+    started = true;
   }
+  let started = false;
 
   function forward() {
     const hidden = steps(slides[index]).find((el) => !el.classList.contains("shown"));
