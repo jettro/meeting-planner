@@ -73,6 +73,17 @@ Simple, and quiet enough that the demo is the loudest thing on screen.
 
 The about slide uses the bio from the DevPulse page and the old deck, and the Yuma logo.
 
+## The deck so far
+
+| # | Slide |
+|---|---|
+| 1 | title (dark) |
+| 2 | about me |
+| 3-8 | the anatomy of an agent, then a team |
+| 9-10 | the sample: what it does, how it is built |
+| 11 | the repository |
+| 12-13 | live: the planner, the console |
+
 ## The anatomy of an agent (slides 3-8)
 
 The six slides of the playful pptx, redrawn in this deck's style: the same playful titles and
@@ -90,7 +101,24 @@ of gear, so a word changes in one place.
 - Not taken over: the pptx's own palette (teal, rust, cream) and its *1 / 6* counter; the deck's
   footer counts instead.
 
-## The repository slide (slide 9)
+## Introducing the sample (slides 9 and 10)
+
+Two slides, after the agent anatomy and before the repository and the demo.
+
+- **What it does** (*The sample: a meeting planner*): the request in one sentence, then four
+  jobs, one per key press - agendas, places, lunch, and *you approve* (purple, because it is the
+  point). Each job has a large icon - 📅 🏢 🥗 ✋. Generated pictures in the robots' style were
+  considered and turned down (2026-11-06): the icons read well and keep the slide quiet.
+- **How it is built**: built bottom-up. The three services are there from the start, each with
+  two doors - *MCP · tools* on top for agents, *REST · OpenAPI* at the bottom for people and the
+  web page. Then the three agents, each above its one service; `@Catering` beside
+  `@FacilityManager`, joined to it, because a room and its lunch go together. Then
+  `@Coordinator` across the first two columns, joined to the two it talks to, and `@Human` beside
+  it. **A model is white with a purple edge and an *LLM* tag; code is dark and solid** - the one
+  visual difference that carries the slide's point.
+- The lines are drawn by the boxes' own `::before` and `::after`, so they appear with their box.
+
+## The repository slide (slide 11)
 
 Just before the demo: <https://go.jettro.dev/pulse>, which redirects to
 `github.com/jettro/meeting-planner`. To make it more than a link, the crew *arranges* it the way it

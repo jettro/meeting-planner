@@ -77,7 +77,87 @@
     <aside class="notes">One agent with every tool is overloaded. Split it - and now they have to talk.</aside>
   </section>
 
-  <!-- 9. The repository - arranged by the crew, approved by the human (repo.js) -->
+  <!-- 9. The sample: what it does -->
+  <section class="slide sample">
+    <h2>The sample: a meeting planner</h2>
+    <p class="ask">“A design review with Sanne and Daan on Tuesday, somewhere quiet. And lunch.”</p>
+    <div class="jobs">
+      <div class="job step">
+        <div class="pic" data-icon="📅"></div>
+        <b>Agendas</b><span>find a time everyone is free, put it in their agenda</span>
+      </div>
+      <div class="job step">
+        <div class="pic" data-icon="🏢"></div>
+        <b>Places</b><span>choose a place that fits “somewhere quiet”, book a room</span>
+      </div>
+      <div class="job step">
+        <div class="pic" data-icon="🥗"></div>
+        <b>Lunch</b><span>turn “vegetarian, no bread” into an order</span>
+      </div>
+      <div class="job you step">
+        <div class="pic" data-icon="✋"></div>
+        <b>You approve</b><span>the time and place, and lunch - nothing is booked before you say yes</span>
+      </div>
+    </div>
+    <p class="takeaway step">Ordinary on purpose - so what is interesting stands out.</p>
+    <aside class="notes">
+      Everybody knows this job. You say who, which day, roughly where. The team finds a time,
+      chooses a place, books a room, puts it in the agendas and orders lunch - and asks you twice
+      before anything is booked. The planner itself is boring on purpose.
+    </aside>
+  </section>
+
+  <!-- 10. The sample: how it is built -->
+  <section class="slide architecture">
+    <h2>How it is built</h2>
+    <!-- Built bottom-up: the services are there, then each key adds the agents, the
+         coordinator and you. The grid places each box; the order here is the order it appears. -->
+    <div class="arch">
+      <div class="node llm scheduler step">
+        <div class="name">@Scheduler <span class="tag">LLM</span></div>
+        <div class="what">finds a time, books it</div>
+      </div>
+      <div class="node llm facility step">
+        <div class="name">@FacilityManager <span class="tag">LLM</span></div>
+        <div class="what">chooses a place, books a room</div>
+      </div>
+      <div class="node llm catering step">
+        <div class="name">@Catering <span class="tag">LLM</span></div>
+        <div class="what">reads the menu, orders lunch</div>
+      </div>
+      <div class="node code coordinator step">
+        <div class="name">@Coordinator <span class="tag">plain code · no LLM</span></div>
+        <div class="what">knows the steps, asks you twice, keeps the record</div>
+      </div>
+      <div class="node human step">
+        <div class="name">@Human</div>
+        <div class="what">you, inside the team</div>
+      </div>
+
+      <div class="service s1">
+        <div class="name">meeting service</div><div class="what">people · agendas</div>
+        <div class="doors"><span>REST · OpenAPI</span><span class="mcp">MCP · tools</span></div>
+      </div>
+      <div class="service s2">
+        <div class="name">location service</div><div class="what">places · rooms</div>
+        <div class="doors"><span>REST · OpenAPI</span><span class="mcp">MCP · tools</span></div>
+      </div>
+      <div class="service s3">
+        <div class="name">nomnom service</div><div class="what">lunch menu · orders</div>
+        <div class="doors"><span>REST · OpenAPI</span><span class="mcp">MCP · tools</span></div>
+      </div>
+    </div>
+    <p class="takeaway step">Code where the answer is known, a model where judgement is needed.</p>
+    <aside class="notes">
+      Bottom up. Three ordinary services, each with a REST API and an OpenAPI spec, and a second,
+      smaller door for agents: an MCP server. Each agent reaches exactly one service - the limit is
+      in the configuration, and a test holds it. Catering sits under the facility manager: a room
+      and its lunch go together. On top, the coordinator - plain code, no model, because the order
+      of the steps is known. Models only where judgement is needed: "somewhere quiet", "no bread".
+    </aside>
+  </section>
+
+  <!-- 11. The repository - arranged by the crew, approved by the human (repo.js) -->
   <section class="slide repo">
     <h2>Before we go live: the code</h2>
     <div class="repo-body">
@@ -102,7 +182,7 @@
     </aside>
   </section>
 
-  <!-- 10. Demo: the planner, live (design_slides.md S10) -->
+  <!-- 12. Demo: the planner, live (design_slides.md S10) -->
   <section class="slide demo" data-src="http://localhost:8300" data-zoom="1.25">
     <aside class="notes">
       The planner, live, inside the deck. Click the bar above it to come back to the slides; the
@@ -110,7 +190,7 @@
     </aside>
   </section>
 
-  <!-- 11. Demo: the akgentic console - the team, not the meeting -->
+  <!-- 13. Demo: the akgentic console - the team, not the meeting -->
   <section class="slide demo" data-src="http://localhost:8400" data-zoom="1.25">
     <aside class="notes">
       The planner shows the meeting; the console shows the team. The framework's own front end,

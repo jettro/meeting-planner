@@ -222,6 +222,104 @@ footer {
 .anatomy-team .member img { height: 330px; }
 .anatomy-team .member .card { text-align: center; }
 
+/* The sample: what it does. An icon per job. */
+.slide.sample { padding-top: 96px; }
+.sample h2 { margin-bottom: 24px; }
+.sample .ask { font-size: 44px; font-style: italic; color: var(--muted); margin-bottom: 48px; }
+.jobs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 40px; }
+.job { display: flex; flex-direction: column; font-size: 30px; line-height: 1.3; }
+.job b { font-size: 40px; margin: 20px 0 6px; }
+.job span { color: var(--muted); }
+.job .pic {
+  position: relative;
+  height: 300px;
+  border-radius: 20px;
+  background: var(--panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.job .pic::before { content: attr(data-icon); font-size: 140px; }
+.job.you .pic { box-shadow: inset 0 0 0 4px var(--accent); }
+.job.you b { color: var(--accent); }
+
+/* The sample: how it is built. Three columns; lines are drawn by the boxes themselves. */
+.slide.architecture { padding-top: 96px; }
+.architecture h2 { margin-bottom: 40px; }
+.arch {
+  --col: 480px;
+  --gap: 80px;
+  --row-gap: 64px;
+  display: grid;
+  grid-template-columns: repeat(3, var(--col));
+  column-gap: var(--gap);
+  row-gap: var(--row-gap);
+}
+.arch .node, .arch .service { position: relative; border-radius: 16px; padding: 20px 28px; }
+.arch .name { font-family: var(--mono); font-size: 32px; font-weight: 700; }
+.arch .what { font-size: 26px; color: var(--muted); margin-top: 4px; }
+.arch .tag {
+  font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 600;
+  padding: 3px 12px;
+  border-radius: 999px;
+  vertical-align: middle;
+  margin-left: 8px;
+}
+
+/* A model: white, purple edge, an LLM tag. Code: dark and solid. */
+.arch .llm { background: #fff; border: 3px solid var(--accent); }
+.arch .llm .tag { background: var(--accent); color: #fff; }
+.arch .code { background: var(--text); color: var(--bg); }
+.arch .code .what { color: #b9b4ae; }
+.arch .code .tag { background: var(--bg); color: var(--text); }
+.arch .human { border: 3px dashed var(--muted); }
+
+.arch .coordinator { grid-column: 1 / 3; grid-row: 1; }
+.arch .human { grid-column: 3; grid-row: 1; }
+.arch .scheduler { grid-column: 1; grid-row: 2; }
+.arch .facility { grid-column: 2; grid-row: 2; }
+.arch .catering { grid-column: 3; grid-row: 2; }
+.arch .s1 { grid-column: 1; grid-row: 3; }
+.arch .s2 { grid-column: 2; grid-row: 3; }
+.arch .s3 { grid-column: 3; grid-row: 3; }
+
+/* The lines. */
+.arch .node::before, .arch .node::after { content: ""; position: absolute; background: var(--text); }
+.arch .llm::after { left: 50%; top: 100%; width: 3px; height: var(--row-gap); background: var(--accent); }
+.arch .facility::before { left: 100%; top: 50%; width: var(--gap); height: 3px; }
+.arch .coordinator::before, .arch .coordinator::after { top: 100%; width: 3px; height: var(--row-gap); }
+.arch .coordinator::before { left: calc(var(--col) / 2); }
+.arch .coordinator::after { left: calc(var(--col) + var(--gap) + var(--col) / 2); }
+.arch .human::before { right: 100%; top: 50%; width: var(--gap); height: 3px; }
+.arch .human::after { display: none; }
+
+/* A service: grey, with two doors - MCP on top for agents, REST at the bottom for people. */
+.arch .service { background: var(--panel); text-align: center; padding-top: 40px; }
+.arch .doors span {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 20px;
+  padding: 4px 14px;
+  border-radius: 999px;
+  margin-top: 14px;
+  border: 2px solid var(--muted);
+  color: var(--muted);
+}
+.arch .doors .mcp {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  background: #fff;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.architecture .takeaway { margin-top: auto; font-size: 46px; }
+
 /* The repository slide (repo.js): a trace on the left, the approval gate and QR on the right. */
 .slide.repo { padding-top: 96px; }
 .repo h2 { margin-bottom: 48px; }
