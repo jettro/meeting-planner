@@ -45,9 +45,28 @@
     });
   }
 
+  // Speaker notes (S7, S8): one panel on the slide, shown with `n` or the small button, and kept
+  // open or closed from slide to slide. No second window - the notes are a safety net.
+  deck.insertAdjacentHTML("beforeend", `
+    <button class="notes-toggle" title="Speaker notes (n)">notes</button>
+    <div class="notes-panel" hidden></div>`);
+  const notesPanel = deck.querySelector(".notes-panel");
+  const notesToggle = deck.querySelector(".notes-toggle");
+  function showNotes() {
+    const notes = slides[index].querySelector(".notes");
+    notesPanel.innerHTML = notes ? notes.innerHTML : "<em>No notes for this slide.</em>";
+  }
+  function toggleNotes() {
+    notesPanel.hidden = !notesPanel.hidden;
+    notesToggle.classList.toggle("on", !notesPanel.hidden);
+  }
+  notesToggle.addEventListener("click", () => { toggleNotes(); notesToggle.blur(); });
+
   function show(i, revealAll = false) {
     index = Math.max(0, Math.min(total - 1, i));
     loadDemo(slides[index]);
+    showNotes();
+    deck.classList.toggle("on-dark", slides[index].classList.contains("dark"));
     slides.forEach((s, n) => s.classList.toggle("current", n === index));
     // Going back lands on a slide fully built; going forward starts it empty.
     steps(slides[index]).forEach((el) => el.classList.toggle("shown", revealAll));
@@ -75,6 +94,7 @@
       case "ArrowLeft": case "ArrowUp": case "PageUp": back(); break;
       case "Home": show(0); break;
       case "End": show(total - 1, true); break;
+      case "n": toggleNotes(); break;
       case "f":
         if (document.fullscreenElement) document.exitFullscreen();
         else document.documentElement.requestFullscreen();

@@ -24,8 +24,9 @@ What is given up: Keynote's transitions and editing by dragging. A slide is chan
 | S4 | **Steps**: an element with class `step` appears on the next key press, in document order | enough for build-up diagrams and lists; no other animation |
 | S5 | **Keys**: → ↓ space PageDown forward; ← ↑ PageUp back; Home and End; `f` full screen. A presentation clicker sends PageDown and PageUp | |
 | S6 | **The URL says where you are** (`#/3`), so a reload or a demo detour comes back to the same slide | |
-| S7 | **Speaker notes** in an `<aside class="notes">` per slide; hidden on the slide | written now, shown by S8 later |
-| S8 | **Presenter view** - later: `p` opens a second window with the notes, the next slide and a timer, kept in step through a `BroadcastChannel` | not needed for the first step; small enough to add without a framework |
+| S7 | **Speaker notes** in an `<aside class="notes">` per slide; hidden on the slide | every slide has one |
+| S8 | **Notes on the slide, not in a second window**: `n` or a quiet *notes* button at the bottom shows them in a panel over the slide, and they stay open or closed from slide to slide | decided 2026-11-06: the notes are a safety net, not something to read from; a presenter window is more than the talk needs. The button is faint (35 %) until hovered |
+| S14 | **A PDF export** - later | asked for (plan T8); a print stylesheet that lays every slide out on its own page, steps shown, demo slides as a still with their address |
 | S9 | **Served from `localhost`**, port 8500, with `make talk`; never opened as a file | the planner's login cookie is only sent to `localhost` - the same trap as `127.0.0.1` in `docs/demo.md` |
 | S10 | **Demo slides are iframes** of the planner and the services, with a link to open the same page in a tab, and a recorded video as the fallback | to be proven by the next step: the login must work inside the frame, and no server may forbid framing |
 | S11 | **No CDN, no web fonts**: the system font (San Francisco on the Mac that presents), images in `talk/slides/img/` | venue wifi cannot be trusted |

@@ -201,19 +201,21 @@ A short checklist:
 And when not: one system, reversible actions, a context that fits - stay solo.
 Close with the balloons: *now I am having fun* - and the repository link.
 
-## Decisions to make
+## Decisions
 
-| Id | Decision | Proposal |
+Proposed in draft 2, answered on 2026-11-06.
+
+| Id | Decision | Decided |
 |---|---|---|
-| T1 | Live demo or recorded | live, with a recorded backup of both demos on the laptop |
-| T2 | How much akgents code | three snippets at most; the console instead of more code |
-| T3 | Memory in the talk | one beat in demo 2; memory is a talk of its own |
-| T4 | Guardrails (agreed, not built) | name it as the next step in part 8; no demo |
-| T5 | The old deck's LLM basics and ReAct (10-36) | drop; the new deck's six slides replace them |
-| T6 | *Where to go from here* (old 48) | drop; end on the checklist and the repository |
-| T7 | Spine of the story | *last year I drew a crew, this year it works* |
-| T8 | Visual style | one deck, in Keynote, with the old balloons and the new deck's build-up diagram - to settle |
-| T9 | Repository public at the talk | yes, with the demo script as the hand-out |
+| T1 | Live demo or recorded | **live**, with a video of the demo as a backup |
+| T2 | How much akgents code | **little**. The console is already in the deck; perhaps the team's YAML definition, not yet decided. No Python unless it explains something better than words |
+| T3 | Memory in the talk | **yes, one slide** - and not much more |
+| T4 | Guardrails | **a slide, and something in the demo.** The decision models are left out of the demo and shown on the slide |
+| T5 | The old deck's LLM basics and ReAct (10-36) | **dropped**; the playful deck's six slides replace them (now slides 3-8) |
+| T6 | *Where to go from here* (old 48) | **dropped** |
+| T7 | Spine of the story | *last year I drew a crew, this year it works* - **kept for now, not the punch line** |
+| T8 | Format | **HTML**, in `talk/slides`; a PDF export is needed at some point |
+| T9 | The repository | **promoted on a slide, with a QR code or a short link** - perhaps just before the demo |
 
 ## Demo risks
 
@@ -222,10 +224,17 @@ Close with the balloons: *now I am having fun* - and the repository link.
 - Use `localhost`, not `127.0.0.1`, and a login that is not in `ADMIN_EMAILS` (`demo.md` §0).
 - `make reset` the afternoon before; pick a weekday a week or so after 3 December.
 
-## Open questions
+## Answered questions
 
-1. Is the slot 45 minutes of talking, or shorter?
-2. How technical is the DevPulse audience usually - Python readers, or mixed stacks?
-3. Old slides 40-41 are diagrams without text; are they the supervisor and hierarchy patterns?
-4. Which tool will hold the final deck - Keynote, or the pptx? That decides how new slides are
-   made.
+1. **Length:** aim for 45 minutes, with room for questions and some breathing space. The part
+   timings above add up to 45; they are a ceiling, not a target.
+2. **Audience:** mixed stacks, so no focus on Python. Code only where it helps.
+3. **Old slides 40-41:** probably the design patterns for agent layouts and architectures that
+   already exist - to be brought into part 3.
+4. **Format:** HTML, with a PDF export (T8).
+
+## Still open
+
+1. Which part of the demo shows a guardrail (T4), and what goes on the guardrails slide.
+2. Whether the team's YAML gets a slide (T2).
+3. The repository's short link or QR code (T9), and where the slide goes.
