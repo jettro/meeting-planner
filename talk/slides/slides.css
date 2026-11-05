@@ -3,8 +3,8 @@
   --bg: #ffffff;
   --text: #16181d;
   --muted: #6b7079;
-  --accent: #e4572e; /* placeholder until the Yuma colour is in */
-  --panel: #f3f4f6;
+  --accent: #6434da; /* Yuma Purple */
+  --panel: #f0ece9;  /* Yuma Granular Grey */
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
@@ -88,16 +88,8 @@ footer {
 .about { display: grid; grid-template-columns: 1fr 1.25fr; gap: 120px; align-items: start; }
 .about .name { font-size: 96px; font-weight: 700; line-height: 1.05; margin-bottom: 24px; }
 .about .role { font-size: 40px; color: var(--muted); margin-bottom: 80px; }
-.about .logo {
-  width: 360px;
-  height: 120px;
-  border: 3px dashed var(--muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28px;
-  color: var(--muted);
-}
+/* The SVG has its own white margin; pull it back so the mark lines up with the name. */
+.about .logo { display: block; width: 420px; margin-left: -72px; }
 .about ul { list-style: none; margin: 0; padding: 0; }
 .about li { margin-bottom: 36px; padding-left: 48px; position: relative; }
 .about li::before {

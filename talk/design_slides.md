@@ -36,8 +36,15 @@ What is given up: Keynote's transitions and editing by dragging. A slide is chan
 
 Simple, and quiet enough that the demo is the loudest thing on screen.
 
-- **White canvas, near-black text, one accent colour.** The accent is a CSS variable,
-  `--accent`, a placeholder until the Yuma logo and its colour are in.
+- **White canvas, near-black text, one accent colour**, from the Yuma brand guidelines
+  (Frontify): the accent is **Purple `#6434DA`** - readable as text on white, unlike Future
+  Green - and panels are **Granular Grey `#F0ECE9`**. Both are CSS variables, `--accent` and
+  `--panel`.
+- **The Yuma logo** is the full black logo, `img/yuma-logo-black.svg`, on the about slide only.
+  The guidelines ask for the black logo on a light background, and never in a secondary colour.
+- **Fonts:** the system font for now. Yuma's body font is Inter, which can be added as local
+  font files (S11); its headline font, BogueSlab Thin, is too thin for a projector, except perhaps
+  on the title slide.
 - **Big type.** A title is 112 px on the canvas, body text 48 px. Anything smaller than 32 px is
   not meant to be read from the back.
 - **One idea per slide**, as in the playful deck: a title that says something, a single line that
@@ -58,11 +65,11 @@ Simple, and quiet enough that the demo is the loudest thing on screen.
 | `talk/slides/slides.js` | scaling, keys, steps, the URL |
 | `Makefile`, target `talk` | serves `talk/slides` on <http://localhost:8500> |
 
-The about slide uses the bio from the DevPulse page and the old deck. The logo is a placeholder.
+The about slide uses the bio from the DevPulse page and the old deck, and the Yuma logo.
 
 ## Next steps
 
-1. Agree on this design and the style, with the Yuma logo and colour.
+1. Agree on this design and the style. Decide on Inter.
 2. **The iframe spike** (S10): one slide with the planner in a frame, logged in, on the projector
    resolution. If it fails, the demo goes in a tab and S10 changes.
 3. One build-up diagram (the anatomy of an agent) to settle how diagrams are drawn.
@@ -70,7 +77,7 @@ The about slide uses the bio from the DevPulse page and the old deck. The logo i
 
 ## Open questions
 
-1. The Yuma logo: as SVG if there is one, and its brand colour for `--accent`.
+1. Inter as local font files, or the system font?
 2. A photo on the about slide, or none?
 3. The DevPulse page says *Principle Consultant*; the about slide says *Principal Consultant*.
    Which is right?
