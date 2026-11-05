@@ -36,10 +36,15 @@ What is given up: Keynote's transitions and editing by dragging. A slide is chan
 
 Simple, and quiet enough that the demo is the loudest thing on screen.
 
-- **White canvas, near-black text, one accent colour**, from the Yuma brand guidelines
-  (Frontify): the accent is **Purple `#6434DA`** - readable as text on white, unlike Future
+- **An off-white canvas, near-black text, one accent colour**, from the Yuma brand guidelines
+  (Frontify): the canvas is **Off white `#F8F5F5`**, softer than white on a projector; the accent is **Purple `#6434DA`** - readable as text on white, unlike Future
   Green - and panels are **Granular Grey `#F0ECE9`**. Both are CSS variables, `--accent` and
   `--panel`.
+- **The title slide is the exception: dark**, as a nod to the DevPulse site, because it is on
+  screen while people come in. Their background, cream text and orange; a terminal line
+  (`$ devpulse talk --no 7`); a striped isometric cube in Yuma Purple, DevPulse orange and Yuma
+  Earth; and the team's own messages streaming past it, slowly. The cube is drawn by
+  `title.js`, not copied from their site. On dark, the accent is Yuma Pink `#EBA9FF`.
 - **The Yuma logo** is the full black logo, `img/yuma-logo-black.svg`, on the about slide only.
   The guidelines ask for the black logo on a light background, and never in a secondary colour.
 - **Fonts:** the system font for now. Yuma's body font is Inter, which can be added as local

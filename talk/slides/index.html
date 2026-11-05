@@ -10,13 +10,19 @@
 <main class="deck">
 
   <!-- 1. Title -->
-  <section class="slide title-slide">
-    <div class="rule"></div>
+  <section class="slide title-slide dark">
+    <!-- A nod to the DevPulse site: a terminal line, a striped cube, and text streaming past it.
+         The text is the team's own messages, as the trace shows them. -->
+    <div class="visual" aria-hidden="true">
+      <div class="trace"><div class="trace-roll"></div></div>
+      <svg class="cube" viewBox="0 0 800 900"></svg>
+    </div>
+    <div class="prompt"><span class="dollar">$</span> devpulse talk --no 7 <span class="cursor"></span></div>
     <h1>From solo agents<br>to <span class="accent">AI teams</span></h1>
     <p class="subtitle">Bring a crew to do your job</p>
     <div class="byline">
       Jettro Coenradie<br>
-      <span class="event">DevPulse No. 7 · Zwolle · 3 December 2026</span>
+      <span class="event">thu 3 dec · 19:00 · de makersfabriek, zwolle</span>
     </div>
     <aside class="notes">
       Welcome after dinner. One evening, one ordinary job - arranging a meeting - and a team of
@@ -50,5 +56,6 @@
 
 </main>
 <script src="slides.js"></script>
+<script src="title.js"></script>
 </body>
 </html>

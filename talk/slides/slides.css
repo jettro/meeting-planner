@@ -1,6 +1,6 @@
 /* The style (design_slides.md S12): white, near-black, one accent, big type. */
 :root {
-  --bg: #ffffff;
+  --bg: #f8f5f5;     /* Yuma Off white */
   --text: #16181d;
   --muted: #6b7079;
   --accent: #6434da; /* Yuma Purple */
@@ -83,6 +83,70 @@ footer {
 .title-slide .subtitle { font-size: 56px; color: var(--muted); margin-top: 32px; }
 .title-slide .byline { margin-top: auto; font-size: 36px; }
 .title-slide .byline .event { color: var(--muted); }
+
+/* The title slide is dark, a nod to the DevPulse site; it is up while people come in. */
+.dark {
+  --bg-dark: #141418;
+  --cream: #f1eee6;
+  --orange: #ee9a62; /* DevPulse */
+  --pink: #eba9ff;   /* Yuma Pink, the accent on dark */
+  background: var(--bg-dark);
+  color: var(--cream);
+}
+.dark .accent { color: var(--pink); }
+.dark .subtitle, .dark .byline .event { color: #9a978f; }
+.title-slide.dark > :not(.visual) { position: relative; z-index: 1; max-width: 1000px; }
+.dark .prompt {
+  font-family: var(--mono);
+  font-size: 36px;
+  color: var(--cream);
+  margin-bottom: 48px;
+}
+.dark .dollar { color: var(--orange); }
+.dark .cursor {
+  display: inline-block;
+  width: 0.6em;
+  height: 1em;
+  vertical-align: -0.15em;
+  background: var(--orange);
+  animation: blink 1.1s steps(1) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+.dark .byline { font-family: var(--mono); font-size: 32px; }
+
+.title-slide .visual { position: absolute; inset: 0; pointer-events: none; }
+.title-slide .cube {
+  position: absolute;
+  right: 120px;
+  top: 90px;
+  width: 760px;
+  height: 855px;
+}
+/* The messages stream up past the cube's left edge. */
+.title-slide .trace {
+  position: absolute;
+  right: 700px;
+  top: 140px;
+  width: 680px;
+  height: 820px;
+  overflow: hidden;
+  font-family: var(--mono);
+  font-size: 26px;
+  line-height: 1.45;
+  text-align: right;
+  color: var(--orange);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, transparent 55%, #000 85%),
+                      linear-gradient(to bottom, transparent, #000 15%, #000 85%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent 0%, transparent 55%, #000 85%),
+              linear-gradient(to bottom, transparent, #000 15%, #000 85%, transparent);
+  mask-composite: intersect;
+  opacity: 0.85;
+}
+.title-slide .trace-roll { animation: roll 60s linear infinite; }
+.title-slide .trace-roll div { white-space: nowrap; }
+.title-slide .trace-roll .who { color: var(--cream); }
+@keyframes roll { to { transform: translateY(-50%); } }
 
 /* About slide. */
 .about { display: grid; grid-template-columns: 1fr 1.25fr; gap: 120px; align-items: start; }
