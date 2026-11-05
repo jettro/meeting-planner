@@ -13,8 +13,41 @@
 
   const steps = (slide) => [...slide.querySelectorAll(".step")];
 
+  // Demo slides (S10): the page loads the first time its slide is shown, and then stays, so a
+  // demo keeps its state when you step away and come back. data-zoom makes the page bigger.
+  function loadDemo(slide) {
+    if (!slide.classList.contains("demo") || slide.querySelector("iframe")) return;
+    const src = slide.dataset.src, zoom = parseFloat(slide.dataset.zoom || "1");
+    slide.insertAdjacentHTML("afterbegin", `
+      <div class="bar" title="Click the bar to give the keys back to the slides">
+        <span class="live">● live</span><span>${src}</span>
+        <span class="hint">click this bar, then use the keys</span>
+        <a href="${src}" target="_blank" rel="noopener">open in a tab ↗</a>
+        <button class="nav" data-go="back" aria-label="Previous slide">‹</button>
+        <button class="nav" data-go="forward" aria-label="Next slide">›</button>
+      </div>
+      <div class="frame"><iframe src="${src}" title="Live demo"></iframe></div>`);
+    // The canvas is fixed (S2), so the frame is the canvas minus the 64 px bar.
+    const iframe = slide.querySelector("iframe");
+    iframe.style.width = `${W / zoom}px`;
+    iframe.style.height = `${(H - 64) / zoom}px`;
+    iframe.style.transform = `scale(${zoom})`;
+    // A page in a frame keeps the keys once it is clicked, and the deck cannot listen inside it.
+    // Any click on the bar takes them back; the two buttons also move on.
+    slide.querySelector(".bar").addEventListener("click", (e) => {
+      if (e.target.closest("a")) return;
+      iframe.blur();
+      window.focus();
+      const go = e.target.closest(".nav")?.dataset.go;
+      if (go === "back") back();
+      if (go === "forward") forward();
+      e.target.closest(".nav")?.blur(); // so space and Enter do not press the button again
+    });
+  }
+
   function show(i, revealAll = false) {
     index = Math.max(0, Math.min(total - 1, i));
+    loadDemo(slides[index]);
     slides.forEach((s, n) => s.classList.toggle("current", n === index));
     // Going back lands on a slide fully built; going forward starts it empty.
     steps(slides[index]).forEach((el) => el.classList.toggle("shown", revealAll));

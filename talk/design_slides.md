@@ -72,11 +72,43 @@ Simple, and quiet enough that the demo is the loudest thing on screen.
 
 The about slide uses the bio from the DevPulse page and the old deck, and the Yuma logo.
 
+## The iframe spike (S10) - it works
+
+A demo slide (`<section class="slide demo" data-src=… data-zoom=…>`) puts the planner in a frame
+under a thin dark bar: *live*, the address, and *open in a tab*. Tried on 2026-11-05 against
+`make up`, the slides on `localhost:8500`:
+
+- **Framing is allowed.** Neither the planner's nginx nor the server sends `X-Frame-Options` or a
+  CSP `frame-ancestors`.
+- **The login works inside the frame.** The cookie is `SameSite=Lax`, and `localhost:8500`,
+  `:8300` and `:8200` are the same *site* - a port does not make a site - so the cookie is sent.
+  Logging in, the Platform tab and the Meetings tab all worked in the frame.
+- **The demo keeps its state.** The frame loads the first time its slide is shown and stays; going
+  back a slide and forward again shows the same page.
+- **The keys.** Once the planner is clicked, it keeps the keys, and the deck cannot listen inside
+  a frame from another origin. So the bar has **‹ and › buttons**, and any click on the bar
+  gives the keys back to the slides. A clicker is caught the same way: after working in the
+  planner, click the bar first. Found in the first try-out, where the arrows seemed dead.
+- **No caching.** `make talk` runs `talk/serve.py`, which sends `Cache-Control: no-store`;
+  Python's plain server let the browser keep an old `slides.js` after an edit.
+- **Bigger on the projector.** `data-zoom="1.25"` renders the page at 1536 px wide and scales
+  it up to the canvas.
+
+**The akgentic console** (slide 4, `localhost:8400`) works in a frame the same way: no framing
+headers, and it shares the planner's session, so it opens logged in. Opening a team shows a
+*Request failed: Not Found - Team not found* toast, in a plain tab as well: the console asks for
+the `memory-shared` workspace's tree, and the server refuses shared paths on purpose
+(`docs/memory.md`). Harmless, but it shows on the projector - close it, or open a team before
+the talk.
+
+Not yet tried: the trace's live socket while a team is running, and the two questions answered
+in the frame. Both use the same cookie, so they are expected to work; the next demo run will
+show.
+
 ## Next steps
 
 1. Agree on this design and the style. Decide on Inter.
-2. **The iframe spike** (S10): one slide with the planner in a frame, logged in, on the projector
-   resolution. If it fails, the demo goes in a tab and S10 changes.
+2. Run one whole meeting inside the demo slide, with the trace live.
 3. One build-up diagram (the anatomy of an agent) to settle how diagrams are drawn.
 4. Then the deck, part by part, as in [`plan.md`](plan.md).
 

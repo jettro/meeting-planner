@@ -148,6 +148,46 @@ footer {
 .title-slide .trace-roll .who { color: var(--cream); }
 @keyframes roll { to { transform: translateY(-50%); } }
 
+/* Demo slides (S10): a live page in a frame, under a thin bar that gives the keys back. */
+.slide.demo { padding: 0; }
+.demo .bar {
+  height: 64px;
+  padding: 0 40px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  font-family: var(--mono);
+  font-size: 24px;
+  background: var(--text);
+  color: var(--bg);
+  cursor: pointer;
+}
+.demo .bar .live { color: var(--accent); filter: brightness(1.6); }
+.demo .bar .hint { margin-left: auto; opacity: 0.55; }
+.demo .bar a { color: inherit; }
+.demo .bar .nav {
+  font: inherit;
+  font-size: 40px;
+  line-height: 1;
+  width: 56px;
+  height: 48px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: inherit;
+  cursor: pointer;
+}
+.demo .bar .nav:hover { background: rgba(255, 255, 255, 0.25); }
+.demo .frame { position: relative; flex: 1; overflow: hidden; background: #fff; }
+.demo iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 0;
+  transform-origin: 0 0;
+}
+.slide.demo footer { display: none; }
+
 /* About slide. */
 .about { display: grid; grid-template-columns: 1fr 1.25fr; gap: 120px; align-items: start; }
 .about .name { font-size: 96px; font-weight: 700; line-height: 1.05; margin-bottom: 24px; }

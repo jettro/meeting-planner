@@ -126,8 +126,7 @@ console: ## Open the Akgentic console (http://localhost:8400)
 # The talk's slides (talk/design_slides.md S9): served from localhost, never
 # opened as a file, so a demo slide's iframe gets the planner's login cookie.
 talk: ## Serve the talk's slides (http://localhost:8500)
-	@echo "Slides on http://localhost:8500"
-	python3 -m http.server 8500 --bind localhost --directory talk/slides
+	python3 talk/serve.py
 
 clean: ## Stop containers and remove volumes (destroys SQLite data!)
 	docker compose down -v
