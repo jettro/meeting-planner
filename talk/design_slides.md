@@ -72,6 +72,23 @@ Simple, and quiet enough that the demo is the loudest thing on screen.
 
 The about slide uses the bio from the DevPulse page and the old deck, and the Yuma logo.
 
+## The anatomy of an agent (slides 3-8)
+
+The six slides of the playful pptx, redrawn in this deck's style: the same playful titles and
+takeaways, the same robot gaining one piece of gear per slide - clipboard, light bulb, tools,
+backpack, shield - and the same diagram growing beside it. `anatomy.js` builds them from one list
+of gear, so a word changes in one place.
+
+- The gear is shown as **cards in two columns** (goal, tools, boundaries | LLM, context); the card
+  a slide adds is white with a purple edge, the earlier ones are grey. A grid made every card in
+  a row as tall as the tallest, and the fifth slide ran into its takeaway.
+- The **team slide** shows *You - messages + routing* and the three robots as agents A, B and C,
+  appearing one per key press.
+- The robots are the pptx's images, made smaller (900 px high, transparent PNG, 640-780 KB each)
+  in `img/robot-1.png` … `robot-5.png`. The team uses robots 3, 4 and 5, as the pptx does.
+- Not taken over: the pptx's own palette (teal, rust, cream) and its *1 / 6* counter; the deck's
+  footer counts instead.
+
 ## The iframe spike (S10) - it works
 
 A demo slide (`<section class="slide demo" data-src=… data-zoom=…>`) puts the planner in a frame

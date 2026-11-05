@@ -148,6 +148,43 @@ footer {
 .title-slide .trace-roll .who { color: var(--cream); }
 @keyframes roll { to { transform: translateY(-50%); } }
 
+/* The anatomy of an agent (anatomy.js): gear cards on the left, the robot on the right. */
+.slide.anatomy, .slide.anatomy-team { padding-top: 96px; padding-bottom: 130px; }
+.anatomy h2, .anatomy-team h2 { margin-bottom: 40px; }
+.anatomy-body { flex: 1; display: flex; gap: 48px; min-height: 0; }
+.anatomy .cards { flex: 1; display: flex; gap: 24px; align-items: flex-start; }
+.anatomy .column { flex: 1; display: flex; flex-direction: column; gap: 24px; }
+.card {
+  background: var(--panel);
+  border-radius: 16px;
+  padding: 22px 28px;
+  font-size: 30px;
+  line-height: 1.3;
+  border-left: 8px solid transparent;
+}
+.card .label {
+  font-family: var(--mono);
+  font-size: 22px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.card .item + .item { margin-top: 6px; }
+.card span { color: var(--muted); }
+.card.new { border-left-color: var(--accent); background: #fff; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06); }
+.card.new .label { color: var(--accent); }
+.anatomy .robot { height: 580px; align-self: center; flex: none; }
+.anatomy .takeaway, .anatomy-team .takeaway { margin-top: 32px; }
+
+.anatomy-team .team { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 28px; }
+.anatomy-team .you { text-align: center; padding: 18px 48px; }
+.anatomy-team .you b, .anatomy-team .member b { display: block; }
+.anatomy-team .members { display: flex; gap: 96px; }
+.anatomy-team .member { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.anatomy-team .member img { height: 330px; }
+.anatomy-team .member .card { text-align: center; }
+
 /* Demo slides (S10): a live page in a frame, under a thin bar that gives the keys back. */
 .slide.demo { padding: 0; }
 .demo .bar {

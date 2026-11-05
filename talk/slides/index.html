@@ -54,7 +54,30 @@
     </aside>
   </section>
 
-  <!-- 3. Demo: the planner, live (design_slides.md S10) -->
+  <!-- 3-8. The anatomy of an agent, then a team - from the playful deck (anatomy.js) -->
+  <section class="slide anatomy" data-stage="1">
+    <aside class="notes">Every agent starts with a job, and a way to know it is done.</aside>
+  </section>
+  <section class="slide anatomy" data-stage="2">
+    <aside class="notes">The model only proposes. Our software runs the loop and decides when to stop.</aside>
+  </section>
+  <section class="slide anatomy" data-stage="3">
+    <aside class="notes">Tools do the work; MCP is one way to connect them, not the only one.</aside>
+  </section>
+  <section class="slide anatomy" data-stage="4">
+    <aside class="notes">Four kinds of context. The meeting planner has all four - memory gets a moment in demo 2.</aside>
+  </section>
+  <section class="slide anatomy" data-stage="5">
+    <aside class="notes">
+      A real one: the first booking was titled "Meeting" - a field the agent was not given is a
+      field it will invent. Boundaries live in the runtime, not in the prompt.
+    </aside>
+  </section>
+  <section class="slide anatomy-team">
+    <aside class="notes">One agent with every tool is overloaded. Split it - and now they have to talk.</aside>
+  </section>
+
+  <!-- 9. Demo: the planner, live (design_slides.md S10) -->
   <section class="slide demo" data-src="http://localhost:8300" data-zoom="1.25">
     <aside class="notes">
       The planner, live, inside the deck. Click the bar above it to come back to the slides; the
@@ -62,7 +85,7 @@
     </aside>
   </section>
 
-  <!-- 4. Demo: the akgentic console - the team, not the meeting -->
+  <!-- 10. Demo: the akgentic console - the team, not the meeting -->
   <section class="slide demo" data-src="http://localhost:8400" data-zoom="1.25">
     <aside class="notes">
       The planner shows the meeting; the console shows the team. The framework's own front end,
@@ -72,6 +95,7 @@
   </section>
 
 </main>
+<script src="anatomy.js"></script>
 <script src="slides.js"></script>
 <script src="title.js"></script>
 </body>
