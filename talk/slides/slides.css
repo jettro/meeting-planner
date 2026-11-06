@@ -518,3 +518,80 @@ footer {
   background: var(--accent);
 }
 .about .mantra { margin-top: 72px; font-size: 40px; font-style: italic; color: var(--muted); }
+
+/* The first agent in code (design_agent_demo.md): one slide per step, the new lines marked. */
+.slide.code-step { padding: 72px 160px 110px; }
+.code-step header { display: flex; align-items: baseline; gap: 32px; margin-bottom: 32px; }
+.code-step h2 { margin: 0; }
+.code-step h2 .n {
+  display: inline-block;
+  width: 72px;
+  height: 72px;
+  margin-right: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 44px;
+  line-height: 72px;
+  text-align: center;
+  vertical-align: 6px;
+}
+/* Which part of the anatomy this step adds - the cards of slides 5-9. */
+.code-step .part {
+  margin-left: auto;
+  padding: 6px 24px;
+  border: 3px solid var(--accent);
+  border-radius: 40px;
+  color: var(--accent);
+  font-size: 30px;
+  font-weight: 600;
+}
+pre.code {
+  margin: 0;
+  padding: 28px 0;
+  background: #fff;
+  border-radius: 16px;
+  font-family: var(--mono);
+  font-size: 27px;
+  line-height: 1.45;
+  white-space: pre;
+}
+pre.code .line { display: block; padding: 0 40px; border-left: 8px solid transparent; }
+pre.code .line.new { background: #f1ebff; border-left-color: var(--accent); }
+pre.code .k { color: var(--accent); font-weight: 600; }
+pre.code .s { color: #1f7a4d; }
+pre.code .d { color: #b4531f; }
+pre.code .c { color: var(--muted); font-style: italic; }
+pre.code .n { color: #1f5fa8; }
+.code-step .takeaway { margin-top: auto; }
+
+/* Run it: the bar across the top, the steps on the left, the terminal on the right. */
+.slide.demo.split {
+  display: none;
+  grid-template-columns: 1fr 1240px;
+  grid-template-rows: 64px 1fr;
+}
+.slide.demo.split.current { display: grid; }
+.split .bar { grid-column: 1 / -1; }
+.split .frame { grid-column: 2; grid-row: 2; background: #f8f5f5; }
+.split .commands { grid-column: 1; grid-row: 2; background: var(--panel); padding: 64px 48px 64px 72px; display: flex; flex-direction: column; }
+.split .commands h2 { margin: 0 0 48px; }
+.split .commands ol { margin: 0; padding: 0; list-style: none; counter-reset: run; }
+.split .commands li { counter-increment: run; margin-bottom: 40px; padding-left: 64px; position: relative; }
+.split .commands li::before {
+  content: counter(run);
+  position: absolute;
+  left: 0;
+  top: 2px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 26px;
+  line-height: 44px;
+  text-align: center;
+}
+.split .commands code { display: block; font-size: 32px; color: var(--text); }
+.split .commands li span { font-size: 26px; color: var(--muted); }
+.split .commands .muted { margin-top: auto; font-size: 24px; }

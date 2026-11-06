@@ -7,7 +7,7 @@ SERVICES := meeting-service location-service nomnom-service
         run-meeting-mcp run-location-mcp run-nomnom-mcp \
         plan-meeting plan-meeting-docker run-server \
         gui-install gui-dev gui-build gui-lint \
-        up down build logs ps clean reset console talk
+        up down build logs ps clean reset console talk agent-demo agent-demo-stop
 
 help: ## Show this help
 	@echo "Usage: make <target>"
@@ -127,6 +127,19 @@ console: ## Open the Akgentic console (http://localhost:8400)
 # opened as a file, so a demo slide's iframe gets the planner's login cookie.
 talk: ## Serve the talk's slides (http://localhost:8500)
 	python3 talk/serve.py
+
+# The first agent, run on a slide (talk/design_agent_demo.md): a terminal on a web
+# page, only on localhost. Only OPENAI_API_KEY is passed in, read from stdin.
+ENV_FILE ?= .env
+agent-demo: ## Start the talk's terminal with the agent steps (http://localhost:8600)
+	docker build -q -t agent-demo talk/agent-demo
+	-@docker rm -f agent-demo >/dev/null 2>&1
+	@grep '^OPENAI_API_KEY=' $(ENV_FILE) | docker run -d --name agent-demo --env-file /dev/stdin \
+		-p 127.0.0.1:8600:7681 agent-demo >/dev/null
+	@echo "Terminal on http://localhost:8600 - make help shows the steps"
+
+agent-demo-stop: ## Stop the talk's terminal
+	docker rm -f agent-demo
 
 clean: ## Stop containers and remove volumes (destroys SQLite data!)
 	docker compose down -v

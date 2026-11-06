@@ -128,6 +128,119 @@
       field it will invent. Boundaries live in the runtime, not in the prompt.
     </aside>
   </section>
+  <!-- The first agent in code, four steps, then run (design_agent_demo.md). The code is pasted:
+       a change to talk/agent-demo/stepN.py is made here too. Blank lines are single here. -->
+  <section class="slide code-step">
+    <header><h2><span class="n">1</span> Just call an LLM</h2><span class="part">the LLM</span></header>
+    <pre class="code">
+from pydantic_ai import Agent
+
+agent = Agent("openai:gpt-6-luna")
+
+result = agent.run_sync("What is the date of next Friday?")
+print(result.output)
+    </pre>
+    <p class="takeaway">Five lines - and it does not know what day it is.</p>
+    <aside class="notes">
+      An agent in pydantic-ai is a model and a run. Ask it about next Friday: it cannot know,
+      because nothing told it today's date. Run it in the terminal at the end: make run-llm.
+    </aside>
+  </section>
+  <section class="slide code-step">
+    <header><h2><span class="n">2</span> Give it context</h2><span class="part">context</span></header>
+    <pre class="code" data-new="1,4,6-8">
+from datetime import date
+from pydantic_ai import Agent
+
+agent = Agent("openai:gpt-6-luna", instructions="You plan meetings. Answer in one sentence.")
+
+@agent.instructions
+def today() -> str:
+    return f"Today is {date.today():%A %d %B %Y}."
+
+result = agent.run_sync("What is the date of next Friday?")
+print(result.output)
+    </pre>
+    <p class="takeaway">The same question. Now it can answer.</p>
+    <aside class="notes">
+      Instructions are the system prompt. The fixed part says what it is for; the function adds
+      what changes, every run. That is context: the model knows only what we put in. make run-system.
+    </aside>
+  </section>
+  <section class="slide code-step">
+    <header><h2><span class="n">3</span> Simulate memory</h2><span class="part">memory</span></header>
+    <pre class="code" data-new="10-17">
+from datetime import date
+from pydantic_ai import Agent
+
+agent = Agent("openai:gpt-6-luna", instructions="You plan meetings. Answer in one sentence.")
+
+@agent.instructions
+def today() -> str:
+    return f"Today is {date.today():%A %d %B %Y}."
+
+first = agent.run_sync("My name is Sam, and I need a room for six people next Friday.")
+print(first.output)
+
+second = agent.run_sync(
+    "What was my name, and for how many people?",
+    message_history=first.all_messages(),
+)
+print(second.output)
+    </pre>
+    <aside class="notes">
+      A model remembers nothing between calls. Memory is us sending the conversation along again:
+      message_history. Leave it out and the second run has never heard of Sam. make run-memory.
+    </aside>
+  </section>
+  <section class="slide code-step">
+    <header><h2><span class="n">4</span> Give it a tool</h2><span class="part">tools</span></header>
+    <pre class="code" data-new="10-14,17">
+from datetime import date
+from pydantic_ai import Agent
+
+agent = Agent("openai:gpt-6-luna", instructions="You plan meetings. Answer in one sentence.")
+
+@agent.instructions
+def today() -> str:
+    return f"Today is {date.today():%A %d %B %Y}."
+
+@agent.tool_plain
+def free_rooms(day: date, people: int) -> list[str]:
+    """The meeting rooms that are free on a day, for a number of people."""
+    print(f"  > tool: free_rooms({day}, {people})")
+    return ["Attic (8)", "Greenhouse (6)"] if people &lt;= 6 else ["Attic (8)"]
+
+first = agent.run_sync("My name is Sam, and I need a room for six people next Friday.")
+second = agent.run_sync("Which rooms are free?", message_history=first.all_messages())
+print(second.output)
+    </pre>
+    <aside class="notes">
+      The docstring and the type hints are what the model sees of the tool. It asks for it, our
+      code runs it, the answer goes back in: tools in a loop to achieve a goal - slide 4, in code.
+      The print shows the call happening. make run-tool.
+    </aside>
+  </section>
+
+  <!-- Run it: the four steps on the left, a terminal on the right (ttyd, make agent-demo). -->
+  <section class="slide demo split" data-src="http://localhost:8600" data-width="1240">
+    <div class="commands">
+      <h2>Run it</h2>
+      <ol>
+        <li><code>make run-llm</code><span>just an LLM</span></li>
+        <li><code>make run-system</code><span>context: today</span></li>
+        <li><code>make run-memory</code><span>memory</span></li>
+        <li><code>make run-tool</code><span>a tool</span></li>
+      </ol>
+      <p class="muted">gpt-6-luna · pydantic-ai</p>
+    </div>
+    <aside class="notes">
+      Click into the terminal and type. Start the container before the talk: make agent-demo
+      (it needs OPENAI_API_KEY in .env). make help lists the steps. Click the bar to get the keys
+      back for the slides.
+    </aside>
+  </section>
+
   <section class="slide anatomy-team">
     <aside class="notes">One agent with every tool is overloaded. Split it - and now they have to talk.</aside>
   </section>
@@ -257,6 +370,7 @@
 </main>
 <script src="anatomy.js"></script>
 <script src="repo.js"></script>
+<script src="code.js"></script>
 <script src="slides.js"></script>
 <script src="title.js"></script>
 </body>

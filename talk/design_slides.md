@@ -82,10 +82,13 @@ The about slide uses the bio from the DevPulse page and the old deck, and the Yu
 | 2 | about me |
 | 3 | the comic: a quick meeting, and what if I built a team for this? |
 | 4 | what is an agent? - four definitions, then the one sentence |
-| 5-10 | the anatomy of an agent, then a team |
-| 11-12 | the sample: what it does, how it is built |
-| 13 | the repository |
-| 14-15 | live: the planner, the console |
+| 5-9 | the anatomy of an agent |
+| 10-13 | the first agent in code: an LLM, context, memory, a tool ([`design_agent_demo.md`](design_agent_demo.md)) |
+| 14 | run it: the four make targets, and a live terminal (ttyd, `make agent-demo`) |
+| 15 | one agent is not enough: a team |
+| 16-17 | the sample: what it does, how it is built |
+| 18 | the repository |
+| 19-20 | live: the planner, the console |
 
 ## The comic (slide 3)
 

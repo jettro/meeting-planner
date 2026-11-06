@@ -28,8 +28,10 @@
       </div>
       <div class="frame"><iframe src="${src}" title="Live demo"></iframe></div>`);
     // The canvas is fixed (S2), so the frame is the canvas minus the 64 px bar.
+    // data-width: a frame that takes only part of the canvas, beside the slide's own content.
     const iframe = slide.querySelector("iframe");
-    iframe.style.width = `${W / zoom}px`;
+    const width = parseFloat(slide.dataset.width || W);
+    iframe.style.width = `${width / zoom}px`;
     iframe.style.height = `${(H - 64) / zoom}px`;
     iframe.style.transform = `scale(${zoom})`;
     // A page in a frame keeps the keys once it is clicked, and the deck cannot listen inside it.
