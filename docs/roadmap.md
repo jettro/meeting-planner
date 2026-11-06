@@ -24,10 +24,11 @@ says what is done, what is next, and what is not planned.
 
 Each with a design first.
 
-- **Guardrails** - designed in [`design_guardrails.md`](design/design_guardrails.md). A check
-  between an agent's tool call and the service: rules in code that the call matches what was
-  approved, and a decision model (`gpt-6-luna` on OpenAI's Decisions API) for judgement - *does
-  this order fit the lunch wish?*
+- **Guardrails** - designed in [`design_guardrails.md`](design/design_guardrails.md). Rules in
+  code that a booking call matches what was approved, and a `@Guard` agent on a decision model
+  (`gpt-6-luna` on OpenAI's Decisions API) for judgement - *is this message about arranging a
+  meeting?*, *does this order fit the lunch wish?* It needs akgentic to run decision models
+  first.
 - **Evaluations.** Tests check the code; nothing yet measures the models' choices. The first
   cases are already written down: the three live conversations in `design_chat.md` §14, and the
   Campus memory - was it followed, and does the reason say so?
