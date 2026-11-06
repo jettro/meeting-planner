@@ -48,4 +48,4 @@ come from.
 | [`design_auth.md`](design/design_auth.md) | who is asking: the login (A) |
 | [`design_memory.md`](design/design_memory.md) | what the team remembers (M) |
 | [`design_docs.md`](design/design_docs.md) | this documentation (W) |
-| [`design_guardrails.md`](design/design_guardrails.md) | guardrails: checks before an agent acts (GR) - agreed, not built: a `@Guard` agent, and a check on what `@Intake` is asked |
+| [`design_guardrails.md`](design/design_guardrails.md) | guardrails: checks before an agent acts (GR) - the rules built; a `@Guard` agent, and a check on what `@Intake` is asked |

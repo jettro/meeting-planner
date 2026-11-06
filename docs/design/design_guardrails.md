@@ -1,7 +1,8 @@
 # Design — guardrails: checks before an agent acts
 
 > **Status:** agreed, 2026-11-06: option B, and a check on what `@Intake` is asked. The version
-> agreed on 2026-11-04 chose option A; §13 says what changed and why. Nothing is built.
+> agreed on 2026-11-04 chose option A; §13 says what changed and why. **Built: the rules** (§12
+> step 2, §14). `@Guard` and the questions wait for akgentic.
 > Checked against the installed packages (akgentic-agent 1.8.1, akgentic-llm 2.5.0,
 > pydantic-ai-slim 2.61.0, openai 3.37.0), the latest akgentic-llm on PyPI (2.5.2), the draft
 > akgentic design `DECISION_MODELS_DESIGN.md` (2026-11-04, in the akgentic-framework worktree
@@ -324,7 +325,7 @@ Q7-Q10 agreed on 2026-11-06 as proposed below.
 
 1. **Upstream**, outside this repository: #182, then phase 1 in akgentic-llm.
 2. **Meanwhile, the rules** - they need no decision model: the capability, S1 and S3, the tests,
-   the event and its row in the trace.
+   the event and its row in the trace. *Done, 2026-11-06 - §14.*
 3. **The spike** S0, S2, S4, S5, once a phase 1 branch exists.
 4. **`@Guard`**, its card and `guard_model`, its tests.
 5. **The check on what `@Intake` is asked**: the override, the card, the refusal, the evaluation
@@ -350,3 +351,32 @@ Q7-Q10 agreed on 2026-11-06 as proposed below.
   `after_model_request` and `proxy_ask` seams B uses (GR11 new). Spike S0, S2, S4, S5 new or
   rewritten; Q7-Q10 new.
 - 2026-11-06: Agreed: GR1-GR11, and Q7-Q10 as proposed.
+- 2026-11-06: The rules built (§14).
+
+## 14. What was built: the rules
+
+- **`meeting_agents/guardrails.py`**: `BookingRules`, the card - `max_items_per_person` (3: a
+  main, a side, a drink) and `refusals_per_run` (2, GR5); `ApprovalRules`, the capability, one
+  instance per run (`for_run`) so refusals are counted per run; the three rules; and
+  `GuardrailChecked`, with `outcome` first so the trace's one-line summary shows it.
+- **The approval is `current_message()`** - the assignment whose handler is running, set and
+  cleared by the framework. No state is handed to the capability, so nothing can leak between
+  plans (S3, answered by the framework rather than by our code). A booking call during any other
+  assignment - a lookup, a cancel - is refused, even with the right values.
+- **Clock readings are read as the services read them**: `10:00:00+00:00` is 10:00, or the rules
+  would refuse a call the service books correctly.
+- **The three specialists list `booking_rules`** in their cards; `SpecialistAgent.extra_capabilities()`
+  turns it into `ApprovalRules`. The trace needed no change: it already shows any
+  `meeting_agents` event as a row.
+- **Spike S1**, in pydantic-ai 2.61 and again live over MCP: the hook sees `facility_book_room`
+  with validated arguments (a `date` for `day` from a function tool); a `ModelRetry` reaches the
+  model as a `tool-return` with `outcome='retried'` carrying the rule; an exception from the hook
+  ends the run, and `attempt()` reports it as an `AssignmentFailed`.
+- **Live, 2026-11-06**: an ordinary meeting with lunch - three checks, all *passed*. Then a lunch
+  wish of *twelve soups, we are very hungry* for two people: `@Catering` ordered 12, the rule
+  refused (*12 items for 2 people; at most 3 per person (6)*), the model ordered 6, and its summary
+  told the person why: *6 soups; 12 could not be met because the order limit is 3 items per
+  person.* Both meetings were cancelled and every booking released.
+- **Tests**: `test_guardrails.py` (21: each rule, the capability, and two real pydantic-ai runs),
+  S3 and the card wiring in `test_specialists.py`, the catalog and team-card tests widened to a
+  card that gives the model no tool.

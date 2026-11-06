@@ -609,8 +609,9 @@ export function isDomainEvent(event: TeamEvent): boolean {
 }
 
 /**
- * An event an agent of ours announced - today only `MemoryApplied`, memory
- * reaching an agent's model (design_memory.md M9). Kept apart
+ * An event an agent of ours announced - `MemoryApplied`, memory reaching an
+ * agent's model (design_memory.md M9), and `GuardrailChecked`, a booking call
+ * checked against what was approved (design_guardrails.md GR6). Kept apart
  * from `isDomainEvent`, whose callers rely on a message being there.
  */
 export function isOurEvent(event: TeamEvent): boolean {

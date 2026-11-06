@@ -27,3 +27,6 @@ payload:
       __ref__: default_model
     tools:
       - __ref__: nomnom_mcp
+      # The booking rules (design_guardrails.md GR1): a call that books must be
+      # the approved one. It gives the model no tool.
+      - __ref__: booking_rules

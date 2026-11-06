@@ -21,13 +21,15 @@ from __future__ import annotations
 import logging
 from datetime import date as date_type
 from datetime import datetime, timedelta
-from typing import TypeVar
+from typing import Any, TypeVar
 
 from akgentic.agent import BaseAgent
 from akgentic.agent.config import AgentConfig, AgentState
 from akgentic.core import ActorAddress, Akgent
 from pydantic import BaseModel
+from pydantic_ai import AgentCapability
 
+from meeting_agents.guardrails import ApprovalRules, booking_rules_in
 from meeting_agents.memory import MemoryItem, MemoryTool
 from meeting_agents.messages import (
     AssignmentFailed,
@@ -73,6 +75,11 @@ T = TypeVar("T", bound=BaseModel)
 
 class SpecialistAgent(BaseAgent):
     """Shared failure handling for an agent that runs one assignment at a time."""
+
+    def extra_capabilities(self) -> list[AgentCapability[Any]]:
+        """The booking rules, when the agent's card lists them (design_guardrails.md GR1)."""
+        rules = booking_rules_in(list(self.config.tools))
+        return [ApprovalRules(card=rules)] if rules is not None else []
 
     def attempt(self, message, output_type: type[T], plan_id: str, sender) -> T | None:
         """Run the model, or report the failure upstream and answer `None`.

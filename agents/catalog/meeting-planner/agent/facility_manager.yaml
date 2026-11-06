@@ -34,3 +34,6 @@ payload:
       # What people said about places, selected by the handlers in code before
       # the model chooses (design_memory.md M18). It gives the model no tool.
       - __ref__: place_memory
+      # The booking rules (design_guardrails.md GR1): a call that books must be
+      # the approved one. It gives the model no tool.
+      - __ref__: booking_rules

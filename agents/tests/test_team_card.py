@@ -9,7 +9,9 @@ from pathlib import Path
 
 import pytest
 from akgentic.team import TeamCard, TeamCardMember
+from akgentic.tool.mcp import MCPTool
 from meeting_agents.bootstrap import load_team_card
+from meeting_agents.guardrails import BookingRules
 from meeting_agents.memory import MemoryTool
 from meeting_agents.messages import MESSAGE_TYPES
 from meeting_agents.settings import Settings
@@ -99,14 +101,18 @@ def test_the_coordinator_cannot_reach_any_service(card: TeamCard):
 
 @pytest.mark.parametrize("name", ["@Scheduler", "@Catering"])
 def test_each_specialist_still_has_exactly_one_tool(card: TeamCard, name: str):
-    assert len(by_name(card)[name].card.config.tools) == 1
+    """Its server; and the booking rules, which give the model no tool (design_guardrails.md GR1)."""
+    server, rules = by_name(card)[name].card.config.tools
+    assert isinstance(server, MCPTool)
+    assert isinstance(rules, BookingRules) and rules.get_tools() == []
 
 
 def test_the_facility_manager_has_its_server_and_the_shared_memory_only(card: TeamCard):
     """M19: place facts, and never an organiser's own tree or block."""
     tools = by_name(card)["@FacilityManager"].card.config.tools
-    assert len(tools) == 2
+    assert len(tools) == 3
     memory = tools[1]
+    assert isinstance(tools[2], BookingRules)
     assert isinstance(memory, MemoryTool)
     assert memory.personal is False
     assert memory.get_tools() == []

@@ -14,12 +14,14 @@ from __future__ import annotations
 
 import queue
 from datetime import date, time
+from types import SimpleNamespace
 
 import pytest
 from akgentic.agent.config import AgentConfig
 from akgentic.core import AgentCard, Akgent, BaseConfig, BaseState, UserProxy
 from akgentic.team import TeamCard, TeamCardMember, TeamFactory
 from meeting_agents.coordinator import Coordinator, CoordinatorConfig
+from meeting_agents.guardrails import ApprovalRules, BookingRules
 from meeting_agents.messages import (
     MESSAGE_TYPES,
     AssignmentFailed,
@@ -53,6 +55,7 @@ from meeting_agents.specialists import (
     FacilityManager,
     FacilityManagerConfig,
     Scheduler,
+    SpecialistAgent,
     meeting_slots,
 )
 
@@ -72,11 +75,13 @@ class Script:
 
     answers: dict[type, list] = {}
     prompts: list[str] = []
+    assignments: list = []
 
     @classmethod
     def reset(cls) -> None:
         cls.answers = {}
         cls.prompts = []
+        cls.assignments = []
 
     @classmethod
     def give(cls, output_type: type, *values) -> None:
@@ -95,6 +100,8 @@ class ScriptedModel:
 
     def act(self, message, output_type):
         Script.prompts.append(message.rendering())
+        # What the booking rules read as the approval (design_guardrails.md S3).
+        Script.assignments.append(self.current_message())
         return Script.take(output_type)
 
 
@@ -392,6 +399,33 @@ def window(start: str, end: str) -> ProposedSlot:
     h1, m1 = (int(p) for p in start.split(":"))
     h2, m2 = (int(p) for p in end.split(":"))
     return ProposedSlot(start=time(h1, m1), end=time(h2, m2))
+
+
+def test_the_rules_read_the_assignment_being_handled_and_never_an_earlier_one(team):
+    """Spike S3: `current_message()` is the handler's own assignment, for each run."""
+    Script.give(FoundSlots, good_slots())
+    Script.give(BookedMeeting, BookedMeeting(succeeded=True, meeting_id=MEETING_ID))
+    Script.give(BookedRoom, BookedRoom(succeeded=True, room_code=ROOM_CODE, booking_id=BOOKING_ID))
+    Script.give(OrderedLunch, OrderedLunch(succeeded=True, order_id=ORDER_ID, summary="soup"))
+    run_to_completion(team)
+    Inbox.expect(PlanCompleted)
+
+    kinds = [type(assignment).__name__ for assignment in Script.assignments]
+    assert kinds == [
+        "FindSlotsAssignment",
+        "BookMeetingAssignment",
+        "BookFacilitiesAssignment",
+        "OrderLunchAssignment",
+    ]
+    booked = Script.assignments[1]
+    assert booked.day == DAY and booked.slot.start == time(10, 0)
+
+
+def test_a_specialist_carries_the_booking_rules_only_when_its_card_lists_them():
+    with_rules = SimpleNamespace(config=SimpleNamespace(tools=[BookingRules(max_items_per_person=2)]))
+    (capability,) = SpecialistAgent.extra_capabilities(with_rules)
+    assert isinstance(capability, ApprovalRules) and capability.card.max_items_per_person == 2
+    assert SpecialistAgent.extra_capabilities(SimpleNamespace(config=SimpleNamespace(tools=[]))) == []
 
 
 def test_a_long_window_is_cut_into_meeting_length_slots():

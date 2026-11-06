@@ -1,0 +1,13 @@
+id: booking_rules
+kind: tool
+namespace: meeting-planner
+user_id: anonymous
+model_type: meeting_agents.guardrails.BookingRules
+description: >-
+  The booking rules (design_guardrails.md GR1, GR7): book_meeting, book_room and
+  place_order must be the approved people, place, day and times, and an order no
+  bigger than is sensible. Checked in code before the call reaches the service;
+  the model gets no tool from it.
+payload:
+  max_items_per_person: 3
+  refusals_per_run: 2
