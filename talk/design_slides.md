@@ -83,12 +83,13 @@ The about slide uses the bio from the DevPulse page and the old deck, and the Yu
 | 3 | the comic: a quick meeting, and what if I built a team for this? |
 | 4 | what is an agent? - four definitions, then the one sentence |
 | 5-9 | the anatomy of an agent |
-| 10-13 | the first agent in code: an LLM, context, memory, a tool ([`design_agent_demo.md`](design_agent_demo.md)) |
-| 14 | run it: the four make targets, and a live terminal (ttyd, `make agent-demo`) |
-| 15 | one agent is not enough: a team |
-| 16-17 | the sample: what it does, how it is built |
-| 18 | the repository |
-| 19-20 | live: the planner, the console |
+| 10 | one agent is not enough: the start of a team |
+| 11-14 | the first agent in code: an LLM, context, memory, a tool ([`design_agent_demo.md`](design_agent_demo.md)) |
+| 15 | run it: the four make targets, and a live terminal (ttyd, `make agent-demo`) |
+| 16-20 | team architectures: start with one agent, five patterns, what goes wrong, split like services, the crew now built ([`design_team_patterns.md`](design_team_patterns.md)) |
+| 21-22 | the sample: what it does, how it is built |
+| 23 | the repository |
+| 24-25 | live: the planner, the console |
 
 ## The comic (slide 3)
 
@@ -142,7 +143,7 @@ of gear, so a word changes in one place.
 - Not taken over: the pptx's own palette (teal, rust, cream) and its *1 / 6* counter; the deck's
   footer counts instead.
 
-## Introducing the sample (slides 11 and 12)
+## Introducing the sample (slides 21 and 22)
 
 Two slides, after the agent anatomy and before the repository and the demo.
 
@@ -159,7 +160,7 @@ Two slides, after the agent anatomy and before the repository and the demo.
   visual difference that carries the slide's point.
 - The lines are drawn by the boxes' own `::before` and `::after`, so they appear with their box.
 
-## The repository slide (slide 13)
+## The repository slide (slide 23)
 
 Just before the demo: <https://go.jettro.dev/pulse>, which redirects to
 `github.com/jettro/meeting-planner`. To make it more than a link, the crew *arranges* it the way it

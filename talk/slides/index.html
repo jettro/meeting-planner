@@ -128,6 +128,10 @@
       field it will invent. Boundaries live in the runtime, not in the prompt.
     </aside>
   </section>
+  <section class="slide anatomy-team">
+    <aside class="notes">One agent with every tool is overloaded. Split it - and now they have to talk.</aside>
+  </section>
+
   <!-- The first agent in code, four steps, then run (design_agent_demo.md). The code is pasted:
        a change to talk/agent-demo/stepN.py is made here too. Blank lines are single here. -->
   <section class="slide code-step">
@@ -241,8 +245,133 @@ print(second.output)
     </aside>
   </section>
 
-  <section class="slide anatomy-team">
-    <aside class="notes">One agent with every tool is overloaded. Split it - and now they have to talk.</aside>
+
+  <!-- Part 3: team architectures - what others say, and what the sample does
+       (design_team_patterns.md, slides A-E). -->
+  <section class="slide one-first">
+    <h2>Start with one agent</h2>
+    <div class="quotes">
+      <blockquote class="step">“Finding the simplest solution possible, and only increasing complexity when needed.”<cite>Anthropic · Building effective agents · 2024</cite></blockquote>
+      <blockquote class="step">“Maximize a single agent’s capabilities first.”<cite>OpenAI · A practical guide to building agents · 2025</cite></blockquote>
+      <blockquote class="step">“Don’t build multi-agents.”<cite>Cognition · 2025</cite></blockquote>
+    </div>
+    <div class="reasons step">
+      <p class="lead">Split only for</p>
+      <div class="reason"><b>Context protection</b><span>keep what one agent reads out of the others’ heads</span></div>
+      <div class="reason"><b>Parallel work</b><span>many things at once - thoroughness more than speed</span></div>
+      <div class="reason"><b>Specialization</b><span>too many tools for one prompt</span></div>
+      <cite>Anthropic · When to use multi-agent systems · January 2026</cite>
+    </div>
+    <p class="takeaway step">And pay for it: 3 to 15 times the tokens.</p>
+    <aside class="notes">
+      Before the patterns: everybody who builds these says the same thing first - one agent, as far
+      as it goes. Anthropic, OpenAI, and Cognition wrote a whole post called "Don't build
+      multi-agents". Anthropic's January post names three reasons that do justify a team. The
+      price: their research system used about 15 times the tokens of a chat.
+    </aside>
+  </section>
+
+  <section class="slide patterns">
+    <h2>Five ways to arrange a team</h2>
+    <div class="pattern-row">
+      <figure class="pattern step" data-pattern="pipeline">
+        <div class="diagram"></div>
+        <figcaption><b>Pipeline</b><span>one after the other</span>
+          <small>Anthropic: prompt chaining · Google, Microsoft: sequential</small></figcaption>
+      </figure>
+      <figure class="pattern step" data-pattern="fanout">
+        <div class="diagram"></div>
+        <figcaption><b>Fan-out</b><span>side by side, then gather</span>
+          <small>Anthropic: parallelization · Google: parallel · Microsoft: concurrent</small></figcaption>
+      </figure>
+      <figure class="pattern step" data-pattern="orchestrator">
+        <div class="diagram"></div>
+        <figcaption><b>Orchestrator</b><span>one in charge - nested, a hierarchy</span>
+          <small>Anthropic: orchestrator-workers · OpenAI: manager · LangChain: supervisor</small></figcaption>
+      </figure>
+      <figure class="pattern step" data-pattern="handoff">
+        <div class="diagram"></div>
+        <figcaption><b>Handoff</b><span>pass the conversation on</span>
+          <small>Anthropic: routing · OpenAI, Microsoft: handoff · Google: transfer</small></figcaption>
+      </figure>
+      <figure class="pattern step" data-pattern="groupchat">
+        <div class="diagram"></div>
+        <figcaption><b>Group chat</b><span>everyone in one conversation</span>
+          <small>Microsoft: group chat · LangChain: network, swarm</small></figcaption>
+      </figure>
+    </div>
+    <aside class="notes">
+      Every framework has its own names; underneath there are about five shapes. Pipeline and
+      fan-out are workflows - code decides the path. Orchestrator: one agent - or one piece of
+      code - in charge, the others as workers; put orchestrators under orchestrators and you have
+      a hierarchy. Handoff: the conversation moves on to whoever fits. Group chat: everybody in one
+      room. Last year's deck had parallel and group chat.
+    </aside>
+  </section>
+
+  <section class="slide goes-wrong">
+    <h2>What goes wrong</h2>
+    <div class="figures">
+      <div class="figure step"><b class="up">+81 %</b><span>on work that can be split up</span></div>
+      <div class="figure step"><b class="down">−39 to −70 %</b><span>on planning, where every step needs the one before</span></div>
+      <div class="figure step"><b>17× <i>→</i> 4×</b><span>errors amplified - without, and with, an orchestrator</span></div>
+    </div>
+    <cite class="source">Google Research · Towards a science of scaling agent systems · January 2026 · 180 configurations</cite>
+    <div class="writes step">
+      <p class="big">Many may think. <em>One should write.</em></p>
+      <p class="real">“multi-agent systems work best today when writes stay single-threaded”<cite>Cognition · Multi-agents: what’s actually working · April 2026</cite></p>
+    </div>
+    <aside class="notes">
+      Google ran 180 configurations over three model families. A team helps a lot when the work
+      splits up, and hurts on sequential planning - every variant they tried. And without someone
+      in charge, errors multiply: 17 times, against 4 with an orchestrator. Cognition, a year after
+      "Don't build multi-agents": what works is a reviewer with a clean context, and a manager with
+      children. Parallel writers still do not. The line on the slide is my summary; theirs is below.
+    </aside>
+  </section>
+
+  <section class="slide split-services">
+    <h2>Split agents like services</h2>
+    <div class="contexts">
+      <div class="context step">
+        <div class="service-box">meeting service<span>people · agendas</span></div>
+        <div class="agent-box">@Scheduler</div>
+      </div>
+      <div class="context step">
+        <div class="service-box">location service<span>places · rooms</span></div>
+        <div class="agent-box">@FacilityManager</div>
+      </div>
+      <div class="context step">
+        <div class="service-box">nomnom service<span>lunch menu · orders</span></div>
+        <div class="agent-box">@Catering</div>
+      </div>
+    </div>
+    <p class="by step">by <em>bounded context</em> - not by job title</p>
+    <p class="takeaway step">“Decomposition follows context, not problem type.”<cite>Anthropic · January 2026</cite></p>
+    <aside class="notes">
+      We split software for the same reasons: clear responsibility, a narrow interface, change one
+      without the others. Last year's deck had a microservices slide; it still holds. Anthropic
+      says it as: group work by the context it needs, not by the kind of work. In the sample, each
+      agent owns one service and its tools - one bounded context each.
+    </aside>
+  </section>
+
+  <section class="slide crew-built">
+    <h2>Last year I drew a crew</h2>
+    <div class="crew">
+      <div class="row step"><span class="was">Personal Assistant</span><i>→</i><span class="now code">@Coordinator</span><span class="pat">orchestrator - <b>plain code</b></span></div>
+      <div class="row step"><span class="was new">new</span><i>→</i><span class="now">@Intake</span><span class="pat">handoff · the front door for the chat</span></div>
+      <div class="row step"><span class="was">Schedule Manager</span><i>→</i><span class="now">@Scheduler</span><span class="pat">worker</span></div>
+      <div class="row step"><span class="was">Facility Manager</span><i>→</i><span class="now">@FacilityManager</span><span class="pat">worker, and a hierarchy</span></div>
+      <div class="row step"><span class="was">Food Manager</span><i>→</i><span class="now sub">@Catering</span><span class="pat">under the facility manager</span></div>
+      <div class="row step"><span class="was new">new</span><i>→</i><span class="now human">@Human</span><span class="pat">in the loop - nothing booked before a yes</span></div>
+    </div>
+    <p class="declined step">Turned down: group chat, and a model as the router - hard to trust, to test, to explain.</p>
+    <aside class="notes">
+      March 2025: four boxes on a slide. Now it runs. Two members were not on the drawing: the
+      coordinator - in charge, and plain code, so the orchestrator that contains the errors has no
+      model at all - and you. What I turned down, and why. Next: the sample itself.
+    </aside>
   </section>
 
   <!-- 9. The sample: what it does -->
@@ -371,6 +500,7 @@ print(second.output)
 <script src="anatomy.js"></script>
 <script src="repo.js"></script>
 <script src="code.js"></script>
+<script src="patterns.js"></script>
 <script src="slides.js"></script>
 <script src="title.js"></script>
 </body>

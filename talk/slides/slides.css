@@ -595,3 +595,81 @@ pre.code .n { color: #1f5fa8; }
 .split .commands code { display: block; font-size: 32px; color: var(--text); }
 .split .commands li span { font-size: 26px; color: var(--muted); }
 .split .commands .muted { margin-top: auto; font-size: 24px; }
+
+/* Part 3, team architectures (design_team_patterns.md). Sources are always in small type. */
+.slide cite { display: block; font-style: normal; font-size: 22px; color: var(--muted); margin-top: 8px; }
+
+/* A. Start with one agent: three quotes on the left, the three reasons on the right. */
+.slide.one-first { padding: 80px 160px 110px; display: none; }
+.slide.one-first.current { display: grid; grid-template-columns: 1fr 640px; grid-template-rows: auto 1fr auto; column-gap: 96px; }
+.one-first h2 { grid-column: 1 / -1; margin-bottom: 36px; }
+.one-first .quotes blockquote { margin: 0 0 32px; font-size: 40px; line-height: 1.2; font-weight: 600; }
+.one-first .reasons { background: #fff; border-radius: 20px; padding: 28px 40px; align-self: start; }
+.one-first .reasons .lead { margin: 0 0 20px; font-size: 30px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.one-first .reason { margin-bottom: 18px; }
+.one-first .reason b { display: block; font-size: 40px; color: var(--accent); }
+.one-first .reason span { display: block; font-size: 26px; line-height: 1.3; color: var(--muted); }
+.one-first .takeaway { grid-column: 1 / -1; margin: 24px 0 0; }
+
+/* B. Five patterns, side by side. */
+.slide.patterns { padding: 96px 100px 110px; }
+.patterns h2 { margin-bottom: 40px; }
+.pattern-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 36px; }
+.pattern { margin: 0; text-align: center; }
+.pattern .diagram { background: #fff; border-radius: 20px; padding: 28px; }
+.pattern svg { display: block; width: 100%; height: auto; }
+.pattern svg .agent { fill: #fff; stroke: var(--accent); stroke-width: 5; }
+.pattern svg .agent.lead { fill: var(--accent); }
+.pattern svg .agent.small-lead { fill: #a88ced; }
+.pattern svg .agent.active { fill: var(--accent); }
+.pattern svg .agent.faded { stroke: #c8b8f2; }
+.pattern svg .link { stroke: var(--text); stroke-width: 4; fill: none; }
+.pattern svg .link.dashed { stroke-dasharray: 10 8; }
+.pattern svg .head { fill: var(--text); }
+.pattern svg .room { fill: var(--panel); stroke: var(--text); stroke-width: 3; }
+.pattern svg .room-label { font: 600 24px var(--sans); text-anchor: middle; fill: var(--text); }
+.pattern figcaption { margin-top: 24px; }
+.pattern figcaption b { display: block; font-size: 40px; }
+.pattern figcaption span { display: block; font-size: 26px; color: var(--muted); margin-top: 4px; }
+.pattern figcaption small { display: block; font-size: 20px; color: var(--muted); margin-top: 18px; line-height: 1.4; }
+
+/* C. What goes wrong: three figures, then the one line. */
+.slide.goes-wrong { padding-top: 96px; }
+.goes-wrong h2 { margin-bottom: 56px; }
+.goes-wrong .figures { display: grid; grid-template-columns: 1fr 1.45fr 1fr; gap: 56px; }
+.goes-wrong .figure b { display: block; font-size: 88px; line-height: 1; letter-spacing: -0.02em; white-space: nowrap; }
+.goes-wrong .figure b.up { color: #1f7a4d; }
+.goes-wrong .figure b.down { color: #b4371f; }
+.goes-wrong .figure b i { font-style: normal; color: var(--muted); }
+.goes-wrong .figure span { display: block; font-size: 30px; color: var(--muted); margin-top: 16px; }
+.goes-wrong .source { margin-top: 28px; }
+.goes-wrong .writes { margin-top: auto; border-left: 8px solid var(--accent); padding-left: 40px; }
+.goes-wrong .writes .big { margin: 0; font-size: 64px; font-weight: 700; }
+.goes-wrong .writes em { font-style: normal; color: var(--accent); }
+.goes-wrong .writes .real { margin: 12px 0 0; font-size: 28px; color: var(--muted); }
+
+/* D. Split like services: one dashed outline per bounded context, a service and its agent. */
+.slide.split-services { padding-top: 96px; }
+.split-services h2 { margin-bottom: 56px; }
+.contexts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 56px; }
+.context { border: 4px dashed var(--accent); border-radius: 28px; padding: 32px; display: flex; flex-direction: column; gap: 28px; }
+.context .agent-box { order: -1; background: #fff; border: 3px solid var(--accent); border-radius: 16px; padding: 22px; font: 600 36px var(--mono); text-align: center; }
+.context .service-box { background: var(--panel); border-radius: 16px; padding: 22px; font-size: 34px; font-weight: 600; text-align: center; }
+.context .service-box span { display: block; font-size: 24px; font-weight: 400; color: var(--muted); }
+.split-services .by { font-size: 48px; text-align: center; margin: 40px 0 0; }
+.split-services .by em { font-style: normal; color: var(--accent); font-weight: 700; }
+.split-services .takeaway { margin-top: auto; }
+
+/* E. The crew, now built: last year's drawing, this year's members, and their pattern. */
+.slide.crew-built { padding-top: 96px; }
+.crew-built h2 { margin-bottom: 40px; }
+.crew .row { display: grid; grid-template-columns: 420px 60px 440px 1fr; align-items: center; padding: 14px 0; border-bottom: 2px solid var(--panel); font-size: 34px; }
+.crew .was { color: var(--muted); }
+.crew i { font-style: normal; color: var(--muted); }
+.crew .now { font: 600 34px var(--mono); justify-self: start; padding: 6px 18px; border-radius: 12px; border: 3px solid var(--accent); background: #fff; }
+.crew .now.code { background: var(--text); color: var(--bg); border-color: var(--text); }
+.crew .now.human { border-style: dashed; }
+.crew .now.sub { margin-left: 40px; }
+.crew .pat { font-size: 30px; }
+.crew-built .declined { margin-top: auto; font-size: 34px; color: var(--muted); }
+.crew .was.new { color: var(--accent); font-style: italic; }

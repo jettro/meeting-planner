@@ -1,6 +1,6 @@
 # Design: a first agent in code, run from the slides
 
-> **Status:** built, 2026-11-06 - slides 10-14, `talk/agent-demo/`, `make agent-demo`. All four
+> **Status:** built, 2026-11-06 - slides 11-15, `talk/agent-demo/`, `make agent-demo`. All four
 > steps were run in the container and typed in the terminal page.
 > The story is in [`plan.md`](plan.md), the slide engine in [`design_slides.md`](design_slides.md).
 
@@ -89,8 +89,9 @@ environment, so the scripts need no `dotenv` line, which keeps them shorter on t
 
 ## Where it goes in the deck
 
-After the five anatomy slides and before the team slide: the definition, the parts as a picture,
-the parts as code and run, and only then *one agent is not enough*.
+After the anatomy slides *and* the first team slide (moved there on 2026-11-06): the agent and
+the start of a team as a picture first, then one agent in pydantic-ai, and after that the team
+patterns.
 
 ## What building it taught
 
