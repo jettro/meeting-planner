@@ -496,6 +496,283 @@ print(second.output)
     </aside>
   </section>
 
+
+  <!-- Part 6: the team you talk to (docs/conversation.md) -->
+  <section class="slide intake">
+    <h2>Talk to the planner</h2>
+    <div class="intake-grid">
+      <div class="chain">
+        <div class="box human">@Human <span>you, in your own words</span></div>
+        <div class="conn"></div>
+        <div class="box llm step">@Intake <span>the conversation - an LLM</span>
+          <small>asks @Scheduler <i>who is Sanne?</i> · asks @FacilityManager <i>which place?</i></small></div>
+        <div class="conn step"></div>
+        <div class="box code step">@Coordinator <span>the same team, unchanged</span></div>
+      </div>
+      <div class="tools step">
+        <p class="lead">Five tools, and nothing else</p>
+        <code>look_up_people</code><code>look_up_place</code><code>plan_meeting</code><code>cancel_meeting</code><code>remember</code>
+        <p class="none">No tool to book. No tool to approve.</p>
+      </div>
+    </div>
+    <p class="takeaway step">The model listens; the coordinator decides; the human approves.</p>
+    <aside class="notes">
+      The old deck's Personal Assistant - but not in charge. @Intake turns your sentence into the
+      typed request the form would have sent: it looks every name up and never guesses an email, it
+      describes a place in words and leaves choosing to the facility manager, and it sends the
+      request once. Then it relays the team's questions to you. Typing "just book the ten o'clock"
+      is understood - and authorises nothing: there is no tool for it.
+    </aside>
+  </section>
+
+  <!-- Memory, four slides (docs/memory.md, and the lifecycle from my own notes) -->
+  <section class="slide memory-item">
+    <h2>What outlives the team: one memory</h2>
+    <div class="item">
+      <code class="f">---</code><span></span>
+      <code class="f step"><b>kind:</b> fact</code><span class="step">a <b>fact</b> or a <b>preference</b></span>
+      <code class="f step"><b>scope:</b> person:sanne@rag4p.org</code><span class="step">about whom: <b>you</b> · <b>a person</b> · <b>a place</b></span>
+      <code class="f step"><b>situation:</b> lunch</code><span class="step">when it applies</span>
+      <code class="f step"><b>said_by:</b> jettro@rag4p.org</code><span class="step">who said it - a person, never a guess</span>
+      <code class="f step"><b>evidence:</b> conversation 5210988d-…</code><span class="step">where it was said</span>
+      <code class="f">---</code><span></span>
+      <code class="f words step">Sanne is vegetarian.</code><span class="step">the words, as said</span>
+    </div>
+    <p class="kinds step">The textbooks name three kinds: <b>semantic</b> (facts) · <b>episodic</b> (what happened) · <b>procedural</b> (how to act).
+      Kept here: <b>semantic only</b>. What happened stays in the meetings’ records; how to act stays in the prompts.</p>
+    <aside class="notes">
+      One team arranges one meeting and is gone. Memory is what outlives it: plain text files a
+      person can read. Every item says what was said, by whom, about whom, and in which conversation.
+      Facts and preferences only - the episodes are in each meeting's own record, and the prompts
+      hold the procedure. Beside the files is a git journal: every change, with who made it.
+    </aside>
+  </section>
+
+  <section class="slide memory-scopes">
+    <h2>Shared files, not a shared brain</h2>
+    <table class="scopes">
+      <thead>
+        <tr><th></th>
+          <th>Yours<small>&lt;you&gt;/memory/organiser.md</small></th>
+          <th>About a person<small>shared/people/&lt;email&gt;.md</small></th>
+          <th>About a place<small>shared/places/&lt;id&gt;.md</small></th></tr>
+      </thead>
+      <tbody>
+        <tr class="step"><th>@Intake</th><td>every turn</td><td>once a lookup settles who</td><td>when it looks the place up</td></tr>
+        <tr class="step"><th>@FacilityManager</th><td class="no">-</td><td class="no">-</td><td>before choosing · before booking</td></tr>
+        <tr class="step"><th>@Keeper</th><td>when you ask it to tidy</td><td class="no">-</td><td class="no">-</td></tr>
+        <tr class="step"><th class="muted">@Scheduler · @Catering · @Coordinator</th><td class="no">-</td><td class="no">-</td><td class="no">-</td></tr>
+      </tbody>
+    </table>
+    <p class="takeaway step">Code hands each agent its part - no agent can search memory.</p>
+    <aside class="notes">
+      Three scopes in two trees: one per person, one shared. The shared tree is how agents share
+      memory - but no agent reads it freely. At fixed moments code picks what applies and puts it in
+      that agent's instructions. The facility manager can book a room, so it sees facts about places
+      and nothing about people. The coordinator and the two gates read no memory at all: what keeps
+      the team safe does not depend on it. Relevance is not likeness - a search finds what looks
+      like the request; code knows what applies.
+    </aside>
+  </section>
+
+  <section class="slide memory-flow">
+    <h2>From a sentence to a prompt</h2>
+    <div class="lane">
+      <span class="lane-name">write</span>
+      <div class="stop">“Remember that Sanne is vegetarian”</div><i>→</i>
+      <div class="stop llm step"><code>remember</code><span>@Intake’s tool</span></div><i class="step">→</i>
+      <div class="stop code step">code checks<span>looked up? no secret, no id?</span></div><i class="step">→</i>
+      <div class="stop file step">people/sanne@….md<span>+ the journal (git)</span></div>
+    </div>
+    <div class="lane">
+      <span class="lane-name">read</span>
+      <div class="stop step">a later conversation looks Sanne up</div><i class="step">→</i>
+      <div class="stop code step">code selects<span>at a fixed moment</span></div><i class="step">→</i>
+      <div class="stop llm step">the instructions<span>“remembered from an earlier conversation: …”</span></div><i class="step">→</i>
+      <div class="stop trace step"><code>MemoryApplied</code><span>in the trace: how did it know?</span></div>
+    </div>
+    <p class="takeaway step">Memory is evidence, not authority.</p>
+    <aside class="notes">
+      Writing goes through one narrow tool, and code checks it first: only about someone this
+      conversation looked up, and nothing that looks like a password, key or booking id. Reading is
+      never the model's choice: code puts it in the instructions, labelled as what someone said
+      before - never an order - and logs that it did. A lesson: "for a sportive environment, choose
+      Campus" lost to a one-line place description, until the prompt framed memory as first-hand
+      knowledge. How memory is framed decides how much it counts.
+    </aside>
+  </section>
+
+  <section class="slide memory-life">
+    <h2>A memory has a life</h2>
+    <ol class="life">
+      <li class="step done"><b>Signal</b><span>after booking, offer one thing worth keeping</span></li>
+      <li class="step done"><b>Capture</b><span>what was said, as said, at once</span></li>
+      <li class="step part"><b>Interpret</b><span>nothing an agent concludes is kept without your yes</span></li>
+      <li class="step done"><b>Bound</b><span>scope and situation: for whom, and when</span></li>
+      <li class="step done"><b>Merge</b><span>a new item replaces the old; a keeper proposes merges</span></li>
+      <li class="step part"><b>Evaluate</b><span>we can prove it was delivered - not that it was used</span></li>
+      <li class="step part"><b>Revise or forget</b><span>edit and delete on the Memory page; no expiry yet</span></li>
+    </ol>
+    <p class="legend step"><span class="dot done"></span>in the planner <span class="dot part"></span>partly, or on purpose not</p>
+    <p class="takeaway step">Ask of every memory: which future behaviour should it change?</p>
+    <aside class="notes">
+      A memory is not a row you write once. It is noticed, captured, interpreted, given a scope,
+      merged with what is there, checked for use, and one day revised or forgotten. The user stays
+      in control: a suggestion is a question, never a conclusion. "Delivered is not used": in one
+      run the model knew Sanne was vegetarian and still asked what kind of lunch. If you cannot say which
+      behaviour a memory should change, do not store it.
+    </aside>
+  </section>
+
+  <!-- Guardrails: a placeholder until it is built (docs/design/design_guardrails.md) -->
+  <section class="slide guardrails placeholder">
+    <h2>Guardrails <span class="wip">being built</span></h2>
+    <div class="cols">
+      <div class="col">
+        <p class="lead">Already there - around the model</p>
+        <ul>
+          <li>one service per agent</li>
+          <li>two questions to you before anything is booked</li>
+          <li><code>TalkOnlyToHuman</code>: @Intake writes only to you</li>
+          <li>no secrets or ids in memory</li>
+        </ul>
+      </div>
+      <div class="col next step">
+        <p class="lead">Next - between the tool call and the service</p>
+        <ul>
+          <li>does the call match what you approved? <b>code</b></li>
+          <li>does it fit what you asked for? <b>a decision model</b></li>
+        </ul>
+      </div>
+    </div>
+    <p class="takeaway step">Code checks what code can know; a decision model answers what needs judgement; neither is the model that acts.</p>
+    <aside class="notes">
+      PLACEHOLDER - to be replaced when the guardrails are built (design_guardrails.md). The gap:
+      after you approve 10:00 on Tuesday at the Library, the facility manager's model fills in the
+      booking's arguments itself. A slip - another day - would be booked; the service only checks
+      the room is free.
+    </aside>
+  </section>
+
+  <!-- Demo 2: the team you talk to, and memory - the same two frames as before -->
+  <section class="slide demo" data-src="http://localhost:8300" data-zoom="1.25">
+    <aside class="notes">
+      Demo 2 (docs/demo.md acts 4 and 5). Talk to the planner: "A design review with Sanne and Daan
+      on Tuesday, somewhere in nature, no lunch." Type "the second one" in the chat - understood,
+      authorises nothing. Then memory: "Sanne is vegetarian", and the Memory tab with its history.
+    </aside>
+  </section>
+  <section class="slide demo" data-src="http://localhost:8400" data-zoom="1.25">
+    <aside class="notes">
+      The console: the chat team, and exactly what @Intake's model was told - including the
+      remembered items and the MemoryApplied event.
+    </aside>
+  </section>
+
+  <!-- Evals, three slides (my post: Evaluating Akgentic applications with Pydantic Evals) -->
+  <section class="slide evals-why">
+    <h2>Is the team any good?</h2>
+    <div class="run">
+      <div class="hop">a question</div><i>→</i>
+      <div class="hop step">the route<span>which agent took it?</span></div><i class="step">→</i>
+      <div class="hop step">the tool calls<span>which, with what?</span></div><i class="step">→</i>
+      <div class="hop step">the evidence<span>what came back?</span></div><i class="step">→</i>
+      <div class="hop answer step">the answer<span>is it right?</span></div>
+    </div>
+    <div class="figure-line step"><b>8 of 8</b> answers grounded and relevant, says the judge -
+      <b class="bad">7</b> cases still failed the application’s own check</div>
+    <p class="takeaway step">Check the route and the evidence, not only the answer - so a failure points at its fix.</p>
+    <aside class="notes">
+      From my evals post, on the Knowledge Akgents sample. A final answer alone does not tell you
+      where it went wrong: the routing, the tool call, what the tool returned, or the wording. In
+      one saved report (the RAG4j sample), the LLM judges passed all eight answers, and seven cases still failed an
+      acceptance check of the application. Judges are useful; they are not the test.
+    </aside>
+  </section>
+
+  <section class="slide evals-code">
+    <h2>Evals with Pydantic Evals</h2>
+    <div class="evals-grid">
+      <pre class="code">
+dataset = build_json_dataset(RETRIEVAL_DATASET_PATH).dataset
+select_case(dataset, "jettro-profession")
+dataset.add_evaluator(ToolEvidenceContainsTerms(
+    tool_name="search_graph",
+    required_terms=("software architect",),
+))
+      </pre>
+      <ul class="how">
+        <li class="step"><b>A case</b> is a message, or a few turns, in JSON</li>
+        <li class="step"><b>A fresh team</b> for every case - the real akgentic team, its events captured</li>
+        <li class="step"><b>Deterministic checks first</b>the route, the tool calls, the evidence</li>
+        <li class="step"><b>An LLM judge</b> for what needs judgement - checked against your own labels</li>
+      </ul>
+    </div>
+    <aside class="notes">
+      The harness runs each case against a fresh team, turns the actor events into one output - the
+      final response, the messages, the tool calls and what they returned - and hands that to
+      pydantic-evals. Most evaluators are plain code. The report says which check failed, so you
+      know whether to fix the application, the check, the judge's rubric, or accept model variance.
+    </aside>
+  </section>
+
+  <section class="slide evals-planner">
+    <h2>And for the planner?</h2>
+    <div class="checks">
+      <div class="check step"><b>code</b><span>the room booked is the slot you approved</span></div>
+      <div class="check step"><b>code</b><span>one request per conversation, every name looked up</span></div>
+      <div class="check step"><b>code</b><span>a failed booking reported as failed, never an invented id</span></div>
+      <div class="check step"><b class="judge">judge</b><span>the lunch order fits “vegetarian, no bread”</span></div>
+      <div class="check step"><b class="judge">judge</b><span>a remembered fact was used, not only delivered</span></div>
+    </div>
+    <p class="takeaway step">A guardrail checks this run. An eval checks the next release.</p>
+    <aside class="notes">
+      Not built yet for the planner - the next step on the roadmap, with guardrails. Many of the
+      checks are the same: what a guardrail stops at runtime, an eval measures over a set of cases
+      before you release a new prompt or a new model.
+    </aside>
+  </section>
+
+  <!-- Part 7: beyond the demo (docs/lessons.md) -->
+  <section class="slide lessons">
+    <h2>Beyond the demo</h2>
+    <div class="lesson-grid">
+      <div class="lesson step"><b>A field the agent is not given is a field it will invent.</b><span>The first booking was titled “Meeting”.</span></div>
+      <div class="lesson step"><b>Delivered is not used.</b><span>It knew Sanne was vegetarian, and still asked “what kind of lunch?”</span></div>
+      <div class="lesson step"><b>Silent loss is the worst failure.</b><span>The event store dropped messages while the team ran fine.</span></div>
+      <div class="lesson step"><b>Live runs find what stubs cannot.</b><span>Six bugs in the first real run - each one now a test.</span></div>
+    </div>
+    <aside class="notes">
+      What the demo does not show. The booking titled "Meeting": the title was not in the
+      assignment, so the model made one up. Memory proved delivered, not used. The event store
+      could not write a clock time and dropped messages - nothing failed, the record was just gone.
+      And the first run against real services and a real model found six bugs the stubs had hidden.
+    </aside>
+  </section>
+
+  <!-- Part 8: when is a team worth it, and goodbye -->
+  <section class="slide wrap-up">
+    <div class="worth">
+      <h2>When is a team worth it?</h2>
+      <ul>
+        <li class="step">the work crosses <b>systems with different owners or risks</b></li>
+        <li class="step">some steps are <b>irreversible</b> - code or a human in charge</li>
+        <li class="step">parts need <b>different context</b> - keep each prompt small</li>
+        <li class="step">you want to <b>test and trace</b> each part on its own</li>
+      </ul>
+      <p class="solo step">Otherwise: stay solo.</p>
+    </div>
+    <div class="bye step">
+      <img class="qr" src="img/qr-pulse.svg" alt="QR code for go.jettro.dev/pulse">
+      <p class="link">go.jettro.dev/pulse</p>
+      <p class="thanks">Thank you</p>
+    </div>
+    <aside class="notes">
+      The checklist. One system, reversible actions, a context that fits: one agent is fine - and
+      cheaper. The code, the designs and the lessons are in the repository. Thank you.
+    </aside>
+  </section>
+
 </main>
 <script src="anatomy.js"></script>
 <script src="repo.js"></script>

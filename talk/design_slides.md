@@ -90,6 +90,13 @@ The about slide uses the bio from the DevPulse page and the old deck, and the Yu
 | 21-22 | the sample: what it does, how it is built |
 | 23 | the repository |
 | 24-25 | live: the planner, the console |
+| 26 | talk to the planner: `@Intake`, its five tools, no tool to book or approve |
+| 27-30 | memory: one item and its fields; who sees what (scopes, shared files); from a sentence to a prompt; a memory has a life |
+| 31 | guardrails - **a placeholder** until they are built (`docs/design/design_guardrails.md`) |
+| 32-33 | live again: the planner (talk to it, memory), the console |
+| 34-36 | evals: is the team any good?; Pydantic Evals; and for the planner? |
+| 37 | beyond the demo: four lessons |
+| 38 | when is a team worth it? - and the link, thank you |
 
 ## The comic (slide 3)
 
@@ -180,6 +187,24 @@ case everything shows at once. The QR code is `img/qr-pulse.svg`, generated once
 
 Other ideas, not built: the three robots holding up the QR code as a sign; `git clone` typed in a
 terminal, letter by letter; the QR code assembling itself from the trace's characters.
+
+## The second half (slides 26-38)
+
+Built 2026-11-06 from `docs/conversation.md`, `docs/memory.md`, `docs/lessons.md`, the
+guardrails design, the plan's parts 7 and 8, my evals post (*Evaluating Akgentic applications with
+Pydantic Evals*, 16 September 2026) and my own memory notes (`docs/memory_blog.md`).
+
+- **Memory, four slides**, each answering one question: what is kept and in which fields (27,
+  with the textbook kinds - semantic, episodic, procedural - and that only semantic is kept); who
+  sees what, which is also how agents share memory (28, a table of agents against scopes); how it
+  gets from a sentence into a prompt (29, a write lane and a read lane); and its lifecycle (30,
+  the seven steps from my notes, each marked as in the planner or not, or not on purpose).
+- **Guardrails (31)** is a placeholder, marked *being built* on the slide and in its notes.
+- **Demo 2 (32-33)** are copies of 24-25; each is its own frame, so the planner is loaded twice.
+- **Evals (34-36)**: the post's point (check the route and the evidence, not only the answer), its
+  one snippet, and what the planner would check - not built yet. The *8 of 8 ... 7 failed* figure
+  is from the RAG4j report in the post. The post was read only in part (the page was cut off), so
+  the speaker notes keep to what was read verbatim.
 
 ## The iframe spike (S10) - it works
 
