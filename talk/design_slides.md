@@ -80,12 +80,25 @@ The about slide uses the bio from the DevPulse page and the old deck, and the Yu
 |---|---|
 | 1 | title (dark) |
 | 2 | about me |
-| 3-8 | the anatomy of an agent, then a team |
-| 9-10 | the sample: what it does, how it is built |
-| 11 | the repository |
-| 12-13 | live: the planner, the console |
+| 3 | the comic: a quick meeting, and what if I built a team for this? |
+| 4-9 | the anatomy of an agent, then a team |
+| 10-11 | the sample: what it does, how it is built |
+| 12 | the repository |
+| 13-14 | live: the planner, the console |
 
-## The anatomy of an agent (slides 3-8)
+## The comic (slide 3)
+
+Six panels drawn for the talk make one comic page: *could you organise a quick meeting?* -
+calendar tetris - the room is *BOOKED* - *can we have lunch as well?* - *could we move it to
+Friday?* - *what if I built a team for this?* The last panel's dream is the crew of the talk.
+
+- Three across, two down, on a white page with ink borders and white gutters; one panel per key
+  press, landing from slightly small and tilted into place, as if drawn.
+- The originals are 1536 x 1024 PNGs of about 3 MB each; the slide uses 1200 px JPEGs of about
+  400 KB, `img/meeting-01-quick-meeting.jpg` … `meeting-06-build-a-team.jpg`.
+- It replaces the old deck's opening (*the dullest activity of the day*) as the hook for part 1.
+
+## The anatomy of an agent (slides 4-9)
 
 The six slides of the playful pptx, redrawn in this deck's style: the same playful titles and
 takeaways, the same robot gaining one piece of gear per slide - clipboard, light bulb, tools,
@@ -102,7 +115,7 @@ of gear, so a word changes in one place.
 - Not taken over: the pptx's own palette (teal, rust, cream) and its *1 / 6* counter; the deck's
   footer counts instead.
 
-## Introducing the sample (slides 9 and 10)
+## Introducing the sample (slides 10 and 11)
 
 Two slides, after the agent anatomy and before the repository and the demo.
 
@@ -119,7 +132,7 @@ Two slides, after the agent anatomy and before the repository and the demo.
   visual difference that carries the slide's point.
 - The lines are drawn by the boxes' own `::before` and `::after`, so they appear with their box.
 
-## The repository slide (slide 11)
+## The repository slide (slide 12)
 
 Just before the demo: <https://go.jettro.dev/pulse>, which redirects to
 `github.com/jettro/meeting-planner`. To make it more than a link, the crew *arranges* it the way it

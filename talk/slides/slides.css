@@ -191,6 +191,30 @@ footer {
 .title-slide .trace-roll .who { color: var(--cream); }
 @keyframes roll { to { transform: translateY(-50%); } }
 
+/* The comic page: six panels, three across and two down, white gutters, ink borders. */
+.slide.comic { padding: 64px 72px 110px; background: #fff; justify-content: center; }
+.comic .page {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+.comic .panel {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  border: 6px solid #16181d;
+  border-radius: 4px;
+  background: var(--panel);
+}
+/* A panel lands like a page being drawn: from slightly smaller and tilted, into place. */
+.comic .panel.step {
+  transform: scale(0.94) rotate(-1.2deg);
+  transition: opacity 0.35s ease, transform 0.45s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.comic .panel.step:nth-child(even) { transform: scale(0.94) rotate(1.2deg); }
+.comic .panel.step.shown { transform: none; }
+
 /* The anatomy of an agent (anatomy.js): gear cards on the left, the robot on the right. */
 .slide.anatomy, .slide.anatomy-team { padding-top: 96px; padding-bottom: 130px; }
 .anatomy h2, .anatomy-team h2 { margin-bottom: 40px; }
