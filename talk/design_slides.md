@@ -81,10 +81,11 @@ The about slide uses the bio from the DevPulse page and the old deck, and the Yu
 | 1 | title (dark) |
 | 2 | about me |
 | 3 | the comic: a quick meeting, and what if I built a team for this? |
-| 4-9 | the anatomy of an agent, then a team |
-| 10-11 | the sample: what it does, how it is built |
-| 12 | the repository |
-| 13-14 | live: the planner, the console |
+| 4 | what is an agent? - four definitions, then the one sentence |
+| 5-10 | the anatomy of an agent, then a team |
+| 11-12 | the sample: what it does, how it is built |
+| 13 | the repository |
+| 14-15 | live: the planner, the console |
 
 ## The comic (slide 3)
 
@@ -98,7 +99,30 @@ Friday?* - *what if I built a team for this?* The last panel's dream is the crew
   400 KB, `img/meeting-01-quick-meeting.jpg` … `meeting-06-build-a-team.jpg`.
 - It replaces the old deck's opening (*the dullest activity of the day*) as the hook for part 1.
 
-## The anatomy of an agent (slides 4-9)
+## What is an agent? (slide 4)
+
+Screenshots of how four big parties define an agent, each in a plain browser frame with its
+domain, one per key press, and then the one short sentence on top of them.
+
+| Who | Page | The definition, in short |
+|---|---|---|
+| Anthropic | *Building effective agents* (2024) | LLMs dynamically direct their own processes and tool usage |
+| OpenAI | *New tools for building agents* (2025) | systems that independently accomplish tasks on behalf of users |
+| Google Cloud | *What is an AI agent?* (updated 2026) | software systems that use AI to pursue goals and complete tasks for users |
+| IBM | *What are AI agents?* | a system that autonomously performs tasks by designing workflows with available tools |
+| Simon Willison | *"agent" may finally have a widely enough agreed upon definition* (September 2025) | **An LLM agent runs tools in a loop to achieve a goal.** |
+
+- The last one is the answer: short, one sentence, and its author argues it is now widely agreed
+  on - Anthropic, he notes, settled on *tools in a loop* too. Its three words are purple - **tools,
+  loop, goal** - because they are what the anatomy slides that follow build up.
+- The screenshots were taken on 2026-11-06 in the browser, with the text enlarged on the page
+  before capturing so it is sharp enough for a projector, and sticky headers and cookie banners
+  out of the way. OpenAI's sentence sits inside a paragraph, so it is highlighted. Nothing else
+  on the pages was changed.
+- Files: `img/def-anthropic.png`, `def-openai.png`, `def-google.png`, `def-ibm.png`,
+  `def-willison.png`, 70-170 KB each.
+
+## The anatomy of an agent (slides 5-10)
 
 The six slides of the playful pptx, redrawn in this deck's style: the same playful titles and
 takeaways, the same robot gaining one piece of gear per slide - clipboard, light bulb, tools,
@@ -115,7 +139,7 @@ of gear, so a word changes in one place.
 - Not taken over: the pptx's own palette (teal, rust, cream) and its *1 / 6* counter; the deck's
   footer counts instead.
 
-## Introducing the sample (slides 10 and 11)
+## Introducing the sample (slides 11 and 12)
 
 Two slides, after the agent anatomy and before the repository and the demo.
 
@@ -132,7 +156,7 @@ Two slides, after the agent anatomy and before the repository and the demo.
   visual difference that carries the slide's point.
 - The lines are drawn by the boxes' own `::before` and `::after`, so they appear with their box.
 
-## The repository slide (slide 12)
+## The repository slide (slide 13)
 
 Just before the demo: <https://go.jettro.dev/pulse>, which redirects to
 `github.com/jettro/meeting-planner`. To make it more than a link, the crew *arranges* it the way it
