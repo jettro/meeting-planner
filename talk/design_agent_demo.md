@@ -93,6 +93,32 @@ After the anatomy slides *and* the first team slide (moved there on 2026-11-06):
 the start of a team as a picture first, then one agent in pydantic-ai, and after that the team
 patterns.
 
+## Step 5: one agent, three MCP servers (added 2026-11-07)
+
+Asked for by the human: the sample's request, done by a single pydantic-ai agent with every tool
+of the three MCP servers - the bridge from one agent to the team. Answers to the questions asked
+first: the slides come **after the sample** (16-19, a second terminal slide); the agent **really
+books**, in the local services; and the message is **it works, but...**.
+
+- `step5_meeting.py` - `MCPToolset(url, auth=key)` per server (pydantic-ai 2.61 has no
+  `MCPServerStreamableHTTP` any more; the extra is `pydantic-ai-slim[mcp]`, which brings FastMCP).
+  Sixteen tools: 6 meeting, 5 location, 5 nomnom.
+- `calls.py` - an `event_stream_handler` that prints each `FunctionToolCallEvent`, so the room sees
+  the loop. It is not on the slide; the code slide elides the date function too (*as in step 2*).
+- `make agent-demo` now passes the three `*_MCP_API_KEY`s as well, and the MCP URLs as
+  `host.docker.internal:810x` - the services' published ports. It needs `make up`.
+- **The rehearsal run, 7 November**: eleven tool calls - people, places, slots, rooms, menu,
+  feasibility, then `book_meeting`, `book_room` (the Library's study room, Tuesday 12:00-13:00)
+  and `place_order` twice, the first with a malformed item. Three sandwiches nobody asked for.
+  The human's own run then *asked* about lunch - and the script cannot answer, so it ended with
+  a meeting and a room and no lunch. So the instructions now say **"Nobody can answer questions:
+  decide for yourself and finish the whole job"**, and the script prints the request first. Three
+  runs after that change all finished: 11:00, 13:00 and 14:00 (the earlier runs' bookings took
+  the slots), the Library's study room each time, two or three sandwiches. Slide 19 is written
+  from these runs; the line that tells it nobody can answer is itself one of its points. **It really books: each rehearsal leaves a meeting, a room
+  booking and an order in the services' data.** Cancel them in the services' own pages before the
+  talk - `make reset` would also wipe the team's records and memory the second demo uses.
+
 ## What building it taught
 
 - **ttyd is not packaged for Debian bookworm**: the image takes ttyd 1.7.7's own release binary,

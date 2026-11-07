@@ -1,6 +1,6 @@
 # The demo's steps, typed on stage (talk/design_agent_demo.md Q2).
 .DEFAULT_GOAL := help
-.PHONY: help run-llm run-system run-memory run-tool
+.PHONY: help run-llm run-system run-memory run-tool run-meeting
 
 help: ## Show the steps
 	@awk 'BEGIN {FS = ":.*##"} /^[a-z-]+:.*##/ {printf "  make %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -16,3 +16,6 @@ run-memory: ## 3. simulate memory: send the conversation along
 
 run-tool: ## 4. give it a tool
 	@uv run --frozen step4_tool.py
+
+run-meeting: ## 5. one agent, three MCP servers: plan the meeting
+	@uv run --frozen step5_meeting.py

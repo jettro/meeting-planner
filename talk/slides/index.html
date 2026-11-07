@@ -128,9 +128,6 @@
       field it will invent. Boundaries live in the runtime, not in the prompt.
     </aside>
   </section>
-  <section class="slide anatomy-team">
-    <aside class="notes">One agent with every tool is overloaded. Split it - and now they have to talk.</aside>
-  </section>
 
   <!-- The first agent in code, four steps, then run (design_agent_demo.md). The code is pasted:
        a change to talk/agent-demo/stepN.py is made here too. Blank lines are single here. -->
@@ -245,6 +242,123 @@ print(second.output)
     </aside>
   </section>
 
+
+  <!-- The sample: what it does - right after Run it, so the solo agent has its request -->
+  <section class="slide sample">
+    <h2>The sample: a meeting planner</h2>
+    <p class="ask">“A design review with Sanne and Daan on Tuesday, somewhere quiet. And lunch.”</p>
+    <div class="jobs">
+      <div class="job step">
+        <div class="pic" data-icon="📅"></div>
+        <b>Agendas</b><span>find a time everyone is free, put it in their agenda</span>
+      </div>
+      <div class="job step">
+        <div class="pic" data-icon="🏢"></div>
+        <b>Places</b><span>choose a place that fits “somewhere quiet”, book a room</span>
+      </div>
+      <div class="job step">
+        <div class="pic" data-icon="🥗"></div>
+        <b>Lunch</b><span>turn “vegetarian, no bread” into an order</span>
+      </div>
+      <div class="job you step">
+        <div class="pic" data-icon="✋"></div>
+        <b>You approve</b><span>the time and place, and lunch - nothing is booked before you say yes</span>
+      </div>
+    </div>
+    <p class="takeaway step">Ordinary on purpose - so what is interesting stands out.</p>
+    <aside class="notes">
+      Everybody knows this job. You say who, which day, roughly where. The team finds a time,
+      chooses a place, books a room, puts it in the agendas and orders lunch - and asks you twice
+      before anything is booked. The planner itself is boring on purpose.
+    </aside>
+  </section>
+
+  <!-- Step 5: one agent with every tool - the sample's request, done solo (design_agent_demo.md) -->
+  <section class="slide solo">
+    <h2>One agent, three MCP servers</h2>
+    <p class="ask">“A design review with Sanne and Daan on Tuesday, somewhere quiet. And lunch.”</p>
+    <div class="solo-map">
+      <div class="solo-agent step">@Agent <span>one prompt · gpt-6-luna</span></div>
+      <div class="solo-servers">
+        <div class="server step"><b>meeting service</b><small>MCP · 6 tools</small>
+          <code>list_people</code><code>find_common_slots</code><code>book_meeting</code><span>+ 3 more</span></div>
+        <div class="server step"><b>location service</b><small>MCP · 5 tools</small>
+          <code>list_locations</code><code>get_room_availability</code><code>book_room</code><span>+ 2 more</span></div>
+        <div class="server step"><b>nomnom service</b><small>MCP · 5 tools</small>
+          <code>get_menu</code><code>search_product</code><code>place_order</code><span>+ 2 more</span></div>
+      </div>
+    </div>
+    <p class="takeaway step">Sixteen tools, one prompt. Can it do the whole job?</p>
+    <aside class="notes">
+      Before the team: what does one agent do with the sample's request? Give it all three MCP
+      servers - every tool the team has, sixteen of them - and one sentence of instructions. The
+      MCP servers are the same ones the team uses; each needs its own key.
+    </aside>
+  </section>
+  <section class="slide code-step">
+    <header><h2><span class="n">5</span> Connect it to MCP servers</h2><span class="part">tools, over MCP</span></header>
+    <pre class="code tight" data-new="2,8,10-14,19,20">
+from pydantic_ai import Agent
+from pydantic_ai.mcp import MCPToolset
+
+agent = Agent(
+    "openai:gpt-6-luna",
+    instructions=(
+        "You plan meetings: find a time, book a room, order lunch. "
+        "Nobody can answer questions: decide for yourself and finish the whole job."
+    ),
+    toolsets=[
+        MCPToolset(os.environ["MEETING_MCP_URL"], auth=os.environ["MEETING_MCP_API_KEY"]),
+        MCPToolset(os.environ["LOCATION_MCP_URL"], auth=os.environ["LOCATION_MCP_API_KEY"]),
+        MCPToolset(os.environ["NOMNOM_MCP_URL"], auth=os.environ["NOMNOM_MCP_API_KEY"]),
+    ],
+)
+# + today's date in the instructions, as in step 2
+
+request = "A design review with Sanne and Daan on Tuesday, somewhere quiet. And lunch."
+print(f"> {request}\n")
+result = agent.run_sync(request, event_stream_handler=show_calls)
+print(result.output)
+    </pre>
+    <aside class="notes">
+      A toolset is a set of tools; MCPToolset fetches them from an MCP server - the tool names,
+      descriptions and schemas the service publishes. Three lines, sixteen tools. show_calls prints
+      every tool call as it happens, so you can watch the loop. make run-meeting.
+    </aside>
+  </section>
+  <section class="slide demo split" data-src="http://localhost:8600" data-width="1240">
+    <div class="commands">
+      <h2>Run it</h2>
+      <ol style="counter-reset: run 4">
+        <li><code>make run-meeting</code><span>one agent, sixteen tools</span></li>
+      </ol>
+      <p class="request">“A design review with Sanne and Daan on Tuesday, somewhere quiet. And lunch.”</p>
+      <p class="muted">it books for real - in the local services</p>
+    </div>
+    <aside class="notes">
+      Click into the terminal: make run-meeting. Each tool call is printed as it is made. It prints the
+      request first. Expect about ten calls: it looks people, places and the menu up, picks a time, books the meeting and
+      the room, orders lunch. It really books - cancel rehearsal bookings before the talk.
+    </aside>
+  </section>
+  <section class="slide solo-but">
+    <h2>It works, but…</h2>
+    <ul class="buts">
+      <li class="step">we told it <b>nobody can answer</b> - so it decided for you</li>
+      <li class="step">it chose <b>the time</b> - 11:00, 13:00, 14:00 in three runs</li>
+      <li class="step">it chose <b>the lunch</b> - two or three sandwiches, nobody asked what</li>
+      <li class="step">nothing checked <b>what it booked</b> against what was asked</li>
+      <li class="step"><b>one prompt</b> carries every tool, and every risk</li>
+    </ul>
+    <p class="note step">From the rehearsal runs, 7 November - about ten tool calls each, all of it booked.</p>
+    <aside class="notes">
+      It did the job - in one go, about a minute. And that is the point: it did all of it without
+      asking, because we told it nobody could answer. Without that line it asked about lunch - and
+      the script had no way to reply. A simplified version of reality: no approvals, no checks.
+      It picked a time, decided what you eat. Nothing between the model and the services checked any of it. This is where the
+      team comes in - not because one agent cannot, but because you want someone in charge.
+    </aside>
+  </section>
 
   <!-- Part 3: team architectures - what others say, and what the sample does
        (design_team_patterns.md, slides A-E). -->
@@ -374,35 +488,6 @@ print(second.output)
     </aside>
   </section>
 
-  <!-- 9. The sample: what it does -->
-  <section class="slide sample">
-    <h2>The sample: a meeting planner</h2>
-    <p class="ask">“A design review with Sanne and Daan on Tuesday, somewhere quiet. And lunch.”</p>
-    <div class="jobs">
-      <div class="job step">
-        <div class="pic" data-icon="📅"></div>
-        <b>Agendas</b><span>find a time everyone is free, put it in their agenda</span>
-      </div>
-      <div class="job step">
-        <div class="pic" data-icon="🏢"></div>
-        <b>Places</b><span>choose a place that fits “somewhere quiet”, book a room</span>
-      </div>
-      <div class="job step">
-        <div class="pic" data-icon="🥗"></div>
-        <b>Lunch</b><span>turn “vegetarian, no bread” into an order</span>
-      </div>
-      <div class="job you step">
-        <div class="pic" data-icon="✋"></div>
-        <b>You approve</b><span>the time and place, and lunch - nothing is booked before you say yes</span>
-      </div>
-    </div>
-    <p class="takeaway step">Ordinary on purpose - so what is interesting stands out.</p>
-    <aside class="notes">
-      Everybody knows this job. You say who, which day, roughly where. The team finds a time,
-      chooses a place, books a room, puts it in the agendas and orders lunch - and asks you twice
-      before anything is booked. The planner itself is boring on purpose.
-    </aside>
-  </section>
 
   <!-- 10. The sample: how it is built -->
   <section class="slide architecture">
@@ -669,7 +754,57 @@ print(second.output)
     </aside>
   </section>
 
-  <!-- Evals, three slides (my post: Evaluating Akgentic applications with Pydantic Evals) -->
+  <!-- Part 7: beyond the demo (docs/lessons.md) -->
+  <section class="slide lessons">
+    <h2>Beyond the demo</h2>
+    <div class="lesson-grid">
+      <div class="lesson step"><b>A field the agent is not given is a field it will invent.</b><span>The first booking was titled “Meeting”.</span></div>
+      <div class="lesson step"><b>Delivered is not used.</b><span>It knew Sanne was vegetarian, and still asked “what kind of lunch?”</span></div>
+      <div class="lesson step"><b>Silent loss is the worst failure.</b><span>The event store dropped messages while the team ran fine.</span></div>
+      <div class="lesson step"><b>Live runs find what stubs cannot.</b><span>Six bugs in the first real run - each one now a test.</span></div>
+    </div>
+    <aside class="notes">
+      What the demo does not show. The booking titled "Meeting": the title was not in the
+      assignment, so the model made one up. Memory proved delivered, not used. The event store
+      could not write a clock time and dropped messages - nothing failed, the record was just gone.
+      And the first run against real services and a real model found six bugs the stubs had hidden.
+    </aside>
+  </section>
+
+  <!-- Part 8: when is a team worth it, and goodbye -->
+  <section class="slide wrap-up">
+    <div class="worth">
+      <h2>When is a team worth it?</h2>
+      <ul>
+        <li class="step">the work crosses <b>systems with different owners or risks</b></li>
+        <li class="step">some steps are <b>irreversible</b> - code or a human in charge</li>
+        <li class="step">parts need <b>different context</b> - keep each prompt small</li>
+        <li class="step">you want to <b>test and trace</b> each part on its own</li>
+      </ul>
+      <p class="solo step">Otherwise: stay solo.</p>
+    </div>
+    <div class="bye step">
+      <img class="qr" src="img/qr-pulse.svg" alt="QR code for go.jettro.dev/pulse">
+      <p class="link">go.jettro.dev/pulse</p>
+      <p class="thanks">Thank you</p>
+    </div>
+    <aside class="notes">
+      The checklist. One system, reversible actions, a context that fits: one agent is fine - and
+      cheaper. The code, the designs and the lessons are in the repository. Thank you.
+    </aside>
+  </section>
+
+
+  <!-- Extras: kept, out of the way -->
+  <section class="slide extras-divider">
+    <h2>Extras</h2>
+    <aside class="notes">Slides kept for questions, or for a longer version of the talk.</aside>
+  </section>
+  <section class="slide anatomy-team">
+    <aside class="notes">One agent with every tool is overloaded. Split it - and now they have to talk.</aside>
+  </section>
+
+  <!-- Evals, three slides - in the extras since 2026-11-07 (my post: Evaluating Akgentic applications with Pydantic Evals) -->
   <section class="slide evals-why">
     <h2>Is the team any good?</h2>
     <div class="run">
@@ -730,46 +865,6 @@ dataset.add_evaluator(ToolEvidenceContainsTerms(
       Not built yet for the planner - the next step on the roadmap, with guardrails. Many of the
       checks are the same: what a guardrail stops at runtime, an eval measures over a set of cases
       before you release a new prompt or a new model.
-    </aside>
-  </section>
-
-  <!-- Part 7: beyond the demo (docs/lessons.md) -->
-  <section class="slide lessons">
-    <h2>Beyond the demo</h2>
-    <div class="lesson-grid">
-      <div class="lesson step"><b>A field the agent is not given is a field it will invent.</b><span>The first booking was titled “Meeting”.</span></div>
-      <div class="lesson step"><b>Delivered is not used.</b><span>It knew Sanne was vegetarian, and still asked “what kind of lunch?”</span></div>
-      <div class="lesson step"><b>Silent loss is the worst failure.</b><span>The event store dropped messages while the team ran fine.</span></div>
-      <div class="lesson step"><b>Live runs find what stubs cannot.</b><span>Six bugs in the first real run - each one now a test.</span></div>
-    </div>
-    <aside class="notes">
-      What the demo does not show. The booking titled "Meeting": the title was not in the
-      assignment, so the model made one up. Memory proved delivered, not used. The event store
-      could not write a clock time and dropped messages - nothing failed, the record was just gone.
-      And the first run against real services and a real model found six bugs the stubs had hidden.
-    </aside>
-  </section>
-
-  <!-- Part 8: when is a team worth it, and goodbye -->
-  <section class="slide wrap-up">
-    <div class="worth">
-      <h2>When is a team worth it?</h2>
-      <ul>
-        <li class="step">the work crosses <b>systems with different owners or risks</b></li>
-        <li class="step">some steps are <b>irreversible</b> - code or a human in charge</li>
-        <li class="step">parts need <b>different context</b> - keep each prompt small</li>
-        <li class="step">you want to <b>test and trace</b> each part on its own</li>
-      </ul>
-      <p class="solo step">Otherwise: stay solo.</p>
-    </div>
-    <div class="bye step">
-      <img class="qr" src="img/qr-pulse.svg" alt="QR code for go.jettro.dev/pulse">
-      <p class="link">go.jettro.dev/pulse</p>
-      <p class="thanks">Thank you</p>
-    </div>
-    <aside class="notes">
-      The checklist. One system, reversible actions, a context that fits: one agent is fine - and
-      cheaper. The code, the designs and the lessons are in the repository. Thank you.
     </aside>
   </section>
 

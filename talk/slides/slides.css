@@ -800,3 +800,35 @@ pre.code .n { color: #1f5fa8; }
 .wrap-up .qr { width: 400px; height: 400px; image-rendering: pixelated; }
 .wrap-up .link { font: 600 36px var(--mono); margin: 20px 0 0; }
 .wrap-up .thanks { font-size: 72px; font-weight: 700; color: var(--accent); margin: 40px 0 0; }
+
+/* Step 5: one agent with every tool (slides 16-19). */
+.slide.solo, .slide.solo-but { padding-top: 88px; }
+.solo h2 { margin-bottom: 20px; }
+.solo .ask { font-size: 36px; color: var(--muted); margin: 0 0 40px; font-style: italic; }
+.solo-map { display: flex; flex-direction: column; align-items: center; gap: 56px; position: relative; }
+.solo-agent { padding: 20px 48px; border: 4px solid var(--accent); border-radius: 18px; background: #fff; font: 600 44px var(--mono); text-align: center; }
+.solo-agent span { display: block; font: 400 24px var(--sans); color: var(--muted); }
+.solo-servers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 48px; width: 100%; }
+.solo-servers .server { position: relative; background: var(--panel); border-radius: 18px; padding: 24px 32px; }
+/* A line up to the agent from each server. */
+.solo-servers .server::before { content: ""; position: absolute; left: 50%; top: -28px; height: 28px; width: 4px; background: var(--accent); }
+.solo-servers { position: relative; }
+.solo-servers::before { content: ""; position: absolute; top: -28px; left: calc((100% - 96px) / 6); right: calc((100% - 96px) / 6); height: 4px; background: var(--accent); }
+.solo-agent { position: relative; }
+.solo-agent::after { content: ""; position: absolute; left: 50%; bottom: -32px; height: 28px; width: 4px; background: var(--accent); }
+.solo-servers .server b { display: block; font-size: 32px; }
+.solo-servers .server small { display: block; font-size: 22px; color: var(--accent); font-weight: 600; margin-bottom: 12px; }
+.solo-servers .server code { display: block; font-size: 24px; margin: 4px 0; }
+.solo-servers .server span { font-size: 22px; color: var(--muted); }
+.solo .takeaway { font-size: 48px; }
+pre.code.tight { font-size: 24px; }
+.split .commands .request { font-size: 30px; font-style: italic; margin: 8px 0 0; line-height: 1.35; }
+.solo-but .buts { list-style: none; margin: 16px 0 0; padding: 0; }
+.solo-but .buts li { font-size: 44px; margin-bottom: 30px; padding-left: 64px; position: relative; }
+.solo-but .buts li::before { content: "!"; position: absolute; left: 0; top: 4px; width: 44px; height: 44px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 30px; font-weight: 700; line-height: 44px; text-align: center; }
+.solo-but .buts b { color: var(--accent); }
+.solo-but .note { margin-top: auto; font-size: 26px; color: var(--muted); }
+
+/* Extras: a quiet divider; what follows is kept for questions. */
+.slide.extras-divider { justify-content: center; }
+.extras-divider h2 { font-size: 120px; color: var(--muted); }

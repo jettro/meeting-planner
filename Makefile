@@ -129,12 +129,17 @@ talk: ## Serve the talk's slides (http://localhost:8500)
 	python3 talk/serve.py
 
 # The first agent, run on a slide (talk/design_agent_demo.md): a terminal on a web
-# page, only on localhost. Only OPENAI_API_KEY is passed in, read from stdin.
+# page, only on localhost. Only the OpenAI key and the three MCP keys are passed in,
+# read from stdin; step 5 reaches the MCP servers on the host's published ports.
 ENV_FILE ?= .env
 agent-demo: ## Start the talk's terminal with the agent steps (http://localhost:8600)
 	docker build -q -t agent-demo talk/agent-demo
 	-@docker rm -f agent-demo >/dev/null 2>&1
-	@grep '^OPENAI_API_KEY=' $(ENV_FILE) | docker run -d --name agent-demo --env-file /dev/stdin \
+	@grep -E '^(OPENAI_API_KEY|MEETING_MCP_API_KEY|LOCATION_MCP_API_KEY|NOMNOM_MCP_API_KEY)=' $(ENV_FILE) \
+		| docker run -d --name agent-demo --env-file /dev/stdin \
+		-e MEETING_MCP_URL=http://host.docker.internal:8101/mcp \
+		-e LOCATION_MCP_URL=http://host.docker.internal:8102/mcp \
+		-e NOMNOM_MCP_URL=http://host.docker.internal:8103/mcp \
 		-p 127.0.0.1:8600:7681 agent-demo >/dev/null
 	@echo "Terminal on http://localhost:8600 - make help shows the steps"
 

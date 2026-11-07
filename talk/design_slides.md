@@ -83,20 +83,23 @@ The about slide uses the bio from the DevPulse page and the old deck, and the Yu
 | 3 | the comic: a quick meeting, and what if I built a team for this? |
 | 4 | what is an agent? - four definitions, then the one sentence |
 | 5-9 | the anatomy of an agent |
-| 10 | one agent is not enough: the start of a team |
-| 11-14 | the first agent in code: an LLM, context, memory, a tool ([`design_agent_demo.md`](design_agent_demo.md)) |
-| 15 | run it: the four make targets, and a live terminal (ttyd, `make agent-demo`) |
-| 16-20 | team architectures: start with one agent, five patterns, what goes wrong, split like services, the crew now built ([`design_team_patterns.md`](design_team_patterns.md)) |
-| 21-22 | the sample: what it does, how it is built |
-| 23 | the repository |
-| 24-25 | live: the planner, the console |
-| 26 | talk to the planner: `@Intake`, its five tools, no tool to book or approve |
-| 27-30 | memory: one item and its fields; who sees what (scopes, shared files); from a sentence to a prompt; a memory has a life |
-| 31 | guardrails - **a placeholder** until they are built (`docs/design/design_guardrails.md`) |
-| 32-33 | live again: the planner (talk to it, memory), the console |
-| 34-36 | evals: is the team any good?; Pydantic Evals; and for the planner? |
+| 10-13 | the first agent in code: an LLM, context, memory, a tool ([`design_agent_demo.md`](design_agent_demo.md)) |
+| 14 | run it: steps 1-4 in a live terminal (ttyd, `make agent-demo`) |
+| 15 | the sample: what it does (moved here 2026-11-07, so step 5 has its request) |
+| 16-19 | step 5: one agent, three MCP servers; the code; run it (`make run-meeting`); it works, but... |
+| 20-24 | team architectures: start with one agent, five patterns, what goes wrong, split like services, the crew now built ([`design_team_patterns.md`](design_team_patterns.md)) |
+| 25 | the sample: how it is built |
+| 26 | the repository |
+| 27-28 | live: the planner, the console |
+| 29 | talk to the planner: `@Intake` |
+| 30-33 | memory: one item and its fields; who sees what; from a sentence to a prompt; a memory has a life |
+| 34 | guardrails - **a placeholder** until they are built |
+| 35-36 | live again: the planner, the console |
 | 37 | beyond the demo: four lessons |
 | 38 | when is a team worth it? - and the link, thank you |
+| 39 | **Extras** - a divider; what follows is kept for questions |
+| 40 | now everybody has opinions (the first team slide, moved here 2026-11-07) |
+| 41-43 | evals: is the team any good?; Pydantic Evals; and for the planner? (moved here 2026-11-07) |
 
 ## The comic (slide 3)
 
@@ -188,7 +191,7 @@ case everything shows at once. The QR code is `img/qr-pulse.svg`, generated once
 Other ideas, not built: the three robots holding up the QR code as a sign; `git clone` typed in a
 terminal, letter by letter; the QR code assembling itself from the trace's characters.
 
-## The second half (slides 26-38)
+## The second half (now slides 29-38, evals in the extras)
 
 Built 2026-11-06 from `docs/conversation.md`, `docs/memory.md`, `docs/lessons.md`, the
 guardrails design, the plan's parts 7 and 8, my evals post (*Evaluating Akgentic applications with
