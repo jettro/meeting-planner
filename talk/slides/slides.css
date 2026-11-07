@@ -832,3 +832,43 @@ pre.code.tight { font-size: 24px; }
 /* Extras: a quiet divider; what follows is kept for questions. */
 .slide.extras-divider { justify-content: center; }
 .extras-divider h2 { font-size: 120px; color: var(--muted); }
+
+/* Guardrails (slides 34-36): where the check sits, the twelve soups, what is next. */
+.slide.guard-where, .slide.guard-soups, .slide.guard-next { padding-top: 88px; }
+.guard-where h2, .guard-soups h2, .guard-next h2 { margin-bottom: 44px; }
+.guard-flow { display: flex; align-items: center; gap: 16px; }
+.guard-flow .g-stop { flex: 1; min-height: 120px; padding: 18px 22px; border-radius: 16px; background: #fff; font-size: 30px; font-weight: 600; }
+.guard-flow .g-stop span { display: block; font-size: 22px; font-weight: 400; color: var(--muted); margin-top: 6px; }
+.guard-flow .g-stop.llm { border: 3px solid var(--accent); }
+.guard-flow .g-stop.call { flex: 1.3; background: var(--panel); }
+.guard-flow .g-stop.call code { font-size: 24px; }
+.guard-flow .g-stop.rule { background: var(--text); color: var(--bg); }
+.guard-flow .g-stop.rule span { color: #b9b4b4; }
+.guard-flow .g-stop.rule code { font-size: 20px; }
+.guard-flow .g-stop.svc { background: var(--panel); }
+.guard-flow i { font-style: normal; font-size: 40px; color: var(--muted); }
+.guard-where .g-back { font-size: 28px; color: var(--accent); margin: 24px 0 36px; }
+.g-rules { border-collapse: collapse; font-size: 30px; }
+.g-rules th { text-align: left; padding: 10px 40px 10px 0; font-weight: 600; }
+.g-rules th code { font-size: 30px; }
+.g-rules td { padding: 10px 0; color: var(--muted); }
+.guard-where .takeaway { font-size: 46px; }
+.soup-grid { display: grid; grid-template-columns: minmax(0, 1fr) 500px; gap: 40px; align-items: start; }
+.guard-soups pre.code { font-size: 21px; }
+.guard-soups pre.code .line { padding: 0 28px; }
+.soup-trace { list-style: none; margin: 0; padding: 0; }
+.soup-trace li { font-size: 28px; padding: 18px 24px; margin-bottom: 14px; background: #fff; border-radius: 14px; line-height: 1.35; }
+.soup-trace .who { display: block; font: 600 24px var(--mono); color: var(--muted); }
+.soup-trace .chip { display: inline-block; padding: 2px 14px; border-radius: 20px; font: 600 22px var(--mono); vertical-align: 3px; }
+.soup-trace .chip.refused { background: #b4371f; color: #fff; }
+.soup-trace .chip.passed { background: #1f7a4d; color: #fff; }
+.guard-soups .note { margin-top: auto; font-size: 24px; color: var(--muted); }
+.guard-next .wip { font-size: 26px; font-weight: 600; vertical-align: middle; margin-left: 24px; padding: 6px 20px; border: 3px dashed var(--accent); border-radius: 40px; color: var(--accent); }
+.guard-q { display: grid; grid-template-columns: 420px 1fr; gap: 64px; align-items: start; }
+.guard-agent { padding: 28px 32px; border: 4px dashed var(--accent); border-radius: 20px; background: #fff; font: 600 44px var(--mono); }
+.guard-agent span { display: block; font: 400 24px var(--sans); color: var(--muted); margin-top: 10px; line-height: 1.4; }
+.guard-q ul { list-style: none; margin: 0; padding: 0; }
+.guard-q li { margin-bottom: 28px; }
+.guard-q li b { display: block; font: 600 30px var(--mono); color: var(--accent); }
+.guard-q li span { font-size: 32px; }
+.guard-next .takeaway { font-size: 40px; }

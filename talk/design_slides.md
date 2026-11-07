@@ -93,13 +93,13 @@ The about slide uses the bio from the DevPulse page and the old deck, and the Yu
 | 27-28 | live: the planner, the console |
 | 29 | talk to the planner: `@Intake` |
 | 30-33 | memory: one item and its fields; who sees what; from a sentence to a prompt; a memory has a life |
-| 34 | guardrails - **a placeholder** until they are built |
-| 35-36 | live again: the planner, the console |
-| 37 | beyond the demo: four lessons |
-| 38 | when is a team worth it? - and the link, thank you |
-| 39 | **Extras** - a divider; what follows is kept for questions |
-| 40 | now everybody has opinions (the first team slide, moved here 2026-11-07) |
-| 41-43 | evals: is the team any good?; Pydantic Evals; and for the planner? (moved here 2026-11-07) |
+| 34-36 | guardrails: a check before the call; the twelve soups (code and a live run); next, `@Guard` - marked *waiting for akgentic* |
+| 37-38 | live again: the planner, the console |
+| 39 | beyond the demo: four lessons |
+| 40 | when is a team worth it? - and the link, thank you |
+| 41 | **Extras** - a divider; what follows is kept for questions |
+| 42 | now everybody has opinions (the first team slide, moved here 2026-11-07) |
+| 43-45 | evals: is the team any good?; Pydantic Evals; and for the planner? (moved here 2026-11-07) |
 
 ## The comic (slide 3)
 
@@ -191,7 +191,7 @@ case everything shows at once. The QR code is `img/qr-pulse.svg`, generated once
 Other ideas, not built: the three robots holding up the QR code as a sign; `git clone` typed in a
 terminal, letter by letter; the QR code assembling itself from the trace's characters.
 
-## The second half (now slides 29-38, evals in the extras)
+## The second half (now slides 29-40, evals in the extras)
 
 Built 2026-11-06 from `docs/conversation.md`, `docs/memory.md`, `docs/lessons.md`, the
 guardrails design, the plan's parts 7 and 8, my evals post (*Evaluating Akgentic applications with
@@ -202,7 +202,11 @@ Pydantic Evals*, 16 September 2026) and my own memory notes (`docs/memory_blog.m
   sees what, which is also how agents share memory (28, a table of agents against scopes); how it
   gets from a sentence into a prompt (29, a write lane and a read lane); and its lifecycle (30,
   the seven steps from my notes, each marked as in the planner or not, or not on purpose).
-- **Guardrails (31)** is a placeholder, marked *being built* on the slide and in its notes.
+- **Guardrails (34-36)**, rebuilt 2026-11-07 from what is on main (`design_guardrails.md` §14):
+  where the check sits - between the model's tool call and the service, in `before_tool_execute`,
+  the three rules; the live run of 6 November (*twelve soups* for two: refused, six ordered, the
+  person told why) beside a shortened copy of the capability; and `@Guard` with its three
+  questions, marked *waiting for akgentic*. The twelve soups can be shown in demo 2.
 - **Demo 2 (32-33)** are copies of 24-25; each is its own frame, so the planner is loaded twice.
 - **Evals (34-36)**: the post's point (check the route and the evidence, not only the answer), its
   one snippet, and what the planner would check - not built yet. The *8 of 8 ... 7 failed* figure

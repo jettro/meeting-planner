@@ -709,33 +709,80 @@ print(result.output)
     </aside>
   </section>
 
-  <!-- Guardrails: a placeholder until it is built (docs/design/design_guardrails.md) -->
-  <section class="slide guardrails placeholder">
-    <h2>Guardrails <span class="wip">being built</span></h2>
-    <div class="cols">
-      <div class="col">
-        <p class="lead">Already there - around the model</p>
-        <ul>
-          <li>one service per agent</li>
-          <li>two questions to you before anything is booked</li>
-          <li><code>TalkOnlyToHuman</code>: @Intake writes only to you</li>
-          <li>no secrets or ids in memory</li>
-        </ul>
-      </div>
-      <div class="col next step">
-        <p class="lead">Next - between the tool call and the service</p>
-        <ul>
-          <li>does the call match what you approved? <b>code</b></li>
-          <li>does it fit what you asked for? <b>a decision model</b></li>
-        </ul>
-      </div>
+  <!-- Guardrails, three slides (docs/design/design_guardrails.md, §14 what was built) -->
+  <section class="slide guard-where">
+    <h2>Guardrails: a check before the call</h2>
+    <div class="guard-flow">
+      <div class="g-stop llm">@FacilityManager’s model<span>fills in the arguments itself</span></div><i>→</i>
+      <div class="g-stop call step"><code>book_room(library, study,<br>2026-11-10, 10:00, 11:00)</code></div><i class="step">→</i>
+      <div class="g-stop rule step">the booking rules<span>code · <code>before_tool_execute</code></span></div><i class="step">→</i>
+      <div class="g-stop svc step">location service</div>
+    </div>
+    <p class="g-back step">refused? the rule goes back to the model in plain words - <code>ModelRetry</code> - and it may try again, once</p>
+    <table class="g-rules step">
+      <tr><th><code>book_meeting</code></th><td>the approved people, day and slot</td></tr>
+      <tr><th><code>book_room</code></th><td>the approved location, day, start and end</td></tr>
+      <tr><th><code>place_order</code></th><td>the meeting’s place and date - at most 3 items per person</td></tr>
+    </table>
+    <p class="takeaway step">The approval is the assignment. Code checks what code can know.</p>
+    <aside class="notes">
+      Everything that kept the team safe was around the model: one service per agent, the two
+      questions to you. Nothing checked the call itself. After you approve Tuesday 10:00 at the
+      Library, the facility manager's model fills in book_room's arguments - a slip, another day,
+      would be booked; the service only checks the room is free. Now a capability on the agent
+      checks every booking call against the assignment it is working on - the approval - before it
+      leaves. Arithmetic, so code, not a model.
+    </aside>
+  </section>
+
+  <section class="slide guard-soups">
+    <h2>“Twelve soups, we are very hungry”</h2>
+    <div class="soup-grid">
+      <pre class="code tight">
+async def before_tool_execute(self, ctx, *, call, tool_def, args):
+    rules = RULES.get(tool_def.name)   # the three booking tools
+    if rules is None:
+        return args
+    assignment = ctx.deps.current_message()   # the approval
+    broken = rules(assignment, args, self.card)
+    if not broken:
+        return args
+    raise ModelRetry("Refused by the booking rules: " + "; ".join(broken))
+      </pre>
+      <ol class="soup-trace">
+        <li class="step"><b class="who">@Catering</b> orders <b>12 soups</b> for 2 people</li>
+        <li class="step"><span class="chip refused">refused</span> 12 items for 2 people; at most 3 per person (6)</li>
+        <li class="step"><b class="who">@Catering</b> orders <b>6</b> <span class="chip passed">passed</span></li>
+        <li class="step"><b class="who">to you</b> “6 soups; 12 could not be met because the order limit is 3 items per person.”</li>
+      </ol>
+    </div>
+    <p class="note">The capability, shortened from <code>agents/src/meeting_agents/guardrails.py</code> · a live run, 6 November</p>
+    <aside class="notes">
+      A live run. The lunch wish: twelve soups, we are very hungry - for two people. The catering
+      agent did what it was asked and ordered twelve. The rule refused it, with the reason in
+      words; the model read it, ordered six, and told the person why. Every check is a
+      GuardrailChecked event in the trace: passed, refused, or failed - a second refusal ends the
+      run as a failure, like any other. Can be shown in demo 2: ask for twelve soups.
+    </aside>
+  </section>
+
+  <section class="slide guard-next">
+    <h2>Next: judgement, by a team member <span class="wip">waiting for akgentic</span></h2>
+    <div class="guard-q">
+      <div class="guard-agent">@Guard<span>a decision model · gpt-6-luna<br>no tools · answers typed questions</span></div>
+      <ul>
+        <li class="step"><b>@Intake, each message</b><span>is this about arranging the meeting, memory, a greeting - or <em>something else</em>?</span></li>
+        <li class="step"><b>place_order</b><span>do these items fit the lunch wish, and the diets we remember?</span></li>
+        <li class="step"><b>remember</b><span>how the person likes to meet - or sensitive personal data?</span></li>
+      </ul>
     </div>
     <p class="takeaway step">Code checks what code can know; a decision model answers what needs judgement; neither is the model that acts.</p>
     <aside class="notes">
-      PLACEHOLDER - to be replaced when the guardrails are built (design_guardrails.md). The gap:
-      after you approve 10:00 on Tuesday at the Library, the facility manager's model fills in the
-      booking's arguments itself. A slip - another day - would be booked; the service only checks
-      the room is free.
+      Not built yet: it waits for akgentic to run decision models. A decision model answers a typed
+      question - pick one of these - instead of writing text, with a probability. @Guard is a member
+      of the team, so the console shows it with its model and its cost. A message answered "something
+      else" never reaches @Intake's model - so an instruction hidden in it is never read by a model
+      that holds tools.
     </aside>
   </section>
 
