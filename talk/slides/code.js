@@ -5,7 +5,7 @@
     /(#.*)/.source,                                        // 1 comment
     /((?:f)?"""[\s\S]*?"""|(?:f)?"(?:[^"\\\n]|\\.)*")/.source, // 2 string
     /(@[\w.]+)/.source,                                    // 3 decorator
-    /\b(from|import|def|return|if|else|for|in|and|or|not|None|True|False)\b/.source, // 4 keyword
+    /\b(from|import|class|async|await|def|return|raise|if|else|for|in|is|and|or|not|None|True|False)\b/.source, // 4 keyword
     /\b(\d+)\b/.source,                                    // 5 number
   ].join("|"), "g");
   const KIND = [null, "c", "s", "d", "k", "n"];

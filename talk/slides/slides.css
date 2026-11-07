@@ -872,3 +872,43 @@ pre.code.tight { font-size: 24px; }
 .guard-q li b { display: block; font: 600 30px var(--mono); color: var(--accent); }
 .guard-q li span { font-size: 32px; }
 .guard-next .takeaway { font-size: 40px; }
+
+/* How agents talk (design_messages.md, slides 26-30). */
+.slide.talk-how, .slide.msg-flow, .slide.msg-buy { padding-top: 88px; }
+.talk-how h2, .msg-flow h2, .msg-buy h2 { margin-bottom: 40px; }
+.talk-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; }
+.talk-col { background: #fff; border-radius: 20px; padding: 28px 36px; }
+.talk-col.msgs { border: 4px solid var(--accent); }
+.talk-col ul { margin: 20px 0 0; padding-left: 30px; font-size: 28px; color: var(--muted); line-height: 1.5; }
+.bubbles p { margin: 0 0 12px; padding: 12px 18px; background: var(--panel); border-radius: 18px 18px 18px 4px; font-size: 24px; }
+.bubbles b, .envelopes span { display: block; font: 600 20px var(--mono); color: var(--muted); }
+.envelopes p { margin: 0 0 12px; padding: 12px 18px; border: 2px solid var(--panel); border-left: 8px solid var(--accent); border-radius: 8px; }
+.envelopes code { font-size: 28px; font-weight: 600; }
+.talk-how .takeaway { font-size: 50px; }
+.msg-type pre.code { font-size: 23px; }
+.msg-points { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 28px; }
+.msg-points p { margin: 0; font-size: 24px; color: var(--muted); }
+.msg-points b { display: block; font-size: 30px; color: var(--text); margin-bottom: 4px; }
+.answer-flow { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; font-size: 26px; }
+.answer-flow code { padding: 8px 16px; background: #fff; border-radius: 10px; font-weight: 600; font-size: 24px; }
+.answer-flow .llm { padding: 8px 16px; border: 3px solid var(--accent); border-radius: 10px; background: #fff; font-weight: 600; }
+.answer-flow i { font-style: normal; color: var(--muted); }
+.msg-answer pre.code { font-size: 22px; }
+.msg-answer .takeaway { font-size: 40px; margin-top: 24px; }
+.seq svg { display: block; width: 100%; height: auto; }
+.seq .lane rect { fill: #fff; stroke: var(--text); stroke-width: 2; }
+.seq .lane.coord rect { fill: var(--text); }
+.seq .lane.coord text { fill: var(--bg); }
+.seq .lane.you rect { stroke: var(--accent); stroke-dasharray: 8 6; stroke-width: 3; }
+.seq .lane text { font: 600 22px var(--mono); text-anchor: middle; fill: var(--text); }
+.seq .lane line { stroke: #d6d0cc; stroke-width: 2; stroke-dasharray: 6 6; }
+.seq .msg line { stroke: var(--text); stroke-width: 3; }
+.seq .msg text { font: 500 19px var(--mono); text-anchor: middle; fill: var(--text); }
+.seq .msg.ask line { stroke: var(--accent); }
+.seq .msg.ask text { fill: var(--accent); font-weight: 700; }
+.seq marker path { fill: var(--text); }
+.buys { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+.buy { background: #fff; border-radius: 20px; padding: 28px 36px; border-left: 10px solid var(--accent); }
+.buy b { display: block; font-size: 40px; }
+.buy span { display: block; font-size: 28px; color: var(--muted); margin-top: 8px; }
+.msg-buy .takeaway { font-size: 50px; }

@@ -539,6 +539,133 @@ print(result.output)
     </aside>
   </section>
 
+  <!-- How agents talk: messages and types (design_messages.md, M1-M5) -->
+  <section class="slide talk-how">
+    <h2>How do agents talk?</h2>
+    <div class="talk-cols">
+      <div class="talk-col chat">
+        <p class="lead">A shared conversation</p>
+        <div class="bubbles">
+          <p><b>@Scheduler</b> Tuesday 10:00 works for everyone, I think?</p>
+          <p><b>@FacilityManager</b> The Library is quiet. Shall I book it?</p>
+          <p><b>@Catering</b> Sandwiches for three, or was it four?</p>
+        </div>
+        <ul><li>everyone reads everything</li><li>free text, in and out</li><li>who decides?</li></ul>
+      </div>
+      <div class="talk-col msgs step">
+        <p class="lead">Messages</p>
+        <div class="envelopes">
+          <p><span>@Coordinator → @Scheduler</span><code>FindSlotsAssignment</code></p>
+          <p><span>@Scheduler → @Coordinator</span><code>SlotsFound</code></p>
+          <p><span>@Coordinator → you</span><code>SlotApprovalRequest</code></p>
+        </div>
+        <ul><li>addressed to one agent</li><li>a fixed shape - a type</li><li>the receiver’s code decides what happens</li></ul>
+      </div>
+    </div>
+    <p class="takeaway step">Agents talk in messages, not in a chat.</p>
+    <aside class="notes">
+      Two ways to let agents work together. A shared conversation - the group chat from the
+      patterns: everyone reads everything, in text, and it is unclear who decides. Or messages:
+      addressed, with a fixed shape, and code on the receiving side that decides what happens with
+      it. The sample uses messages only. None of this is specific to a framework.
+    </aside>
+  </section>
+
+  <section class="slide code-step msg-type">
+    <header><h2>A message is a type</h2><span class="part">Pydantic</span></header>
+    <pre class="code tight" data-new="9,10">
+class BookMeetingAssignment(Message):
+    """@Scheduler: the human approved this slot; put it in the agendas."""
+    plan_id: str
+    title: str
+    participant_emails: list[str]
+    day: date
+    slot: ProposedSlot
+
+    def rendering(self) -> str:   # the words the model reads
+        return f"Book '{self.title}' on {self.day} from ... Report the meeting id you get back."
+
+class MeetingBooked(Message):
+    """@Scheduler -> @Coordinator."""
+    plan_id: str
+    meeting_id: int
+    </pre>
+    <div class="msg-points">
+      <p class="step"><b>Validated when it is made</b>a day that is not a date never leaves the coordinator</p>
+      <p class="step"><b>A contract between two agents</b>a renamed field breaks a test, not a demo</p>
+      <p class="step"><b>Typed for code, words for the model</b><code>rendering()</code> is the instruction it gets</p>
+    </div>
+    <aside class="notes">
+      The real classes from messages.py, shortened. An assignment and its answer. The coordinator
+      builds it, so a wrong type fails there, not three agents later. The plan_id ties every message
+      to one meeting. And the model never sees the object: rendering() turns it into a sentence.
+      "A field the agent is not given is a field it will invent" - the title is a field here
+      because it once was not.
+    </aside>
+  </section>
+
+  <section class="slide code-step msg-answer">
+    <header><h2>The model answers in a type, too</h2><span class="part">structured output</span></header>
+    <div class="answer-flow">
+      <code>BookMeetingAssignment</code><i>→</i><span class="llm">the model + its tools</span><i>→</i><code>BookedMeeting</code><i>→</i><code>MeetingBooked</code>
+    </div>
+    <pre class="code tight" data-new="4-7,11">
+class BookedMeeting(BaseModel):
+    """@Scheduler's answer to 'book this slot'."""
+    succeeded: bool
+    meeting_id: int | None = Field(
+        default=None,
+        description="The exact meeting id the booking tool returned. Never invent one.",
+    )
+    reason: str = Field(default="", description="If succeeded is false, why not.")
+
+def receiveMsg_BookMeetingAssignment(self, message, sender):
+    booked = self.attempt(message, BookedMeeting, message.plan_id, sender)
+    if booked is None:
+        return
+    if not booked.succeeded or booked.meeting_id is None:
+        self.fail(message.plan_id, booked.reason or "the meeting was not booked", sender)
+        return
+    self.send(sender, MeetingBooked(plan_id=message.plan_id, meeting_id=booked.meeting_id))
+    </pre>
+    <p class="takeaway step">Free text never crosses from one agent to the next. A failure is a field.</p>
+    <aside class="notes">
+      Every specialist has this shape: an assignment in, the model with its tools answering in a
+      type - pydantic-ai's output type - and a typed message out. The description of a field is part
+      of the prompt: "Never invent one". If the model says it failed, or gives no id, the code
+      reports a failure - it never passes a made-up id on.
+    </aside>
+  </section>
+
+  <section class="slide msg-flow">
+    <h2>One meeting, in messages</h2>
+    <div class="seq"></div>
+    <aside class="notes">
+      The whole saga, as the coordinator runs it: find a place, find slots, ask you, ask about lunch,
+      book the meeting, book the room - the facility manager asks catering for lunch - and report.
+      Every arrow is a typed message, every message carries the plan_id. Two of them wait for you,
+      for as long as you take. This is exactly what the trace shows in the demo.
+    </aside>
+  </section>
+
+  <section class="slide msg-buy">
+    <h2>What messages buy you</h2>
+    <div class="buys">
+      <div class="buy step"><b>A trace, for free</b><span>every message is an event - who sent what to whom, and when</span></div>
+      <div class="buy step"><b>Waiting costs nothing</b><span>your answer may come a day later; nothing is blocked while it does</span></div>
+      <div class="buy step"><b>Durable</b><span>keep the messages, and a stopped team can be revived where it was</span></div>
+      <div class="buy step"><b>Testable</b><span>send an agent a message, check what it sends back - no model needed</span></div>
+    </div>
+    <p class="takeaway step">Design the messages, and the team follows.</p>
+    <aside class="notes">
+      What you get from messages, whatever runs them. The trace and the console are just the
+      messages, shown. A question to you is a message out; your answer is a message in - no thread
+      waits. The coordinator's record lives in its state, and the messages can rebuild it. And each
+      agent can be tested by sending it a message. A framework can give you all four.
+    </aside>
+  </section>
+
+
   <!-- 11. The repository - arranged by the crew, approved by the human (repo.js) -->
   <section class="slide repo">
     <h2>Before we go live: the code</h2>
@@ -920,6 +1047,7 @@ dataset.add_evaluator(ToolEvidenceContainsTerms(
 <script src="repo.js"></script>
 <script src="code.js"></script>
 <script src="patterns.js"></script>
+<script src="sequence.js"></script>
 <script src="slides.js"></script>
 <script src="title.js"></script>
 </body>
