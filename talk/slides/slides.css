@@ -633,20 +633,6 @@ pre.code .n { color: #1f5fa8; }
 .pattern figcaption span { display: block; font-size: 26px; color: var(--muted); margin-top: 4px; }
 .pattern figcaption small { display: block; font-size: 20px; color: var(--muted); margin-top: 18px; line-height: 1.4; }
 
-/* C. What goes wrong: three figures, then the one line. */
-.slide.goes-wrong { padding-top: 96px; }
-.goes-wrong h2 { margin-bottom: 56px; }
-.goes-wrong .figures { display: grid; grid-template-columns: 1fr 1.45fr 1fr; gap: 56px; }
-.goes-wrong .figure b { display: block; font-size: 88px; line-height: 1; letter-spacing: -0.02em; white-space: nowrap; }
-.goes-wrong .figure b.up { color: #1f7a4d; }
-.goes-wrong .figure b.down { color: #b4371f; }
-.goes-wrong .figure b i { font-style: normal; color: var(--muted); }
-.goes-wrong .figure span { display: block; font-size: 30px; color: var(--muted); margin-top: 16px; }
-.goes-wrong .source { margin-top: 28px; }
-.goes-wrong .writes { margin-top: auto; border-left: 8px solid var(--accent); padding-left: 40px; }
-.goes-wrong .writes .big { margin: 0; font-size: 64px; font-weight: 700; }
-.goes-wrong .writes em { font-style: normal; color: var(--accent); }
-.goes-wrong .writes .real { margin: 12px 0 0; font-size: 28px; color: var(--muted); }
 
 /* D. Split like services: one dashed outline per bounded context, a service and its agent. */
 .slide.split-services { padding-top: 96px; }
@@ -912,3 +898,36 @@ pre.code.tight { font-size: 24px; }
 .buy b { display: block; font-size: 40px; }
 .buy span { display: block; font-size: 28px; color: var(--muted); margin-top: 8px; }
 .msg-buy .takeaway { font-size: 50px; }
+
+/* When a team helps, and when it hurts: bars against one agent = 100. */
+.slide.helps-hurts, .slide.in-charge { padding-top: 88px; }
+.helps-hurts h2, .in-charge h2 { margin-bottom: 40px; }
+.hh-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; }
+.hh-col { background: #fff; border-radius: 20px; padding: 28px 36px; }
+.hh-col .kind { margin: 0 0 20px; font-size: 32px; font-weight: 700; }
+.hh-pic { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+.hh-pic span { flex: 1; padding: 12px 10px; border: 3px solid var(--accent); border-radius: 12px; font-size: 22px; text-align: center; }
+.hh-pic i { font-style: normal; font-size: 30px; color: var(--muted); }
+.bars { display: flex; flex-direction: column; gap: 16px; }
+.bar-row { display: grid; grid-template-columns: 150px 1fr 150px; align-items: center; gap: 16px; }
+.bar-row .who { font-size: 24px; color: var(--muted); }
+.bar-row b { font-size: 40px; white-space: nowrap; }
+.bar { position: relative; height: 44px; width: calc(var(--v) / 181 * 100%); border-radius: 6px; }
+.bar.base { background: #c9c3bf; }
+.bar.up { background: #1f7a4d; }
+.bar.down { background: #e7a99c; }
+.bar.down .range { position: absolute; inset: 0 auto 0 0; width: calc(var(--v) / 61 * 100%); background: #b4371f; border-radius: 6px 0 0 6px; }
+.bar-row b.up { color: #1f7a4d; }
+.bar-row b.down, .err-row b.down { color: #b4371f; }
+.helps-hurts .source, .in-charge .source { margin-top: 24px; }
+.helps-hurts .takeaway { font-size: 50px; }
+
+/* Put someone in charge: a mistake as dots, against one agent. */
+.err-rows { display: flex; flex-direction: column; gap: 28px; }
+.err-row { display: grid; grid-template-columns: 420px 1fr 120px; align-items: center; gap: 24px; background: #fff; border-radius: 16px; padding: 18px 28px; }
+.err-row .who { font-size: 32px; font-weight: 600; }
+.err-row b { font-size: 48px; text-align: right; }
+.dots { display: flex; gap: 10px; flex-wrap: wrap; }
+.dots i { width: 40px; height: 40px; border-radius: 50%; background: #b4371f; }
+.err-say { font-size: 26px; color: var(--muted); margin: 18px 0 0; }
+.in-charge .takeaway { font-size: 46px; }

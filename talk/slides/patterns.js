@@ -61,3 +61,8 @@
       </svg>`;
   });
 })();
+
+// "Put someone in charge": a row of dots, one per time a mistake grows (data-n).
+document.querySelectorAll(".dots[data-n]").forEach((row) => {
+  row.innerHTML = "<i></i>".repeat(Number(row.dataset.n));
+});

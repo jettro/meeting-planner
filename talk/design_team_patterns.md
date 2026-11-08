@@ -74,6 +74,20 @@ second time against the page text.
 The plan's *four questions* (who does what, how do they talk, who keeps what, where is the human)
 could follow E or be folded into it - see Q4.
 
+## Slide C, split in two (2026-11-08)
+
+*What goes wrong* was hard to follow: three numbers without a baseline, *17x -> 4x* read as a
+change over time, and two messages from two sources on one slide. It is now two slides, each with
+one message and the meeting as the example:
+
+- **When a team helps, and when it hurts** - bars against *one agent = 100*: work that splits up
+  (looking up people, places and the menu at once) 181; work where each step needs the one before
+  (a time, a room, lunch) 30-61.
+- **Put someone in charge** - a mistake as dots: one agent 1x, a team with nobody in charge 17x,
+  with an orchestrator 4x. *Mistakes stop at the one in charge - in the sample, plain code.*
+
+Cognition's *many may think, one should write* moved to the speaker notes of the second.
+
 ## Answers and defaults
 
 | Id | Answer |

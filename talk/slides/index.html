@@ -423,24 +423,58 @@ print(result.output)
     </aside>
   </section>
 
-  <section class="slide goes-wrong">
-    <h2>What goes wrong</h2>
-    <div class="figures">
-      <div class="figure step"><b class="up">+81 %</b><span>on work that can be split up</span></div>
-      <div class="figure step"><b class="down">−39 to −70 %</b><span>on planning, where every step needs the one before</span></div>
-      <div class="figure step"><b>17× <i>→</i> 4×</b><span>errors amplified - without, and with, an orchestrator</span></div>
+  <section class="slide helps-hurts">
+    <h2>When a team helps, and when it hurts</h2>
+    <div class="hh-cols">
+      <div class="hh-col">
+        <p class="kind">Work that splits up</p>
+        <div class="hh-pic split">
+          <span>look up the people</span><span>look up the places</span><span>read the menu</span>
+        </div>
+        <div class="bars">
+          <div class="bar-row"><span class="who">one agent</span><div class="bar base" style="--v:100"></div><b>100</b></div>
+          <div class="bar-row step"><span class="who">a team</span><div class="bar up" style="--v:181"></div><b class="up">181</b></div>
+        </div>
+      </div>
+      <div class="hh-col">
+        <p class="kind">Work where each step needs the one before</p>
+        <div class="hh-pic steps-chain">
+          <span>a time</span><i>→</i><span>a room</span><i>→</i><span>lunch</span>
+        </div>
+        <div class="bars">
+          <div class="bar-row"><span class="who">one agent</span><div class="bar base" style="--v:100"></div><b>100</b></div>
+          <div class="bar-row step"><span class="who">a team</span><div class="bar down" style="--v:61"><div class="range" style="--v:30"></div></div><b class="down">30-61</b></div>
+        </div>
+      </div>
     </div>
-    <cite class="source">Google Research · Towards a science of scaling agent systems · January 2026 · 180 configurations</cite>
-    <div class="writes step">
-      <p class="big">Many may think. <em>One should write.</em></p>
-      <p class="real">“multi-agent systems work best today when writes stay single-threaded”<cite>Cognition · Multi-agents: what’s actually working · April 2026</cite></p>
-    </div>
+    <cite class="source">The same tasks done by one agent (100) and by teams · Google Research, <i>Towards a science of scaling agent systems</i>, January 2026 · 180 configurations</cite>
+    <p class="takeaway step">A team helps when the work splits, and hurts when it chains.</p>
     <aside class="notes">
-      Google ran 180 configurations over three model families. A team helps a lot when the work
-      splits up, and hurts on sequential planning - every variant they tried. And without someone
-      in charge, errors multiply: 17 times, against 4 with an orchestrator. Cognition, a year after
-      "Don't build multi-agents": what works is a reviewer with a clean context, and a manager with
-      children. Parallel writers still do not. The line on the slide is my summary; theirs is below.
+      Google ran the same tasks with one agent and with teams - 180 configurations, three model
+      families. One agent is 100. On work that splits up - think of looking up the people, the
+      places and the menu at the same time - the best team scored 181. On planning where every step
+      needs the one before - a time, then a room there, then lunch for it - every team they tried
+      did worse: between 30 and 61. Our meeting has both kinds of work.
+    </aside>
+  </section>
+
+  <section class="slide in-charge">
+    <h2>Put someone in charge</h2>
+    <div class="err-rows">
+      <div class="err-row"><span class="who">one agent</span><div class="dots" data-n="1"></div><b>1×</b></div>
+      <div class="err-row step"><span class="who">a team, nobody in charge</span><div class="dots" data-n="17"></div><b class="down">17×</b></div>
+      <div class="err-row step"><span class="who">a team with an orchestrator</span><div class="dots" data-n="4"></div><b>4×</b></div>
+    </div>
+    <p class="err-say">how much a mistake grows, compared with one agent</p>
+    <cite class="source">Google Research, <i>Towards a science of scaling agent systems</i>, January 2026</cite>
+    <p class="takeaway step">Mistakes stop at the one in charge - in the sample, plain code.</p>
+    <aside class="notes">
+      The same study. When agents work side by side with nobody checking, one agent's mistake is
+      picked up and built on by the others: errors grew 17 times compared with one agent. With an
+      orchestrator in between, 4 times. Cognition says the same from practice, a year after "Don't
+      build multi-agents": a manager with child agents works, a reviewer with a clean context works,
+      parallel agents that all write still do not. Many may think; one should write. In the sample
+      the one in charge has no model at all.
     </aside>
   </section>
 
