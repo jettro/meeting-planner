@@ -224,7 +224,7 @@ print(second.output)
   </section>
 
   <!-- Run it: the four steps on the left, a terminal on the right (ttyd, make agent-demo). -->
-  <section class="slide demo split" data-src="http://localhost:8600" data-width="1240">
+  <section class="slide demo split" data-still="img/still-terminal-tool.png" data-src="http://localhost:8600" data-width="1240">
     <div class="commands">
       <h2>Run it</h2>
       <ol>
@@ -326,7 +326,7 @@ print(result.output)
       every tool call as it happens, so you can watch the loop. make run-meeting.
     </aside>
   </section>
-  <section class="slide demo split" data-src="http://localhost:8600" data-width="1240">
+  <section class="slide demo split" data-still="img/still-terminal-meeting.png" data-src="http://localhost:8600" data-width="1240">
     <div class="commands">
       <h2>Run it</h2>
       <ol style="counter-reset: run 4">
@@ -685,6 +685,62 @@ def receiveMsg_BookMeetingAssignment(self, message, sender):
     </aside>
   </section>
 
+  <!-- The team as configuration (design_config_and_navigation.md Y1, Y2) -->
+  <section class="slide team-config">
+    <h2>A team is configuration</h2>
+    <div class="cfg-grid">
+      <div class="cfg-tree">
+        <p class="file">team.yaml</p>
+        <ul>
+          <li>@Human
+            <ul><li>@Coordinator
+              <ul><li>@Scheduler</li>
+                  <li class="hl">@FacilityManager<ul><li>@Catering</li></ul></li></ul>
+            </li></ul>
+          </li>
+        </ul>
+        <p class="small">+ the 26 message types the team may send</p>
+      </div>
+      <div class="cfg-card">
+        <div class="card main step"><p class="file">facility_manager.yaml</p><b>@FacilityManager</b><span>agent_class: FacilityManager</span></div>
+        <div class="refs">
+          <div class="card ref step"><i>prompt</i><p class="file">facility_manager_prompt.yaml</p><span>52 lines of instructions</span></div>
+          <div class="card ref step"><i>model_cfg</i><p class="file">default_model.yaml</p><span>openai · gpt-6-luna</span></div>
+          <div class="card ref step"><i>tools</i><p class="file">location_mcp.yaml</p><span>the location service’s MCP server</span></div>
+          <div class="card ref step"><i>tools</i><p class="file">booking_rules.yaml</p><span>the guardrail - no tool for the model</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="takeaway step">Who is on the team, which model, which prompt, which tools - not in Python.</p>
+    <aside class="notes">
+      Every file in the catalog is a card: an id, a kind - team, agent, prompt, model, tool - and
+      the Python class that reads it. Cards point at each other by name. The team card is the tree:
+      who creates whom. The facility manager's card names its prompt, its model and its tools - and
+      the booking rules, which give the model no tool at all. Change the model or the prompt here,
+      and the code does not change. 29 cards in three teams.
+    </aside>
+  </section>
+
+  <section class="slide yaml-viewer">
+    <div class="yv-tabs">
+      <button data-file="meeting-planner/team/team.yaml">team.yaml</button>
+      <button data-file="meeting-planner/agent/facility_manager.yaml">facility_manager.yaml</button>
+      <button data-file="meeting-planner/prompt/facility_manager_prompt.yaml">facility_manager_prompt.yaml</button>
+      <button data-file="meeting-planner/model/default_model.yaml">default_model.yaml</button>
+      <button data-file="meeting-planner/tool/location_mcp.yaml">location_mcp.yaml</button>
+      <button data-file="meeting-planner/tool/booking_rules.yaml">booking_rules.yaml</button>
+      <p class="yv-help">→ next file · scroll, or <kbd>j</kbd> <kbd>k</kbd></p>
+    </div>
+    <div class="yv-panel"><pre class="yv-code"></pre></div>
+    <aside class="notes">
+      The real files, read from agents/catalog as they are now. Right arrow or the clicker moves to
+      the next file; scroll with the trackpad, or j and k. Point at: the tree of references in the
+      team; the agent card naming its prompt, model and tools; the prompt as plain text; the model
+      in three lines; the MCP server's URL and key from the environment - no secret in the file.
+    </aside>
+  </section>
+
+
 
   <!-- 11. The repository - arranged by the crew, approved by the human (repo.js) -->
   <section class="slide repo">
@@ -712,7 +768,7 @@ def receiveMsg_BookMeetingAssignment(self, message, sender):
   </section>
 
   <!-- 12. Demo: the planner, live (design_slides.md S10) -->
-  <section class="slide demo" data-src="http://localhost:8300" data-zoom="1.25">
+  <section class="slide demo" data-still="img/still-planner.png" data-src="http://localhost:8300" data-zoom="1.25">
     <aside class="notes">
       The planner, live, inside the deck. Click the bar above it to come back to the slides; the
       keys go to the planner while it has focus.
@@ -720,7 +776,7 @@ def receiveMsg_BookMeetingAssignment(self, message, sender):
   </section>
 
   <!-- 13. Demo: the akgentic console - the team, not the meeting -->
-  <section class="slide demo" data-src="http://localhost:8400" data-zoom="1.25">
+  <section class="slide demo" data-still="img/still-console.png" data-src="http://localhost:8400" data-zoom="1.25">
     <aside class="notes">
       The planner shows the meeting; the console shows the team. The framework's own front end,
       unchanged, against the same server: the agents, what each model was given, what it cost.
@@ -934,14 +990,14 @@ async def before_tool_execute(self, ctx, *, call, tool_def, args):
   </section>
 
   <!-- Demo 2: the team you talk to, and memory - the same two frames as before -->
-  <section class="slide demo" data-src="http://localhost:8300" data-zoom="1.25">
+  <section class="slide demo" data-still="img/still-planner.png" data-src="http://localhost:8300" data-zoom="1.25">
     <aside class="notes">
       Demo 2 (docs/demo.md acts 4 and 5). Talk to the planner: "A design review with Sanne and Daan
       on Tuesday, somewhere in nature, no lunch." Type "the second one" in the chat - understood,
       authorises nothing. Then memory: "Sanne is vegetarian", and the Memory tab with its history.
     </aside>
   </section>
-  <section class="slide demo" data-src="http://localhost:8400" data-zoom="1.25">
+  <section class="slide demo" data-still="img/still-console.png" data-src="http://localhost:8400" data-zoom="1.25">
     <aside class="notes">
       The console: the chat team, and exactly what @Intake's model was told - including the
       remembered items and the MemoryApplied event.
@@ -1088,6 +1144,7 @@ dataset.add_evaluator(ToolEvidenceContainsTerms(
 <script src="code.js"></script>
 <script src="patterns.js"></script>
 <script src="sequence.js"></script>
+<script src="yaml.js"></script>
 <script src="slides.js"></script>
 <script src="title.js"></script>
 </body>

@@ -27,6 +27,8 @@ What is given up: Keynote's transitions and editing by dragging. A slide is chan
 | S7 | **Speaker notes** in an `<aside class="notes">` per slide; hidden on the slide | every slide has one |
 | S8 | **Notes on the slide, not in a second window**: `n` or a quiet *notes* button at the bottom shows them in a panel over the slide, and they stay open or closed from slide to slide | decided 2026-11-06: the notes are a safety net, not something to read from; a presenter window is more than the talk needs. The button is faint (35 %) until hovered |
 | S15 | **Fast mode**: `a` or a *fast* button beside *notes* - every slide appears whole, and → and ← move a whole slide | for a run-through, or when time runs short. As faint as the notes button; a dot (● fast) is the only sign it is on. Remembered in this browser (`localStorage`), so check it is off before the talk |
+| S16 | **A slide switcher**: `o`, or a faint *slides* button - every slide as a preview; click, arrows and Enter, or a number | built 2026-11-09 ([`design_config_and_navigation.md`](design_config_and_navigation.md) §2) |
+| S17 | **Still mode**: `s`, or a faint *still* button - every live slide shows a screenshot instead | the backup (plan T1) in the deck; remembered like fast mode, so check it is off |
 | S14 | **A PDF export** - later | asked for (plan T8); a print stylesheet that lays every slide out on its own page, steps shown, demo slides as a still with their address |
 | S9 | **Served from `localhost`**, port 8500, with `make talk`; never opened as a file | the planner's login cookie is only sent to `localhost` - the same trap as `127.0.0.1` in `docs/demo.md` |
 | S10 | **Demo slides are iframes** of the planner and the services, with a link to open the same page in a tab, and a recorded video as the fallback | to be proven by the next step: the login must work inside the frame, and no server may forbid framing |
@@ -90,18 +92,19 @@ The about slide uses the bio from the DevPulse page and the old deck, and the Yu
 | 20-24 | team architectures: start with one agent, five patterns, when a team helps and when it hurts, put someone in charge, split like services ([`design_team_patterns.md`](design_team_patterns.md)) |
 | 25 | the sample: how it is built |
 | 26-30 | how agents talk: chat or messages; a message is a type; the model answers in a type, too; one meeting in messages; what messages buy you ([`design_messages.md`](design_messages.md)) |
-| 31 | the repository |
-| 32-33 | live: the planner, the console |
-| 34 | talk to the planner: `@Intake` |
-| 35-38 | memory: one item and its fields; who sees what; from a sentence to a prompt; a memory has a life |
-| 39-41 | guardrails: a check before the call; the twelve soups (code and a live run); next, `@Guard` - marked *waiting for akgentic* |
-| 42-43 | live again: the planner, the console |
-| 44 | beyond the demo: four lessons |
-| 45 | when is a team worth it? - and the link, thank you |
-| 46 | **Extras** - a divider; what follows is kept for questions |
-| 47 | now everybody has opinions (the first team slide, moved here 2026-11-07) |
-| 48-50 | evals: is the team any good?; Pydantic Evals; and for the planner? (moved here 2026-11-07) |
-| 51 | last year I drew a crew - the 2025 crew next to this year's team (moved here 2026-11-08: nobody in the room saw the 2025 deck) |
+| 31-32 | a team is configuration; the cards to scroll through - the real catalog files ([`design_config_and_navigation.md`](design_config_and_navigation.md)) |
+| 33 | the repository |
+| 34-35 | live: the planner, the console |
+| 36 | talk to the planner: `@Intake` |
+| 37-40 | memory: one item and its fields; who sees what; from a sentence to a prompt; a memory has a life |
+| 41-43 | guardrails: a check before the call; the twelve soups (code and a live run); next, `@Guard` - marked *waiting for akgentic* |
+| 44-45 | live again: the planner, the console |
+| 46 | beyond the demo: four lessons |
+| 47 | when is a team worth it? - and the link, thank you |
+| 48 | **Extras** - a divider; what follows is kept for questions |
+| 49 | now everybody has opinions (the first team slide, moved here 2026-11-07) |
+| 50-52 | evals: is the team any good?; Pydantic Evals; and for the planner? (moved here 2026-11-07) |
+| 53 | last year I drew a crew - the 2025 crew next to this year's team (moved here 2026-11-08: nobody in the room saw the 2025 deck) |
 
 ## The comic (slide 3)
 
@@ -193,7 +196,7 @@ case everything shows at once. The QR code is `img/qr-pulse.svg`, generated once
 Other ideas, not built: the three robots holding up the QR code as a sign; `git clone` typed in a
 terminal, letter by letter; the QR code assembling itself from the trace's characters.
 
-## The second half (now slides 34-45, evals in the extras)
+## The second half (now slides 36-47, evals in the extras)
 
 Built 2026-11-06 from `docs/conversation.md`, `docs/memory.md`, `docs/lessons.md`, the
 guardrails design, the plan's parts 7 and 8, my evals post (*Evaluating Akgentic applications with
@@ -204,7 +207,7 @@ Pydantic Evals*, 16 September 2026) and my own memory notes (`docs/memory_blog.m
   sees what, which is also how agents share memory (28, a table of agents against scopes); how it
   gets from a sentence into a prompt (29, a write lane and a read lane); and its lifecycle (30,
   the seven steps from my notes, each marked as in the planner or not, or not on purpose).
-- **Guardrails (39-41)**, rebuilt 2026-11-07 from what is on main (`design_guardrails.md` §14):
+- **Guardrails (41-43)**, rebuilt 2026-11-07 from what is on main (`design_guardrails.md` §14):
   where the check sits - between the model's tool call and the service, in `before_tool_execute`,
   the three rules; the live run of 6 November (*twelve soups* for two: refused, six ordered, the
   person told why) beside a shortened copy of the capability; and `@Guard` with its three
