@@ -74,6 +74,8 @@ coordinator that is plain code. That is the spine of the talk:
 > *Last year I drew a crew. This year it works - and the interesting part is everything the
 > drawing did not show.*
 
+*(Dropped 2026-11-08 - see T7. The 2025 demo worked too, and the room did not see that deck.)*
+
 And the old deck's running gag carries it: the unconvinced man under the balloons (*he does not
 look convinced yet*) is convinced at the end (*now I am having fun*).
 
@@ -213,7 +215,7 @@ Proposed in draft 2, answered on 2026-11-06.
 | T4 | Guardrails | **a slide, and something in the demo.** The decision models are left out of the demo and shown on the slide |
 | T5 | The old deck's LLM basics and ReAct (10-36) | **dropped**; the playful deck's six slides replace them (now slides 3-8) |
 | T6 | *Where to go from here* (old 48) | **dropped** |
-| T7 | Spine of the story | *last year I drew a crew, this year it works* - **kept for now, not the punch line** |
+| T7 | Spine of the story | ~~*last year I drew a crew, this year it works*~~ - **dropped 2026-11-08**: nobody in the room saw the 2025 deck, and its demo already worked, so *this year it works* is not true. The slide is in the extras |
 | T8 | Format | **HTML**, in `talk/slides`; a PDF export is needed at some point |
 | T9 | The repository | **promoted on a slide, with a QR code or a short link** - perhaps just before the demo |
 

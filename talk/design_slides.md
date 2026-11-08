@@ -87,20 +87,21 @@ The about slide uses the bio from the DevPulse page and the old deck, and the Yu
 | 14 | run it: steps 1-4 in a live terminal (ttyd, `make agent-demo`) |
 | 15 | the sample: what it does (moved here 2026-11-07, so step 5 has its request) |
 | 16-19 | step 5: one agent, three MCP servers; the code; run it (`make run-meeting`); it works, but... |
-| 20-24 | team architectures: start with one agent, five patterns, what goes wrong, split like services, the crew now built ([`design_team_patterns.md`](design_team_patterns.md)) |
-| 25 | the sample: how it is built |
-| 26-30 | how agents talk: chat or messages; a message is a type; the model answers in a type, too; one meeting in messages; what messages buy you ([`design_messages.md`](design_messages.md)) |
-| 31 | the repository |
-| 32-33 | live: the planner, the console |
-| 34 | talk to the planner: `@Intake` |
-| 35-38 | memory: one item and its fields; who sees what; from a sentence to a prompt; a memory has a life |
-| 39-41 | guardrails: a check before the call; the twelve soups (code and a live run); next, `@Guard` - marked *waiting for akgentic* |
-| 42-43 | live again: the planner, the console |
-| 44 | beyond the demo: four lessons |
-| 45 | when is a team worth it? - and the link, thank you |
-| 46 | **Extras** - a divider; what follows is kept for questions |
-| 47 | now everybody has opinions (the first team slide, moved here 2026-11-07) |
-| 48-50 | evals: is the team any good?; Pydantic Evals; and for the planner? (moved here 2026-11-07) |
+| 20-23 | team architectures: start with one agent, five patterns, what goes wrong, split like services ([`design_team_patterns.md`](design_team_patterns.md)) |
+| 24 | the sample: how it is built |
+| 25-29 | how agents talk: chat or messages; a message is a type; the model answers in a type, too; one meeting in messages; what messages buy you ([`design_messages.md`](design_messages.md)) |
+| 30 | the repository |
+| 31-32 | live: the planner, the console |
+| 33 | talk to the planner: `@Intake` |
+| 34-37 | memory: one item and its fields; who sees what; from a sentence to a prompt; a memory has a life |
+| 38-40 | guardrails: a check before the call; the twelve soups (code and a live run); next, `@Guard` - marked *waiting for akgentic* |
+| 41-42 | live again: the planner, the console |
+| 43 | beyond the demo: four lessons |
+| 44 | when is a team worth it? - and the link, thank you |
+| 45 | **Extras** - a divider; what follows is kept for questions |
+| 46 | now everybody has opinions (the first team slide, moved here 2026-11-07) |
+| 47-49 | evals: is the team any good?; Pydantic Evals; and for the planner? (moved here 2026-11-07) |
+| 50 | last year I drew a crew - the 2025 crew next to this year's team (moved here 2026-11-08: nobody in the room saw the 2025 deck) |
 
 ## The comic (slide 3)
 
@@ -192,7 +193,7 @@ case everything shows at once. The QR code is `img/qr-pulse.svg`, generated once
 Other ideas, not built: the three robots holding up the QR code as a sign; `git clone` typed in a
 terminal, letter by letter; the QR code assembling itself from the trace's characters.
 
-## The second half (now slides 34-45, evals in the extras)
+## The second half (now slides 33-44, evals in the extras)
 
 Built 2026-11-06 from `docs/conversation.md`, `docs/memory.md`, `docs/lessons.md`, the
 guardrails design, the plan's parts 7 and 8, my evals post (*Evaluating Akgentic applications with
@@ -203,7 +204,7 @@ Pydantic Evals*, 16 September 2026) and my own memory notes (`docs/memory_blog.m
   sees what, which is also how agents share memory (28, a table of agents against scopes); how it
   gets from a sentence into a prompt (29, a write lane and a read lane); and its lifecycle (30,
   the seven steps from my notes, each marked as in the planner or not, or not on purpose).
-- **Guardrails (39-41)**, rebuilt 2026-11-07 from what is on main (`design_guardrails.md` §14):
+- **Guardrails (38-40)**, rebuilt 2026-11-07 from what is on main (`design_guardrails.md` §14):
   where the check sits - between the model's tool call and the service, in `before_tool_execute`,
   the three rules; the live run of 6 November (*twelve soups* for two: refused, six ordered, the
   person told why) beside a shortened copy of the capability; and `@Guard` with its three

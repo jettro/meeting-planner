@@ -419,7 +419,7 @@ print(result.output)
       fan-out are workflows - code decides the path. Orchestrator: one agent - or one piece of
       code - in charge, the others as workers; put orchestrators under orchestrators and you have
       a hierarchy. Handoff: the conversation moves on to whoever fits. Group chat: everybody in one
-      room. Last year's deck had parallel and group chat.
+      room.
     </aside>
   </section>
 
@@ -464,29 +464,12 @@ print(result.output)
     <p class="takeaway step">“Decomposition follows context, not problem type.”<cite>Anthropic · January 2026</cite></p>
     <aside class="notes">
       We split software for the same reasons: clear responsibility, a narrow interface, change one
-      without the others. Last year's deck had a microservices slide; it still holds. Anthropic
+      without the others. Anthropic
       says it as: group work by the context it needs, not by the kind of work. In the sample, each
       agent owns one service and its tools - one bounded context each.
     </aside>
   </section>
 
-  <section class="slide crew-built">
-    <h2>Last year I drew a crew</h2>
-    <div class="crew">
-      <div class="row step"><span class="was">Personal Assistant</span><i>→</i><span class="now code">@Coordinator</span><span class="pat">orchestrator - <b>plain code</b></span></div>
-      <div class="row step"><span class="was new">new</span><i>→</i><span class="now">@Intake</span><span class="pat">handoff · the front door for the chat</span></div>
-      <div class="row step"><span class="was">Schedule Manager</span><i>→</i><span class="now">@Scheduler</span><span class="pat">worker</span></div>
-      <div class="row step"><span class="was">Facility Manager</span><i>→</i><span class="now">@FacilityManager</span><span class="pat">worker, and a hierarchy</span></div>
-      <div class="row step"><span class="was">Food Manager</span><i>→</i><span class="now sub">@Catering</span><span class="pat">under the facility manager</span></div>
-      <div class="row step"><span class="was new">new</span><i>→</i><span class="now human">@Human</span><span class="pat">in the loop - nothing booked before a yes</span></div>
-    </div>
-    <p class="declined step">Turned down: group chat, and a model as the router - hard to trust, to test, to explain.</p>
-    <aside class="notes">
-      March 2025: four boxes on a slide. Now it runs. Two members were not on the drawing: the
-      coordinator - in charge, and plain code, so the orchestrator that contains the errors has no
-      model at all - and you. What I turned down, and why. Next: the sample itself.
-    </aside>
-  </section>
 
 
   <!-- 10. The sample: how it is built -->
@@ -536,6 +519,9 @@ print(result.output)
       in the configuration, and a test holds it. Catering sits under the facility manager: a room
       and its lunch go together. On top, the coordinator - plain code, no model, because the order
       of the steps is known. Models only where judgement is needed: "somewhere quiet", "no bread".
+      In the patterns' terms: an orchestrator in plain code, a hierarchy under the facility
+      manager, and you in the loop. Turned down: group chat, and a model as the router - harder to
+      trust, to test and to explain.
     </aside>
   </section>
 
@@ -729,7 +715,7 @@ def receiveMsg_BookMeetingAssignment(self, message, sender):
     </div>
     <p class="takeaway step">The model listens; the coordinator decides; the human approves.</p>
     <aside class="notes">
-      The old deck's Personal Assistant - but not in charge. @Intake turns your sentence into the
+      A personal assistant - but not in charge. @Intake turns your sentence into the
       typed request the form would have sent: it looks every name up and never guesses an email, it
       describes a place in words and leaves choosing to the facility manager, and it sends the
       request once. Then it relays the team's questions to you. Typing "just book the ten o'clock"
@@ -1039,6 +1025,26 @@ dataset.add_evaluator(ToolEvidenceContainsTerms(
       Not built yet for the planner - the next step on the roadmap, with guardrails. Many of the
       checks are the same: what a guardrail stops at runtime, an eval measures over a set of cases
       before you release a new prompt or a new model.
+    </aside>
+  </section>
+
+
+  <!-- In the extras since 2026-11-08: the comparison with the 2025 deck needs that deck -->
+  <section class="slide crew-built">
+    <h2>Last year I drew a crew</h2>
+    <div class="crew">
+      <div class="row step"><span class="was">Personal Assistant</span><i>→</i><span class="now code">@Coordinator</span><span class="pat">orchestrator - <b>plain code</b></span></div>
+      <div class="row step"><span class="was new">new</span><i>→</i><span class="now">@Intake</span><span class="pat">handoff · the front door for the chat</span></div>
+      <div class="row step"><span class="was">Schedule Manager</span><i>→</i><span class="now">@Scheduler</span><span class="pat">worker</span></div>
+      <div class="row step"><span class="was">Facility Manager</span><i>→</i><span class="now">@FacilityManager</span><span class="pat">worker, and a hierarchy</span></div>
+      <div class="row step"><span class="was">Food Manager</span><i>→</i><span class="now sub">@Catering</span><span class="pat">under the facility manager</span></div>
+      <div class="row step"><span class="was new">new</span><i>→</i><span class="now human">@Human</span><span class="pat">in the loop - nothing booked before a yes</span></div>
+    </div>
+    <p class="declined step">Turned down: group chat, and a model as the router - hard to trust, to test, to explain.</p>
+    <aside class="notes">
+      The crew from the 2025 talk next to this team. Two members were not on that drawing: the
+      coordinator - in charge, and plain code, so the orchestrator that contains the errors has no
+      model at all - and you. What I turned down, and why. Next: the sample itself.
     </aside>
   </section>
 
