@@ -25,7 +25,16 @@ class ServiceEndpoint(BaseModel):
     """One of the three services, as the platform screen needs to see it."""
 
     name: str
+
+    #: Where the server reaches it: a compose name, which a browser cannot resolve.
     url: str
+
+    #: Where a browser reaches it, for the platform screen's link. The server
+    #: never calls this; it only hands it on. Empty means "same as `url`".
+    public_url: str = ""
+
+    def link(self) -> str:
+        return self.public_url or self.url
 
 
 class AuthSettings(BaseModel):
@@ -76,9 +85,10 @@ class ServerSettings(BaseModel):
     services: list[ServiceEndpoint] = Field(default_factory=list)
 
     #: How long the platform screen waits on a service before calling it down.
-    #: Short on purpose: an unreachable service should colour the dot quickly,
-    #: not make the whole screen hang on the slowest one.
-    health_timeout_seconds: float = 3.0
+    #: Short on purpose: an unreachable service should colour the dot quickly.
+    #: Each service is asked on its own route, so the slowest one only delays
+    #: its own dot, never the others.
+    health_timeout_seconds: float = 2.0
 
     auth: AuthSettings = Field(default_factory=AuthSettings)
 
@@ -104,17 +114,20 @@ class ServerSettings(BaseModel):
                 ServiceEndpoint(
                     name="meeting-service",
                     url=_env("MEETING_SERVICE_URL", "http://meeting-service:8101"),
+                    public_url=_env("MEETING_SERVICE_PUBLIC_URL", "http://localhost:8001"),
                 ),
                 ServiceEndpoint(
                     name="location-service",
                     url=_env("LOCATION_SERVICE_URL", "http://location-service:8102"),
+                    public_url=_env("LOCATION_SERVICE_PUBLIC_URL", "http://localhost:8002"),
                 ),
                 ServiceEndpoint(
                     name="nomnom-service",
                     url=_env("NOMNOM_SERVICE_URL", "http://nomnom-service:8103"),
+                    public_url=_env("NOMNOM_SERVICE_PUBLIC_URL", "http://localhost:8003"),
                 ),
             ],
-            health_timeout_seconds=float(_env("HEALTH_TIMEOUT_SECONDS", "3.0")),
+            health_timeout_seconds=float(_env("HEALTH_TIMEOUT_SECONDS", "2.0")),
             auth=AuthSettings(
                 mode="off" if _env("AUTH", "demo") == "off" else "demo",
                 secret=SecretStr(_env("AUTH_SECRET", "")),

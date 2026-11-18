@@ -12,8 +12,8 @@ import {
   Typography,
   createTheme,
 } from "@mui/material";
-import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { type ReactNode, useState } from "react";
 import { Link, MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import ChatPage from "./pages/ChatPage";
 import LoginPage from "./pages/LoginPage";
@@ -58,17 +58,17 @@ function UserBar() {
  * The tabs, for somebody who is logged in - otherwise the login page.
  *
  * The team being watched and every cached answer belong to one person, so a
- * change of person starts both afresh: the team provider is keyed on who it is,
- * and the query cache is emptied.
+ * change of person starts both afresh: everything below the gate is keyed on
+ * who it is, so the team provider and the query cache are new for each person.
+ *
+ * A cache of their own, not a shared one emptied in an effect: the effect runs
+ * after the first page has already asked its questions, and emptying the cache
+ * then orphans those answers - the page sat on its spinner until the next
+ * refetch, which for a query with none is forever.
  */
 function Gate() {
   const { user } = useSession();
-  const queries = useQueryClient();
   const who = user?.user_id ?? null;
-
-  useEffect(() => {
-    queries.clear();
-  }, [who, queries]);
 
   if (user === undefined) return <CircularProgress sx={{ m: 4 }} />;
   if (user === null) {
@@ -86,10 +86,18 @@ function Gate() {
     );
   }
   return (
-    <TeamProvider key={who}>
-      <Shell />
-    </TeamProvider>
+    <PersonalCache key={who}>
+      <TeamProvider>
+        <Shell />
+      </TeamProvider>
+    </PersonalCache>
   );
+}
+
+/** A query cache that lives exactly as long as one person is logged in. */
+function PersonalCache({ children }: { children: ReactNode }) {
+  const [queries] = useState(() => new QueryClient());
+  return <QueryClientProvider client={queries}>{children}</QueryClientProvider>;
 }
 
 function Shell() {

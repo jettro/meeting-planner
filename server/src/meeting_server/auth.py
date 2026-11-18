@@ -267,7 +267,11 @@ class AuthModule(BaseAppModule):
 
     def contribute_allowlist(self) -> AllowlistSpec:
         # Compose health checks and the platform screen's dots carry no session.
-        return AllowlistSpec(exact=frozenset({"/platform/health"}))
+        # `/platform/services` and `/platform/health/{name}` are the screen's
+        # per-service routes; they say no more than `/platform/health` does.
+        return AllowlistSpec(
+            exact=frozenset({"/platform/health", "/platform/services"}), prefixes=("/platform/health/",)
+        )
 
     def contribute_middleware(self, context: BuildContext) -> list[MiddlewareSpec]:
         return [

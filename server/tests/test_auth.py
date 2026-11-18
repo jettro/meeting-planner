@@ -92,6 +92,14 @@ def test_the_login_page_and_health_need_no_session(app):
         assert client.get("/auth/me").status_code == 401
 
 
+def test_the_platform_screen_needs_no_session(app):
+    """Its per-service routes, too: a 404 for an unknown name, not a 401."""
+    with TestClient(app) as client:
+        assert client.get("/platform/health").status_code == 200
+        assert client.get("/platform/services").status_code == 200
+        assert client.get("/platform/health/nobody").status_code == 404
+
+
 def test_picking_a_person_logs_in_as_them(app):
     with TestClient(app):
         client = logged_in(app, SANNE)

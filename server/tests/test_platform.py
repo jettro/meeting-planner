@@ -8,6 +8,9 @@ throws away the only clue.
 
 from __future__ import annotations
 
+import asyncio
+import time
+
 import httpx
 import pytest
 from fastapi import FastAPI
@@ -16,9 +19,13 @@ from meeting_server import platform
 from meeting_server.settings import ServerSettings, ServiceEndpoint
 
 SERVICES = [
-    ServiceEndpoint(name="meeting-service", url="http://meeting-service:8101"),
-    ServiceEndpoint(name="location-service", url="http://location-service:8102"),
-    ServiceEndpoint(name="nomnom-service", url="http://nomnom-service:8103"),
+    ServiceEndpoint(
+        name="meeting-service", url="http://meeting-service:8001", public_url="http://localhost:8001"
+    ),
+    ServiceEndpoint(
+        name="location-service", url="http://location-service:8002", public_url="http://localhost:8002"
+    ),
+    ServiceEndpoint(name="nomnom-service", url="http://nomnom-service:8003"),
 ]
 
 
@@ -97,3 +104,60 @@ def test_the_probe_reports_every_service_even_when_all_fail(monkeypatch, setting
 
     assert len(body["services"]) == 3
     assert {s["status"] for s in body["services"]} == {"unreachable"}
+
+
+def test_the_list_of_services_asks_nobody(monkeypatch, settings):
+    """The screen draws its frame from this, so it must not wait on a probe."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("listing the services must not call them")
+
+    body = client_for(monkeypatch, settings, handler).get("/platform/services").json()
+
+    assert [s["name"] for s in body] == [s.name for s in SERVICES]
+    # A browser cannot resolve a compose name, so the link is the public one -
+    # or the internal one, when no public one is configured.
+    assert [s["link"] for s in body] == [
+        "http://localhost:8001",
+        "http://localhost:8002",
+        "http://nomnom-service:8003",
+    ]
+
+
+def test_one_service_is_asked_on_its_own(monkeypatch, settings):
+    asked = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        asked.append(request.url.host)
+        return httpx.Response(503)
+
+    body = client_for(monkeypatch, settings, handler).get("/platform/health/location-service").json()
+
+    assert asked == ["location-service"]
+    assert body["status"] == "degraded"
+    assert body["link"] == "http://localhost:8002"
+
+
+def test_an_unknown_service_is_not_found(monkeypatch, settings):
+    client = client_for(monkeypatch, settings, lambda request: httpx.Response(200))
+
+    assert client.get("/platform/health/no-such-service").status_code == 404
+
+
+def test_a_service_that_hangs_is_unreachable_within_the_timeout(monkeypatch, settings):
+    """However the answer is held up, the dot turns within the timeout."""
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "nomnom-service":
+            await asyncio.sleep(10)
+        return httpx.Response(200)
+
+    client = client_for(monkeypatch, settings, handler)
+    started = time.monotonic()
+    body = client.get("/platform/health").json()
+    elapsed = time.monotonic() - started
+
+    hung = next(s for s in body["services"] if s["name"] == "nomnom-service")
+    assert hung["status"] == "unreachable"
+    assert "0.5s" in hung["detail"]
+    assert elapsed < 2

@@ -161,9 +161,16 @@ export function waitingForTheHuman(state: CoordinatorState): boolean {
   return state.candidates.length > 0 || state.awaiting_lunch;
 }
 
-export interface ServiceHealth {
+/** A service as the platform screen lists it, before it has been asked anything. */
+export interface ServiceInfo {
   name: string;
+  /** Where the server reaches it: a compose name, not for a browser. */
   url: string;
+  /** Where a browser opens it. */
+  link: string;
+}
+
+export interface ServiceHealth extends ServiceInfo {
   status: "up" | "degraded" | "unreachable";
   detail: string | null;
 }
@@ -383,6 +390,13 @@ export const auth = {
 
 export const api = {
   platformHealth: () => call<PlatformHealth>("/platform/health"),
+
+  /** The services the platform screen shows - instant, nothing is probed. */
+  platformServices: () => call<ServiceInfo[]>("/platform/services"),
+
+  /** One service, asked on its own so a slow one holds up only itself. */
+  serviceHealth: (name: string) =>
+    call<ServiceHealth>(`/platform/health/${encodeURIComponent(name)}`),
 
   /** What is remembered for and about the person logged in, with its history. */
   myMemory: () => call<MyMemory>("/me/memory"),

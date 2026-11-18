@@ -94,6 +94,11 @@ services:
       MEETING_SERVICE_URL: http://meeting-service:8001
       LOCATION_SERVICE_URL: http://location-service:8002
       NOMNOM_SERVICE_URL: http://nomnom-service:8003
+      # The same services as a browser reaches them, for the platform screen's
+      # links: a compose name means nothing outside this network.
+      MEETING_SERVICE_PUBLIC_URL: ${MEETING_SERVICE_PUBLIC_URL:-http://localhost:8001}
+      LOCATION_SERVICE_PUBLIC_URL: ${LOCATION_SERVICE_PUBLIC_URL:-http://localhost:8002}
+      NOMNOM_SERVICE_PUBLIC_URL: ${NOMNOM_SERVICE_PUBLIC_URL:-http://localhost:8003}
       # The SPA is served from its own origin, so CORS is not optional here.
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:8300,http://localhost:8400}
       # Who is asking (design_auth.md). `demo` lets you pick a person the

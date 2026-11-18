@@ -59,7 +59,7 @@ def test_the_stock_team_routes_survive_the_splice(app):
 
 
 def test_our_route_is_mounted(app):
-    assert "GET /platform/health" in routes(app)
+    assert {"GET /platform/health", "GET /platform/services", "GET /platform/health/{name}"} <= routes(app)
 
 
 def test_there_is_no_plan_store_to_read(app):
