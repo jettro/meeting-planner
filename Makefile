@@ -128,23 +128,17 @@ console: ## Open the Akgentic console (http://localhost:8400)
 talk: ## Serve the talk's slides (http://localhost:8500)
 	python3 talk/serve.py
 
-# The first agent, run on a slide (talk/design_agent_demo.md): a terminal on a web
-# page, only on localhost. Only the OpenAI key and the three MCP keys are passed in,
-# read from stdin; step 5 reaches the MCP servers on the host's published ports.
-ENV_FILE ?= .env
-agent-demo: ## Start the talk's terminal with the agent steps (http://localhost:8600)
-	docker build -q -t agent-demo talk/agent-demo
+# The first agent, run on a slide (talk/design_agent_demo.md): ttyd in the compose
+# stack, so `make up` and `make down` start and stop it with the rest. It is on
+# localhost only. These targets rebuild or stop just the terminal; the first also
+# removes a container from before it was in compose, which would hold the port.
+agent-demo: ## (Re)build and start the talk's terminal (http://localhost:8600)
 	-@docker rm -f agent-demo >/dev/null 2>&1
-	@grep -E '^(OPENAI_API_KEY|MEETING_MCP_API_KEY|LOCATION_MCP_API_KEY|NOMNOM_MCP_API_KEY)=' $(ENV_FILE) \
-		| docker run -d --name agent-demo --env-file /dev/stdin \
-		-e MEETING_MCP_URL=http://host.docker.internal:8101/mcp \
-		-e LOCATION_MCP_URL=http://host.docker.internal:8102/mcp \
-		-e NOMNOM_MCP_URL=http://host.docker.internal:8103/mcp \
-		-p 127.0.0.1:8600:7681 agent-demo >/dev/null
+	docker compose up -d --build agent-demo
 	@echo "Terminal on http://localhost:8600 - make help shows the steps"
 
 agent-demo-stop: ## Stop the talk's terminal
-	docker rm -f agent-demo
+	docker compose stop agent-demo
 
 clean: ## Stop containers and remove volumes (destroys SQLite data!)
 	docker compose down -v

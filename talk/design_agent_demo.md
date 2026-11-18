@@ -30,8 +30,8 @@ exist, and `openai:gpt-6-luna` is in `KnownModelName`.
 | A3 | **The code on the slides matches the files that run** | how is open, see Q3; a copy on a slide drifts from what runs |
 | A4 | **A terminal in the browser with [ttyd](https://github.com/tsl0922/ttyd)** | a real shell is more honest for an audience of developers than a "run" button; ttyd serves one over a web page in a single binary |
 | A5 | **ttyd runs in a Docker container**: `uv`, Python 3.12, the mini project with `uv sync` done at build time, ttyd on `localhost:8600` | everything is downloaded before the talk, nothing on the venue wifi except the call to OpenAI; and it is apart from the laptop's own shell and files. Docker 29.8 is installed |
-| A6 | **The key goes in at start-up** with `docker run --env-file .env`, never in the image or the repo | the image can be rebuilt and shared safely; only `OPENAI_API_KEY` is used |
-| A7 | **A `make agent-demo` target** builds and starts the container, next to `make talk` | one command before the talk |
+| A6 | **The key goes in at start-up**, from `.env`, never in the image or the repo | the image can be rebuilt and shared safely. Since 2026-11-18 compose passes it, by name - `OPENAI_API_KEY` and the three MCP keys, nothing else from `.env` |
+| A7 | **In the compose stack** (2026-11-18): service `agent-demo`, so `make up` and `make down` start and stop it with the rest; `make agent-demo` rebuilds and starts only the terminal | one command before the talk. It was a separate `docker run` first |
 | A8 | **The terminal is a demo slide** (S10): an iframe through the existing `data-src` / `data-zoom` and the ‹ › bar, which already gives the keys back to the deck | no new engine work |
 | A9 | **Readable from the back**: ttyd's `-t fontSize=28`, a light theme matching the off-white slides, and a short prompt (`$ `) | the default terminal is far too small for a projector |
 | A10 | **The answer is printed plainly**: each step prints only `result.output`; step 3 also prints how many messages were sent along | the audience should read the answer, not a log |
@@ -74,7 +74,7 @@ second = agent.run_sync("What was my name, and how many people?",
 print(second.output)
 ```
 
-How the `.env` is loaded is part of the build: `docker run --env-file` puts the key in the
+How the `.env` is loaded is part of the build: compose (first `docker run --env-file`) puts the key in the
 environment, so the scripts need no `dotenv` line, which keeps them shorter on the slide.
 
 ## The questions, answered (2026-11-06)
@@ -105,8 +105,9 @@ books**, in the local services; and the message is **it works, but...**.
   Sixteen tools: 6 meeting, 5 location, 5 nomnom.
 - `calls.py` - an `event_stream_handler` that prints each `FunctionToolCallEvent`, so the room sees
   the loop. It is not on the slide; the code slide elides the date function too (*as in step 2*).
-- `make agent-demo` now passes the three `*_MCP_API_KEY`s as well, and the MCP URLs as
-  `host.docker.internal:810x` - the services' published ports. It needs `make up`.
+- The terminal gets the three `*_MCP_API_KEY`s as well. Since it moved into the compose stack
+  (2026-11-18) it reaches the MCP servers inside the network (`meeting-service:8101`, ...), and
+  waits for them to be healthy; before that it went through `host.docker.internal`.
 - **The rehearsal run, 7 November**: eleven tool calls - people, places, slots, rooms, menu,
   feasibility, then `book_meeting`, `book_room` (the Library's study room, Tuesday 12:00-13:00)
   and `place_order` twice, the first with a malformed item. Three sandwiches nobody asked for.
@@ -123,7 +124,7 @@ books**, in the local services; and the message is **it works, but...**.
 
 - **ttyd is not packaged for Debian bookworm**: the image takes ttyd 1.7.7's own release binary,
   pinned by version and checked against its SHA-256.
-- **Only the key goes in**: `grep '^OPENAI_API_KEY=' .env | docker run --env-file /dev/stdin`,
+- **Only the key goes in** (first version; compose names the four keys now): `grep '^OPENAI_API_KEY=' .env | docker run --env-file /dev/stdin`,
   so the key is never on a command line, and the rest of `.env` stays out. The port is published
   on `127.0.0.1` only - it is a writable shell.
 - **The answers, on 6 November**: step 1 says it does not know today's date; step 2 says

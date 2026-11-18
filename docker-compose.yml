@@ -135,6 +135,30 @@ services:
     depends_on:
       - server
 
+  # The talk's terminal (talk/design_agent_demo.md): ttyd serving a shell with the
+  # five agent steps, shown in a slide. Only on localhost - it is a writable shell
+  # holding an OpenAI key. Step 5 reaches the MCP servers inside the network.
+  agent-demo:
+    build:
+      context: ./talk/agent-demo
+    ports:
+      - "127.0.0.1:8600:7681"
+    depends_on:
+      meeting-service:
+        condition: service_healthy
+      location-service:
+        condition: service_healthy
+      nomnom-service:
+        condition: service_healthy
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      MEETING_MCP_URL: http://meeting-service:8101/mcp
+      LOCATION_MCP_URL: http://location-service:8102/mcp
+      NOMNOM_MCP_URL: http://nomnom-service:8103/mcp
+      MEETING_MCP_API_KEY: ${MEETING_MCP_API_KEY:-dev-meeting-mcp-key}
+      LOCATION_MCP_API_KEY: ${LOCATION_MCP_API_KEY:-dev-location-mcp-key}
+      NOMNOM_MCP_API_KEY: ${NOMNOM_MCP_API_KEY:-dev-nomnom-mcp-key}
+
   agents:
     build:
       context: ./agents
