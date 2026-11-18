@@ -89,7 +89,7 @@ The about slide uses the bio from the DevPulse page and the old deck, and the Yu
 | 14 | run it: steps 1-4 in a live terminal (ttyd, `make agent-demo`) |
 | 15 | the sample: what it does (moved here 2026-11-07, so step 5 has its request) |
 | 16-18 | step 5: one agent, three MCP servers; the code; run it (`make run-meeting`) |
-| 19-24 | from one agent to a team: one agent, every job (picture); split the work (picture); start with one agent, but... (both sides); put someone in charge (picture and the 17x / 4x dots); five patterns; split like services ([`design_team_patterns.md`](design_team_patterns.md), pictures: [`image_prompts.md`](image_prompts.md)) |
+| 19-24 | from one agent to a team: one agent, every job (picture); split the work (picture); five patterns; start with one agent, but... (both sides); put someone in charge (picture and the 17x / 4x dots); split like services ([`design_team_patterns.md`](design_team_patterns.md), pictures: [`image_prompts.md`](image_prompts.md)) |
 | 25 | the sample: how it is built |
 | 26-30 | how agents talk: chat or messages; a message is a type; the model answers in a type, too; one meeting in messages; what messages buy you ([`design_messages.md`](design_messages.md)) |
 | 31-32 | a team is configuration; the cards to scroll through - the real catalog files ([`design_config_and_navigation.md`](design_config_and_navigation.md)) |

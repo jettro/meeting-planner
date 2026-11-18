@@ -382,7 +382,45 @@ print(result.output)
       The obvious move: give each part to its own agent - one for the agenda, one for the rooms,
       one for lunch. Each has fewer tools and a smaller job. But now they have to work together,
       and nobody is in charge: two reach for the same room, messages go back and forth, one waits.
-      Before we fix that: is a team even the right answer?
+      How do you arrange a team at all? There are only a few shapes.
+    </aside>
+  </section>
+
+  <section class="slide patterns">
+    <h2>Five ways to arrange a team</h2>
+    <div class="pattern-row">
+      <figure class="pattern step" data-pattern="pipeline">
+        <div class="diagram"></div>
+        <figcaption><b>Pipeline</b><span>one after the other</span>
+          <small>Anthropic: prompt chaining · Google, Microsoft: sequential</small></figcaption>
+      </figure>
+      <figure class="pattern step" data-pattern="fanout">
+        <div class="diagram"></div>
+        <figcaption><b>Fan-out</b><span>side by side, then gather</span>
+          <small>Anthropic: parallelization · Google: parallel · Microsoft: concurrent</small></figcaption>
+      </figure>
+      <figure class="pattern step" data-pattern="orchestrator">
+        <div class="diagram"></div>
+        <figcaption><b>Orchestrator</b><span>one in charge - nested, a hierarchy</span>
+          <small>Anthropic: orchestrator-workers · OpenAI: manager · LangChain: supervisor</small></figcaption>
+      </figure>
+      <figure class="pattern step" data-pattern="handoff">
+        <div class="diagram"></div>
+        <figcaption><b>Handoff</b><span>pass the conversation on</span>
+          <small>Anthropic: routing · OpenAI, Microsoft: handoff · Google: transfer</small></figcaption>
+      </figure>
+      <figure class="pattern step" data-pattern="groupchat">
+        <div class="diagram"></div>
+        <figcaption><b>Group chat</b><span>everyone in one conversation</span>
+          <small>Microsoft: group chat · LangChain: network, swarm</small></figcaption>
+      </figure>
+    </div>
+    <aside class="notes">
+      Every framework has its own names; underneath there are about five shapes. Pipeline and
+      fan-out are workflows - code decides the path. Orchestrator: one agent - or one piece of
+      code - in charge, the others as workers; put orchestrators under orchestrators and you have
+      a hierarchy. Handoff: the conversation moves on to whoever fits. Group chat: everybody in one
+      room.
     </aside>
   </section>
 
@@ -449,43 +487,6 @@ print(result.output)
     </aside>
   </section>
 
-  <section class="slide patterns">
-    <h2>Five ways to arrange a team</h2>
-    <div class="pattern-row">
-      <figure class="pattern step" data-pattern="pipeline">
-        <div class="diagram"></div>
-        <figcaption><b>Pipeline</b><span>one after the other</span>
-          <small>Anthropic: prompt chaining · Google, Microsoft: sequential</small></figcaption>
-      </figure>
-      <figure class="pattern step" data-pattern="fanout">
-        <div class="diagram"></div>
-        <figcaption><b>Fan-out</b><span>side by side, then gather</span>
-          <small>Anthropic: parallelization · Google: parallel · Microsoft: concurrent</small></figcaption>
-      </figure>
-      <figure class="pattern step" data-pattern="orchestrator">
-        <div class="diagram"></div>
-        <figcaption><b>Orchestrator</b><span>one in charge - nested, a hierarchy</span>
-          <small>Anthropic: orchestrator-workers · OpenAI: manager · LangChain: supervisor</small></figcaption>
-      </figure>
-      <figure class="pattern step" data-pattern="handoff">
-        <div class="diagram"></div>
-        <figcaption><b>Handoff</b><span>pass the conversation on</span>
-          <small>Anthropic: routing · OpenAI, Microsoft: handoff · Google: transfer</small></figcaption>
-      </figure>
-      <figure class="pattern step" data-pattern="groupchat">
-        <div class="diagram"></div>
-        <figcaption><b>Group chat</b><span>everyone in one conversation</span>
-          <small>Microsoft: group chat · LangChain: network, swarm</small></figcaption>
-      </figure>
-    </div>
-    <aside class="notes">
-      Every framework has its own names; underneath there are about five shapes. Pipeline and
-      fan-out are workflows - code decides the path. Orchestrator: one agent - or one piece of
-      code - in charge, the others as workers; put orchestrators under orchestrators and you have
-      a hierarchy. Handoff: the conversation moves on to whoever fits. Group chat: everybody in one
-      room.
-    </aside>
-  </section>
 
   <section class="slide split-services">
     <h2>Split agents like services</h2>
