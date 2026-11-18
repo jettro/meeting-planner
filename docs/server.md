@@ -43,7 +43,7 @@ Two browser apps look at it:
 
 | Tab | What it is for |
 |---|---|
-| **Platform** | whether the three services are up, asked every ten seconds |
+| **Platform** | whether the three services are up, each asked on its own every ten seconds, with a link to open each one |
 | **Plan a meeting** | the form: who, which day, how long, where, and whether you attend |
 | **Talk to the planner** | the conversation with `@Intake`; the questions appear inline as cards |
 | **Meetings** | every meeting you arranged, its ids - meeting, room booking, lunch order - and what it waits for; cancel or resume |
@@ -56,10 +56,19 @@ all show the same thing.
 
 ### What the sample adds to the server
 
-- **`/platform/health`** asks the three services' own `/health` and reports all three at once -
+- **A health check over the three services.** It asks each service's own `/health` and reports
   *up*, *degraded* (it answered, badly) or *unreachable* (it did not answer), because a 503 and a
   silence have different causes. The server's own readiness says nothing about whether nomnom is
   down - and that failure would otherwise arrive several turns later, dressed as a tool error.
+  The Platform tab draws its frame from `/platform/services`, which asks nobody and answers at
+  once, then asks `/platform/health/{name}` for each service in parallel and colours each card as
+  its answer arrives. A service gets two seconds (`HEALTH_TIMEOUT_SECONDS`) before it is
+  *unreachable*, and that is a cap on the whole answer, not per phase - so a hung service delays
+  only its own card, and a stopped one shows as down at once. `/platform/health` still answers
+  for all three in one call, for anything that wants the whole picture. None of the three needs a
+  login. Each service also has a public URL (`MEETING_SERVICE_PUBLIC_URL` and its two siblings,
+  `http://localhost:800x` by default): the server reaches a service by its compose name, which a
+  browser cannot open, so the card's link is the public one.
 - **A login** - see [who is asking](who-is-asking.md).
 - **`/me/memory`** - see [memory](memory.md).
 - **Two fixes to the event store**, described below.
@@ -75,6 +84,8 @@ is the framework's. The routes the planner uses:
 | `WS /ws/{id}`, `GET /teams/{id}/events` | the team's events, live or stored | framework |
 | `GET /teams`, `GET /teams/{id}/agent-states` | your teams, and each coordinator's record | framework |
 | `POST /teams/{id}/restore` | revive a stopped team | framework |
+| `GET /platform/services` | the three services, without asking them | ours |
+| `GET /platform/health/{name}` | one service, asked on its own | ours |
 | `GET /platform/health` | the three services at once | ours |
 | `/auth/...` | the login | ours |
 | `GET /me/memory` | the Memory tab | ours |
@@ -143,7 +154,7 @@ a screen is waiting for. Only building the screen that reads the history found i
 | File | What is there |
 |---|---|
 | `server/src/meeting_server/app.py` | the server's composition: the framework, plus what is added |
-| `server/src/meeting_server/platform.py` | `/platform/health` |
+| `server/src/meeting_server/platform.py` | `/platform/services` and `/platform/health` |
 | `server/src/meeting_server/yaml_types.py` | the two fixes to the event store |
 | `agents/src/meeting_agents/human.py` | `@Human`: turns your text into a typed decision |
 | `gui/src/api/client.ts` | every call the planner makes to the server |
@@ -155,4 +166,4 @@ The design: [`design_gui.md`](design/design_gui.md).
 
 ---
 
-*Last checked against the code: 2026-11-03, `5e9a494`.*
+*Last checked against the code: 2026-11-18, `dc08eac`.*
