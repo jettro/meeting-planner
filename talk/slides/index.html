@@ -352,47 +352,100 @@ print(result.output)
       the room, orders lunch. It really books - cancel rehearsal bookings before the talk.
     </aside>
   </section>
-  <section class="slide solo-but">
-    <h2>It works, but…</h2>
-    <ul class="buts">
-      <li class="step">we told it <b>nobody can answer</b> - so it decided for you</li>
-      <li class="step">it chose <b>the time</b> - 11:00, 13:00, 14:00 in three runs</li>
-      <li class="step">it chose <b>the lunch</b> - two or three sandwiches, nobody asked what</li>
-      <li class="step">nothing checked <b>what it booked</b> against what was asked</li>
-      <li class="step"><b>one prompt</b> carries every tool, and every risk</li>
-    </ul>
-    <p class="note step">From the rehearsal runs, 7 November - about ten tool calls each, all of it booked.</p>
-    <aside class="notes">
-      It did the job - in one go, about a minute. And that is the point: it did all of it without
-      asking, because we told it nobody could answer. Without that line it asked about lunch - and
-      the script had no way to reply. A simplified version of reality: no approvals, no checks.
-      It picked a time, decided what you eat. Nothing between the model and the services checked any of it. This is where the
-      team comes in - not because one agent cannot, but because you want someone in charge.
-    </aside>
-  </section>
 
   <!-- Part 3: team architectures - what others say, and what the sample does
        (design_team_patterns.md, slides A-E). -->
-  <section class="slide one-first">
-    <h2>Start with one agent</h2>
-    <div class="quotes">
-      <blockquote class="step">“Finding the simplest solution possible, and only increasing complexity when needed.”<cite>Anthropic · Building effective agents · 2024</cite></blockquote>
-      <blockquote class="step">“Maximize a single agent’s capabilities first.”<cite>OpenAI · A practical guide to building agents · 2025</cite></blockquote>
-      <blockquote class="step">“Don’t build multi-agents.”<cite>Cognition · 2025</cite></blockquote>
-    </div>
-    <div class="reasons step">
-      <p class="lead">Split only for</p>
-      <div class="reason"><b>Context protection</b><span>keep what one agent reads out of the others’ heads</span></div>
-      <div class="reason"><b>Parallel work</b><span>many things at once - thoroughness more than speed</span></div>
-      <div class="reason"><b>Specialization</b><span>too many tools for one prompt</span></div>
-      <cite>Anthropic · When to use multi-agent systems · January 2026</cite>
-    </div>
-    <p class="takeaway step">And pay for it: 3 to 15 times the tokens.</p>
+
+
+
+
+
+
+
+  <!-- 10. The sample: how it is built -->
+  <section class="slide art-slide">
+    <h2>One agent, every job</h2>
+    <figure class="art-fig"><img src="img/art-1-solo.jpg" alt="One robot at a desk, overwhelmed by stacks of work and a wall of tools" onerror="this.outerHTML='<div class=art-missing>image to come: art-1-solo.jpg - see talk/image_prompts.md</div>'"></figure>
+    <p class="art-caption step">Sixteen tools, three services, every step - one prompt holds it all.</p>
     <aside class="notes">
-      Before the patterns: everybody who builds these says the same thing first - one agent, as far
-      as it goes. Anthropic, OpenAI, and Cognition wrote a whole post called "Don't build
-      multi-agents". Anthropic's January post names three reasons that do justify a team. The
-      price: their research system used about 15 times the tokens of a chat.
+      It worked - but look at what we asked of it. One prompt with every tool of three services,
+      every lookup's result piling up in one conversation, every booking in one pair of hands. It
+      manages. The question is how far this goes when the work grows.
+    </aside>
+  </section>
+
+  <section class="slide art-slide">
+    <h2>Split the work</h2>
+    <figure class="art-fig"><img src="img/art-2-team.jpg" alt="A cheerful team of robots, each with its own tools, bumping into each other with nobody in charge" onerror="this.outerHTML='<div class=art-missing>image to come: art-2-team.jpg - see talk/image_prompts.md</div>'"></figure>
+    <p class="art-caption step">Each job is lighter. But who decides - and who notices when two do the same thing?</p>
+    <aside class="notes">
+      The obvious move: give each part to its own agent - one for the agenda, one for the rooms,
+      one for lunch. Each has fewer tools and a smaller job. But now they have to work together,
+      and nobody is in charge: two reach for the same room, messages go back and forth, one waits.
+      Before we fix that: is a team even the right answer?
+    </aside>
+  </section>
+
+  <section class="slide one-or-team">
+    <h2>Start with one agent, but…</h2>
+    <p class="voices">“Find the simplest solution possible” - Anthropic · “Maximize a single agent’s capabilities first” - OpenAI · “Don’t build multi-agents” - Cognition</p>
+    <div class="ot-cols">
+      <div class="ot-col">
+        <p class="lead">Start with one agent</p>
+        <ul>
+          <li class="step"><b>simpler</b> to build, trace and debug</li>
+          <li class="step"><b>one context</b> - no decision gets lost between agents</li>
+          <li class="step"><b>cheaper</b> - a team costs 3 to 15 times the tokens</li>
+          <li class="step"><b>work in a chain</b> gets worse with a team: −39 to −70 %</li>
+        </ul>
+      </div>
+      <div class="ot-col team">
+        <p class="lead">Move to a team when</p>
+        <ul>
+          <li class="step">the context fills up with what <b>the other parts do not need</b></li>
+          <li class="step">the work <b>splits up</b>, and can run side by side: +81 %</li>
+          <li class="step">one prompt holds <b>too many tools</b> to choose well</li>
+          <li class="step">the parts carry <b>different risks</b> - agendas, rooms, money</li>
+        </ul>
+      </div>
+    </div>
+    <cite class="source">Anthropic, <i>When to use multi-agent systems</i>, January 2026 · Google Research, <i>Towards a science of scaling agent systems</i>, January 2026 · Cognition, 2025</cite>
+    <p class="takeaway step">Split when the work, the context or the risk pulls apart.</p>
+    <aside class="notes">
+      Everybody who builds these says it first: one agent, as far as it goes. It is simpler, keeps
+      one context - Cognition's point: actions carry decisions, and two agents make conflicting
+      ones - and it is cheaper. And Google found that work where every step needs the one before
+      gets worse with a team, every time. Move to a team when the context fills up with things the
+      other parts do not need, when the work splits and can run side by side, when one prompt has
+      too many tools - Anthropic says around twenty - or when the parts carry different risks. Our
+      meeting has sixteen tools, so tools alone would not do it; the risks do: an agenda, a room,
+      and money for lunch.
+    </aside>
+  </section>
+
+  <section class="slide in-charge">
+    <h2>Put someone in charge</h2>
+    <div class="charge-grid">
+    <figure class="art-fig"><img src="img/art-3-lead.jpg" alt="A lead robot with a headset and a checklist, handing one envelope to each specialist robot" onerror="this.outerHTML='<div class=art-missing>image to come: art-3-lead.jpg - see talk/image_prompts.md</div>'"></figure>
+    <div class="charge-side">
+    <div class="err-rows">
+      <div class="err-row"><span class="who">one agent</span><div class="dots" data-n="1"></div><b>1×</b></div>
+      <div class="err-row step"><span class="who">a team, nobody in charge</span><div class="dots" data-n="17"></div><b class="down">17×</b></div>
+      <div class="err-row step"><span class="who">a team with an orchestrator</span><div class="dots" data-n="4"></div><b>4×</b></div>
+    </div>
+    <p class="err-say">how much a mistake grows, compared with one agent</p>
+    <cite class="source">Google Research, <i>Towards a science of scaling agent systems</i>, January 2026</cite>
+    </div>
+    </div>
+    <p class="takeaway step">Mistakes stop at the one in charge - in the sample, plain code.</p>
+    <aside class="notes">
+      One of them takes the lead, and hands each specialist its part. The same study as before:
+      when agents work side by side with nobody checking, one agent's mistake is
+      picked up and built on by the others: errors grew 17 times compared with one agent. With an
+      orchestrator in between, 4 times. Cognition says the same from practice, a year after "Don't
+      build multi-agents": a manager with child agents works, a reviewer with a clean context works,
+      parallel agents that all write still do not. Many may think; one should write. In the sample
+      the one in charge has no model at all.
     </aside>
   </section>
 
@@ -434,61 +487,6 @@ print(result.output)
     </aside>
   </section>
 
-  <section class="slide helps-hurts">
-    <h2>When a team helps, and when it hurts</h2>
-    <div class="hh-cols">
-      <div class="hh-col">
-        <p class="kind">Work that splits up</p>
-        <div class="hh-pic split">
-          <span>look up the people</span><span>look up the places</span><span>read the menu</span>
-        </div>
-        <div class="bars">
-          <div class="bar-row"><span class="who">one agent</span><div class="bar base" style="--v:100"></div><b>100</b></div>
-          <div class="bar-row step"><span class="who">a team</span><div class="bar up" style="--v:181"></div><b class="up">181</b></div>
-        </div>
-      </div>
-      <div class="hh-col">
-        <p class="kind">Work where each step needs the one before</p>
-        <div class="hh-pic steps-chain">
-          <span>a time</span><i>→</i><span>a room</span><i>→</i><span>lunch</span>
-        </div>
-        <div class="bars">
-          <div class="bar-row"><span class="who">one agent</span><div class="bar base" style="--v:100"></div><b>100</b></div>
-          <div class="bar-row step"><span class="who">a team</span><div class="bar down" style="--v:61"><div class="range" style="--v:30"></div></div><b class="down">30-61</b></div>
-        </div>
-      </div>
-    </div>
-    <cite class="source">The same tasks done by one agent (100) and by teams · Google Research, <i>Towards a science of scaling agent systems</i>, January 2026 · 180 configurations</cite>
-    <p class="takeaway step">A team helps when the work splits, and hurts when it chains.</p>
-    <aside class="notes">
-      Google ran the same tasks with one agent and with teams - 180 configurations, three model
-      families. One agent is 100. On work that splits up - think of looking up the people, the
-      places and the menu at the same time - the best team scored 181. On planning where every step
-      needs the one before - a time, then a room there, then lunch for it - every team they tried
-      did worse: between 30 and 61. Our meeting has both kinds of work.
-    </aside>
-  </section>
-
-  <section class="slide in-charge">
-    <h2>Put someone in charge</h2>
-    <div class="err-rows">
-      <div class="err-row"><span class="who">one agent</span><div class="dots" data-n="1"></div><b>1×</b></div>
-      <div class="err-row step"><span class="who">a team, nobody in charge</span><div class="dots" data-n="17"></div><b class="down">17×</b></div>
-      <div class="err-row step"><span class="who">a team with an orchestrator</span><div class="dots" data-n="4"></div><b>4×</b></div>
-    </div>
-    <p class="err-say">how much a mistake grows, compared with one agent</p>
-    <cite class="source">Google Research, <i>Towards a science of scaling agent systems</i>, January 2026</cite>
-    <p class="takeaway step">Mistakes stop at the one in charge - in the sample, plain code.</p>
-    <aside class="notes">
-      The same study. When agents work side by side with nobody checking, one agent's mistake is
-      picked up and built on by the others: errors grew 17 times compared with one agent. With an
-      orchestrator in between, 4 times. Cognition says the same from practice, a year after "Don't
-      build multi-agents": a manager with child agents works, a reviewer with a clean context works,
-      parallel agents that all write still do not. Many may think; one should write. In the sample
-      the one in charge has no model at all.
-    </aside>
-  </section>
-
   <section class="slide split-services">
     <h2>Split agents like services</h2>
     <div class="contexts">
@@ -515,9 +513,6 @@ print(result.output)
     </aside>
   </section>
 
-
-
-  <!-- 10. The sample: how it is built -->
   <section class="slide architecture">
     <h2>How it is built</h2>
     <!-- Built bottom-up: the services are there, then each key adds the agents, the
@@ -1146,6 +1141,62 @@ dataset.add_evaluator(ToolEvidenceContainsTerms(
       The crew from the 2025 talk next to this team. Two members were not on that drawing: the
       coordinator - in charge, and plain code, so the orchestrator that contains the errors has no
       model at all - and you. What I turned down, and why. Next: the sample itself.
+    </aside>
+  </section>
+
+
+  <!-- In the extras since 2026-11-18: replaced by the three pictures and one agent versus a team -->
+  <section class="slide solo-but">
+    <h2>It works, but…</h2>
+    <ul class="buts">
+      <li class="step">we told it <b>nobody can answer</b> - so it decided for you</li>
+      <li class="step">it chose <b>the time</b> - 11:00, 13:00, 14:00 in three runs</li>
+      <li class="step">it chose <b>the lunch</b> - two or three sandwiches, nobody asked what</li>
+      <li class="step">nothing checked <b>what it booked</b> against what was asked</li>
+      <li class="step"><b>one prompt</b> carries every tool, and every risk</li>
+    </ul>
+    <p class="note step">From the rehearsal runs, 7 November - about ten tool calls each, all of it booked.</p>
+    <aside class="notes">
+      It did the job - in one go, about a minute. And that is the point: it did all of it without
+      asking, because we told it nobody could answer. Without that line it asked about lunch - and
+      the script had no way to reply. A simplified version of reality: no approvals, no checks.
+      It picked a time, decided what you eat. Nothing between the model and the services checked any of it. This is where the
+      team comes in - not because one agent cannot, but because you want someone in charge.
+    </aside>
+  </section>
+
+  <section class="slide helps-hurts">
+    <h2>When a team helps, and when it hurts</h2>
+    <div class="hh-cols">
+      <div class="hh-col">
+        <p class="kind">Work that splits up</p>
+        <div class="hh-pic split">
+          <span>look up the people</span><span>look up the places</span><span>read the menu</span>
+        </div>
+        <div class="bars">
+          <div class="bar-row"><span class="who">one agent</span><div class="bar base" style="--v:100"></div><b>100</b></div>
+          <div class="bar-row step"><span class="who">a team</span><div class="bar up" style="--v:181"></div><b class="up">181</b></div>
+        </div>
+      </div>
+      <div class="hh-col">
+        <p class="kind">Work where each step needs the one before</p>
+        <div class="hh-pic steps-chain">
+          <span>a time</span><i>→</i><span>a room</span><i>→</i><span>lunch</span>
+        </div>
+        <div class="bars">
+          <div class="bar-row"><span class="who">one agent</span><div class="bar base" style="--v:100"></div><b>100</b></div>
+          <div class="bar-row step"><span class="who">a team</span><div class="bar down" style="--v:61"><div class="range" style="--v:30"></div></div><b class="down">30-61</b></div>
+        </div>
+      </div>
+    </div>
+    <cite class="source">The same tasks done by one agent (100) and by teams · Google Research, <i>Towards a science of scaling agent systems</i>, January 2026 · 180 configurations</cite>
+    <p class="takeaway step">A team helps when the work splits, and hurts when it chains.</p>
+    <aside class="notes">
+      Google ran the same tasks with one agent and with teams - 180 configurations, three model
+      families. One agent is 100. On work that splits up - think of looking up the people, the
+      places and the menu at the same time - the best team scored 181. On planning where every step
+      needs the one before - a time, then a room there, then lunch for it - every team they tried
+      did worse: between 30 and 61. Our meeting has both kinds of work.
     </aside>
   </section>
 

@@ -74,6 +74,24 @@ second time against the page text.
 The plan's *four questions* (who does what, how do they talk, who keeps what, where is the human)
 could follow E or be folded into it - see Q4.
 
+## From one agent to a team, in pictures (2026-11-18)
+
+The bridge from step 5 to the patterns is now a story in three pictures, made from one prompt
+series ([`image_prompts.md`](image_prompts.md)) so they look like one set:
+
+1. **One agent, every job** - one robot drowning in work and tools (slide 19).
+2. **Split the work** - a cheerful team, each with its own tools, but nobody in charge: bumping
+   into each other, envelopes in a tangle, one waiting (slide 20).
+3. **Start with one agent, but...** (slide 21, no picture) - the reasons for one agent (simpler,
+   one context, cheaper, chained work gets worse) against the reasons for a team (context, work
+   that splits, too many tools, different risks).
+4. **Put someone in charge** - a lead robot handing out envelopes, beside the 17x / 4x dots
+   (slide 22).
+
+*It works, but...* and *When a team helps, and when it hurts* moved to the extras: the first
+blamed one agent for what was our shortcut (no approvals, no checks); the second's numbers are
+now lines on slide 21. Until the pictures exist, the slides show a placeholder naming the file.
+
 ## Slide C, split in two (2026-11-08)
 
 *What goes wrong* was hard to follow: three numbers without a baseline, *17x -> 4x* read as a

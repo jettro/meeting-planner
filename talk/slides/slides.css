@@ -599,17 +599,6 @@ pre.code .n { color: #1f5fa8; }
 /* Part 3, team architectures (design_team_patterns.md). Sources are always in small type. */
 .slide cite { display: block; font-style: normal; font-size: 22px; color: var(--muted); margin-top: 8px; }
 
-/* A. Start with one agent: three quotes on the left, the three reasons on the right. */
-.slide.one-first { padding: 80px 160px 110px; display: none; }
-.slide.one-first.current { display: grid; grid-template-columns: 1fr 640px; grid-template-rows: auto 1fr auto; column-gap: 96px; }
-.one-first h2 { grid-column: 1 / -1; margin-bottom: 36px; }
-.one-first .quotes blockquote { margin: 0 0 32px; font-size: 40px; line-height: 1.2; font-weight: 600; }
-.one-first .reasons { background: #fff; border-radius: 20px; padding: 28px 40px; align-self: start; }
-.one-first .reasons .lead { margin: 0 0 20px; font-size: 30px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
-.one-first .reason { margin-bottom: 18px; }
-.one-first .reason b { display: block; font-size: 40px; color: var(--accent); }
-.one-first .reason span { display: block; font-size: 26px; line-height: 1.3; color: var(--muted); }
-.one-first .takeaway { grid-column: 1 / -1; margin: 24px 0 0; }
 
 /* B. Five patterns, side by side. */
 .slide.patterns { padding: 96px 100px 110px; }
@@ -998,3 +987,36 @@ pre.code.tight { font-size: 24px; }
 .y-text { color: #3a3d44; }
 .yv-step { display: none; }
 pre.code.tighter { font-size: 21px; line-height: 1.4; }
+
+/* From one agent to a team (slides 19-22): three pictures of one series (talk/image_prompts.md). */
+.slide.art-slide { padding: 72px 160px 110px; }
+.art-slide h2 { margin-bottom: 20px; }
+.art-fig { flex: 1; min-height: 0; margin: 0; display: flex; align-items: center; justify-content: center; }
+.art-fig img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.art-missing { width: 100%; height: 100%; min-height: 360px; display: flex; align-items: center; justify-content: center; padding: 40px; border: 4px dashed #c9c3bf; border-radius: 24px; font: 600 28px var(--mono); color: var(--muted); text-align: center; }
+.art-caption { margin: 20px 0 0; font-size: 40px; font-weight: 600; text-align: center; }
+
+/* Start with one agent, but... - the two sides. */
+.slide.one-or-team { padding-top: 80px; }
+.one-or-team h2 { margin-bottom: 16px; }
+.one-or-team .voices { margin: 0 0 32px; font-size: 24px; font-style: italic; color: var(--muted); }
+.ot-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; }
+.ot-col { background: #fff; border-radius: 20px; padding: 28px 36px; }
+.ot-col.team { border: 4px solid var(--accent); }
+.ot-col ul { margin: 0; padding-left: 28px; font-size: 30px; line-height: 1.4; }
+.ot-col li { margin-bottom: 14px; }
+.ot-col b { color: var(--accent); }
+.one-or-team .source { margin-top: 20px; font-size: 20px; }
+.one-or-team .takeaway { font-size: 46px; }
+
+/* Put someone in charge: the lead's picture beside the dots. */
+.charge-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 760px 1fr; gap: 48px; align-items: center; }
+.charge-grid .art-fig { height: 100%; }
+.charge-side .err-rows { gap: 18px; }
+.charge-side .err-row { grid-template-columns: 1fr 90px; grid-template-areas: "who num" "dots num"; gap: 8px 16px; padding: 14px 22px; }
+.charge-side .err-row .who { grid-area: who; font-size: 26px; }
+.charge-side .err-row .dots { grid-area: dots; gap: 6px; }
+.charge-side .err-row b { grid-area: num; font-size: 40px; }
+.charge-side .dots i { width: 26px; height: 26px; }
+.charge-side .err-say { font-size: 22px; }
+.in-charge .takeaway { margin-top: 24px; }
