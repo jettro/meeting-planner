@@ -10,5 +10,7 @@ def today() -> str:
     return f"Today is {date.today():%A %d %B %Y}."
 
 
-result = agent.run_sync("What is the date of next Friday?")
+question = "What is the date of next Friday?"
+print(f"> {question}\n")
+result = agent.run_sync(question)
 print(result.output)

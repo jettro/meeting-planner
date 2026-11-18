@@ -997,3 +997,4 @@ pre.code.tight { font-size: 24px; }
 .y-c { color: var(--muted); font-style: italic; }
 .y-text { color: #3a3d44; }
 .yv-step { display: none; }
+pre.code.tighter { font-size: 21px; line-height: 1.4; }

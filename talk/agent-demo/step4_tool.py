@@ -17,6 +17,12 @@ def free_rooms(day: date, people: int) -> list[str]:
     return ["Attic (8)", "Greenhouse (6)"] if people <= 6 else ["Attic (8)"]
 
 
-first = agent.run_sync("My name is Sam, and I need a room for six people next Friday.")
-second = agent.run_sync("Which rooms are free?", message_history=first.all_messages())
+question = "My name is Sam, and I need a room for six people next Friday."
+print(f"> {question}\n")
+first = agent.run_sync(question)
+print(first.output)
+
+question = "Which rooms are free?"
+print(f"\n> {question}\n")
+second = agent.run_sync(question, message_history=first.all_messages())
 print(second.output)

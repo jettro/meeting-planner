@@ -34,7 +34,7 @@ exist, and `openai:gpt-6-luna` is in `KnownModelName`.
 | A7 | **In the compose stack** (2026-11-18): service `agent-demo`, so `make up` and `make down` start and stop it with the rest; `make agent-demo` rebuilds and starts only the terminal | one command before the talk. It was a separate `docker run` first |
 | A8 | **The terminal is a demo slide** (S10): an iframe through the existing `data-src` / `data-zoom` and the ‹ › bar, which already gives the keys back to the deck | no new engine work |
 | A9 | **Readable from the back**: ttyd's `-t fontSize=28`, a light theme matching the off-white slides, and a short prompt (`$ `) | the default terminal is far too small for a projector |
-| A10 | **The answer is printed plainly**: each step prints only `result.output`; step 3 also prints how many messages were sent along | the audience should read the answer, not a log |
+| A10 | **The question, then the answer, printed plainly**: each step prints `> the question` and then `result.output` - steps 3 and 4 both of their questions (since 2026-11-18; before, only the answer) | the audience should read the exchange, not a log - and see what the second question builds on |
 
 ## The steps in code
 

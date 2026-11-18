@@ -138,10 +138,12 @@ from pydantic_ai import Agent
 
 agent = Agent("openai:gpt-6-luna")
 
-result = agent.run_sync("What is the date of next Friday?")
+question = "What is the date of next Friday?"
+print(f"> {question}\n")
+result = agent.run_sync(question)
 print(result.output)
     </pre>
-    <p class="takeaway">Five lines - and it does not know what day it is.</p>
+    <p class="takeaway">A few lines - and it does not know what day it is.</p>
     <aside class="notes">
       An agent in pydantic-ai is a model and a run. Ask it about next Friday: it cannot know,
       because nothing told it today's date. Run it in the terminal at the end: make run-llm.
@@ -159,7 +161,9 @@ agent = Agent("openai:gpt-6-luna", instructions="You plan meetings. Answer in on
 def today() -> str:
     return f"Today is {date.today():%A %d %B %Y}."
 
-result = agent.run_sync("What is the date of next Friday?")
+question = "What is the date of next Friday?"
+print(f"> {question}\n")
+result = agent.run_sync(question)
 print(result.output)
     </pre>
     <p class="takeaway">The same question. Now it can answer.</p>
@@ -170,7 +174,7 @@ print(result.output)
   </section>
   <section class="slide code-step">
     <header><h2><span class="n">3</span> Simulate memory</h2><span class="part">memory</span></header>
-    <pre class="code" data-new="10-17">
+    <pre class="code" data-new="15-18">
 from datetime import date
 from pydantic_ai import Agent
 
@@ -180,13 +184,14 @@ agent = Agent("openai:gpt-6-luna", instructions="You plan meetings. Answer in on
 def today() -> str:
     return f"Today is {date.today():%A %d %B %Y}."
 
-first = agent.run_sync("My name is Sam, and I need a room for six people next Friday.")
+question = "My name is Sam, and I need a room for six people next Friday."
+print(f"> {question}\n")
+first = agent.run_sync(question)
 print(first.output)
 
-second = agent.run_sync(
-    "What was my name, and for how many people?",
-    message_history=first.all_messages(),
-)
+question = "What was my name, and for how many people?"
+print(f"\n> {question}\n")
+second = agent.run_sync(question, message_history=first.all_messages())
 print(second.output)
     </pre>
     <aside class="notes">
@@ -196,7 +201,7 @@ print(second.output)
   </section>
   <section class="slide code-step">
     <header><h2><span class="n">4</span> Give it a tool</h2><span class="part">tools</span></header>
-    <pre class="code" data-new="10-14,17">
+    <pre class="code tight tighter" data-new="10-14">
 from datetime import date
 from pydantic_ai import Agent
 
@@ -212,8 +217,14 @@ def free_rooms(day: date, people: int) -> list[str]:
     print(f"  > tool: free_rooms({day}, {people})")
     return ["Attic (8)", "Greenhouse (6)"] if people &lt;= 6 else ["Attic (8)"]
 
-first = agent.run_sync("My name is Sam, and I need a room for six people next Friday.")
-second = agent.run_sync("Which rooms are free?", message_history=first.all_messages())
+question = "My name is Sam, and I need a room for six people next Friday."
+print(f"> {question}\n")
+first = agent.run_sync(question)
+print(first.output)
+
+question = "Which rooms are free?"
+print(f"\n> {question}\n")
+second = agent.run_sync(question, message_history=first.all_messages())
 print(second.output)
     </pre>
     <aside class="notes">

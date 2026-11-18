@@ -10,11 +10,12 @@ def today() -> str:
     return f"Today is {date.today():%A %d %B %Y}."
 
 
-first = agent.run_sync("My name is Sam, and I need a room for six people next Friday.")
+question = "My name is Sam, and I need a room for six people next Friday."
+print(f"> {question}\n")
+first = agent.run_sync(question)
 print(first.output)
 
-second = agent.run_sync(
-    "What was my name, and for how many people?",
-    message_history=first.all_messages(),
-)
+question = "What was my name, and for how many people?"
+print(f"\n> {question}\n")
+second = agent.run_sync(question, message_history=first.all_messages())
 print(second.output)
