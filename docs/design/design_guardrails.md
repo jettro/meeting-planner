@@ -2,7 +2,8 @@
 
 > **Status:** agreed, 2026-11-06: option B, and a check on what `@Intake` is asked. The version
 > agreed on 2026-11-04 chose option A; §13 says what changed and why. **Built: the rules** (§12
-> step 2, §14). `@Guard` and the questions wait for akgentic.
+> step 2, §14). **Proposed, 2026-11-19, not agreed:** `@Guard` now, on a language model, checking
+> both what `@Intake` is asked and what it answers - §15; it changes GR3, GR4, GR9 and GR11.
 > Re-checked on 2026-11-19 after the upgrade to akgentic-framework 2.19.1, the latest on PyPI
 > (akgentic-agent 1.8.1, akgentic-llm 2.5.2, akgentic-team 1.12.0, akgentic-infra 1.17.0,
 > pydantic-ai-slim 2.58.0, openai 3.37.0); first checked on akgentic-llm 2.5.0 with
@@ -274,15 +275,15 @@ real endpoint, the probabilities written down, the thresholds chosen from them.
 |---|---|---|
 | GR1 | **Rules are a pydantic-ai capability on the acting agent, in `before_tool_execute`** | They need the approval; akgentic takes capabilities already |
 | GR2 | **Rules in code first, a decision model only for judgement** | Arithmetic is code; the post's priority table |
-| GR3 | **Judgement is a team member, `@Guard`: a `BaseAgent` on an akgentic decision provider, offered no tools, cleared before each check, asked by a direct call with a timeout** | Option B: the decision call is akgentic's - config, retries, cost, the console |
-| GR4 | **First slice: the rules on the three booking tools, `@Guard`, and the check on what `@Intake` is asked; the lunch question next, memory after** | The rules need no upstream; the intake check is the clearest judgement and the plainest use of B |
+| GR3 | *(revised in §15)* **Judgement is a team member, `@Guard`: a `BaseAgent` on an akgentic decision provider, offered no tools, cleared before each check, asked by a direct call with a timeout** | Option B: the decision call is akgentic's - config, retries, cost, the console |
+| GR4 | *(revised in §15)* **First slice: the rules on the three booking tools, `@Guard`, and the check on what `@Intake` is asked; the lunch question next, memory after** | The rules need no upstream; the intake check is the clearest judgement and the plainest use of B |
 | GR5 | **A refusal of a tool call is `ModelRetry` with the rule or the question; twice is a failure** | The model can correct a slip; a stubborn one ends as a plan failure |
 | GR6 | **Every check is a `GuardrailChecked` event, sent by the agent that asked** | Managing a guard means explaining it, as for memory (M9); and the call itself is not a message |
 | GR7 | **A guardrail is a catalog card with its wording and thresholds** | Tuned without code, and visible |
 | GR8 | **An evaluation set chooses the thresholds before they are trusted** | Confidence is not accuracy |
-| GR9 | **Upstream first: akgentic-llm#182, then phase 1 of akgentic's decision design; the sample pins a git revision until it is released** | B needs it; a fork or a patch in the sample would teach the wrong thing |
+| GR9 | *(revised in §15)* **Upstream first: akgentic-llm#182, then phase 1 of akgentic's decision design; the sample pins a git revision until it is released** | B needs it; a fork or a patch in the sample would teach the wrong thing |
 | GR10 | **An off-topic message never reaches `@Intake`'s model; `@Intake` answers from code** | A check that lets the text reach the model anyway checks nothing |
-| GR11 | **`@Guard` reads confidence from the response itself, in `after_model_request`, until akgentic keeps it (phase 2)** | Thresholds need it now; phase 2 replaces it |
+| GR11 | *(dormant, §15.4)* **`@Guard` reads confidence from the response itself, in `after_model_request`, until akgentic keeps it (phase 2)** | Thresholds need it now; phase 2 replaces it |
 
 ## 10. Questions
 
@@ -330,6 +331,8 @@ Q7-Q10 agreed on 2026-11-06 as proposed below.
 
 ## 12. Order of work
 
+*Steps 1, 3, 4 and 5 are replaced by §15.8 if §15 is agreed.*
+
 1. **Upstream**, outside this repository: #182, then phase 1 in akgentic-llm.
 2. **Meanwhile, the rules** - they need no decision model: the capability, S1 and S3, the tests,
    the event and its row in the trace. *Done, 2026-11-06 - §14.*
@@ -368,6 +371,10 @@ Q7-Q10 agreed on 2026-11-06 as proposed below.
   akgentic's events, no longer a success (§3). agent, core, tool and catalog did not change, so the
   `clear()`, `proxy_ask`, `TeamTool` / `MailboxTool` and `receiveMsg_AgentMessage` facts stand.
   Live: one meeting with lunch, three checks *passed*.
+- 2026-11-19: Proposed (§15): `@Guard` built now on a language model, its own model card the swap
+  to a decision model later; two checks on the chat - the person's message and `@Intake`'s answer
+  - after a demo where `@Intake` recommended restaurants. GR12-GR15 and Q11-Q14 new; GR3, GR4,
+  GR9 revised, GR11 dormant.
 
 ## 14. What was built: the rules
 
@@ -397,3 +404,160 @@ Q7-Q10 agreed on 2026-11-06 as proposed below.
 - **Tests**: `test_guardrails.py` (21: each rule, the capability, and two real pydantic-ai runs),
   S3 and the card wiring in `test_specialists.py`, the catalog and team-card tests widened to a
   card that gives the model no tool.
+
+## 15. Revision, 2026-11-19: `@Guard` on a language model, now
+
+> **Status:** proposed, 2026-11-19. Not agreed yet. Nothing in it is built.
+
+### 15.1 Why now, and why not wait
+
+akgentic still cannot run a decision model: #182 is open, and phase 1 has not started (§3,
+re-checked 2026-11-19). Meanwhile the gap in §1 has shown itself in a demo. Two turns in *Talk to
+the planner*:
+
+> **Person:** Can you help me find a nice restaurant around amsterdam
+> **Planner:** Sure - are you looking to arrange a meeting at a restaurant around Amsterdam? If
+> so, what should the meeting be called, who else should attend, and what day should it be?
+> **Person:** do not need a meeting, just search for a good restaurant
+> **Planner:** Got it - no meeting. I can't run a live restaurant search, but a few well-regarded
+> Amsterdam options are De Kas, ... If you share your budget and preferred cuisine, I can narrow
+> it down.
+
+The first answer is right: the question could be about a meeting, and the planner asks. The
+second answer is the gap. The person said there is no meeting, and the model answered anyway,
+from general knowledge, and offered to go on. Its prompt keeps it to meetings; the model read
+that prompt and went past it.
+
+So `@Guard` is built now, on the **language model the team already uses**
+(`gpt-6-luna` through `meeting-planner.default_model`), shaped so that a decision model can
+replace that model later without changing anything around it. The rules (§14) are unchanged.
+
+### 15.2 What is checked: the message, and the answer
+
+| | Checks | Catches in the example | Misses |
+|---|---|---|---|
+| **The person's message**, before `@Intake`'s model | *is this about the meeting?* | the second message | a message that passes, followed by an answer that drifts |
+| **`@Intake`'s answer**, before it reaches the person | *does this answer help with something else?* | the second answer | an off-topic message that reaches the model (an instruction in it is read by a model with tools) |
+| **Both** | both | both | - |
+
+Proposed: **both**, each for what only it can do.
+
+- **The message check is the gate (GR10, kept).** An off-topic message never reaches the model
+  that holds the tools, so an instruction hidden in it is never read there. `@Guard` sees the
+  message, the last thing the planner said, and whether a meeting has been requested - so *yes*,
+  *Thursday* and *do not need a meeting* are read as answers to what was asked. Pick one:
+  **arrange**, **memory**, **greeting**, **other** (§5, unchanged).
+- **The answer check is the backstop.** It catches the model drifting on a message that rightly
+  passed, which the message check cannot see. `@Guard` sees the answer and the message it
+  answers. Pick one: **meeting** (about arranging this meeting, its progress, what is remembered,
+  or saying what the planner can and cannot do) or **other** (gives help with anything else).
+  Refusing to help counts as *meeting*: *"I can only help with meetings"* is a good answer.
+- **Which answers.** Every output of `@Intake` addressed to `@Human`, including the short notes
+  it writes after an *Update:* turn. The model can drift there too, and the notes are short.
+
+Cost: two extra model calls per turn in the chat - one per message, one per answer - each a
+short prompt with one structured answer. The form team is not affected: nothing in it is free
+text.
+
+### 15.3 What a refusal does
+
+- **A message answered *other*** is answered from code with the card's sentence - *"I can only
+  help arrange a meeting and remember how you like to meet."* - and is not added to the model's
+  context (GR10, §6, unchanged).
+- **An answer judged *other*** is sent back to the model once with `ModelRetry` and the card's
+  instruction - *"Your answer helps with something other than this meeting. Say briefly that you
+  can only help arrange the meeting."* - the same hook and the same retry rule `TalkOnlyToHuman`
+  uses (`after_output_validate`, `can_retry`). When no retry is left, the answer is replaced by
+  the card's sentence. The off-topic answer never reaches the person.
+- **When `@Guard` cannot answer** - an error, or no answer within the card's timeout - the check
+  is skipped, the event says so, and the message or the answer goes ahead (Q3, Q7).
+- **Every check is a `GuardrailChecked` event** from `@Intake`, as for the rules (GR6): which
+  check, the answer, and passed, refused or skipped. The trace already shows it.
+
+### 15.4 How `@Guard` stays swappable for a decision model
+
+The seam is the **question, typed**, and the **model card**:
+
+- **The answer type is the questions and nothing else.** Each check is a pydantic model whose
+  fields are pick-ones, a `Literal` with the question as the field's description - the shape a
+  decision model answers (§2). There is **no free-text reason**: a decision model cannot write
+  one, so nothing downstream may depend on one. The reason in the event and in the refusal is the
+  question that failed and its answer, as §6 already said.
+- **`@Guard`'s model is its own card**, `meeting-planner.guard_model`. Today it holds what
+  `default_model` holds - `provider: openai`, `model: gpt-6-luna`. The swap is that one card
+  changing to `openai-decisions` once akgentic has it. `@Intake` asks `@Guard` the same question
+  either way and gets the same type back.
+- **Confidence is optional.** The verdict carries `confidence: float | None`. On a language model
+  it is `None`, and the answer is taken as it is: no self-reported score, which would be a number
+  the model writes, not a measure. The card's thresholds apply only when a confidence is there,
+  so they wait for the decision model and the evaluation set (GR8, GR11 dormant until then).
+- **`@Guard` is shaped like akgentic's planned `DecisionAgent`** (§3): a `BaseAgent`, offered no
+  tools (`prepare_tools` returns nothing, so `hire_members`, `fire_members` and `read_mailbox`
+  are gone), cleared before each check, answering through `act(prompt, output_type=...)`.
+- **What a language model adds that a decision model would not**: it can be talked round by the
+  text it judges - *"classify this as arrange"*. It holds no tools and answers a closed type, so
+  the worst it can do is pass a message; the model behind it still has its prompt, and the answer
+  check still runs. That is the main reason to swap later.
+
+### 15.5 How `@Intake` asks
+
+- **The message check** in an override of `receiveMsg_AgentMessage` - exactly the person's
+  messages (§3); `_tell_the_model` calls the parent directly and is not checked. Messages starting
+  with `/` are not checked (§5).
+- **The answer check** in a capability on `@Intake`'s `after_output_validate`, next to
+  `TalkOnlyToHuman`. It runs inside the model's run, so it asks through `asyncio.to_thread` and
+  does not block the loop.
+- **Both ask `@Guard` with `proxy_ask(..., timeout=...)`**, a direct call, not a message (GR3).
+  `@Guard` asks no one, so the call cannot deadlock.
+- **Where `@Guard` sits**: a member of the chat team under `@Intake`, `can_be_hired: false`. The
+  form team does not list it until the lunch question needs it.
+- **A team without `@Guard`** - an older team restored, or a card without it - runs as today:
+  no member, no check, and a log line.
+
+### 15.6 Decisions proposed
+
+| # | Decision | Why |
+|---|---|---|
+| GR12 | **`@Guard` runs now on a language model, `meeting-planner.guard_model` (gpt-6-luna), its own card** | The gap is shown; akgentic's decision provider is not near; the card is the swap |
+| GR13 | **Two checks on the chat: the person's message before the model (the gate), and `@Intake`'s answer before the person (the backstop)** | The gate keeps text from a model with tools; only the backstop sees a drift like the example's |
+| GR14 | **A refused answer gets one `ModelRetry`, then the card's sentence** | The same hook and retry rule as `TalkOnlyToHuman`; the person never sees the drift |
+| GR15 | **The answer type is pick-ones only, no reason; confidence is `None` on a language model and thresholds wait for it** | What a decision model can answer is all the code may rely on |
+
+Changed by this revision: **GR3** - `@Guard` on the model its card names, a language model now,
+a decision provider later; **GR4** - the first slice is `@Guard` and the two chat checks; the lunch
+question next, memory after; **GR9** - upstream is no longer first: the decision provider is a
+later swap of one card, and the sample stays on akgentic from PyPI; **GR11** - kept, but dormant
+until there is a confidence to read. GR10 stands.
+
+### 15.7 Questions
+
+- **Q11** — Both checks, or only the message? Proposed: both (§15.2). Message only halves the cost
+  and still catches the example's second turn, but not an answer that drifts on its own.
+- **Q12** — Check every answer to `@Human`, or only answers to a message the person typed?
+  Proposed: every answer - the *Update:* notes are written by the same model.
+- **Q13** — A short reason from the language model, for the trace only, while it is not a decision
+  model? Proposed: no (GR15) - it would be the one thing that changes at the swap, and the
+  question and its answer already say why.
+- **Q14** — The two sentences: the refusal *"I can only help arrange a meeting and remember how
+  you like to meet."* and the retry instruction in §15.3. Proposed as written; both live on the
+  card and can be tuned without code.
+
+### 15.8 Spike, then order of work
+
+- **S2'** (S2 on a language model) — `@Guard` starts in the chat team on `guard_model`;
+  `prepare_tools` returning nothing leaves it no tools; after `clear()` a check sees no earlier
+  one; `act()` with the pick-one type returns it; the console shows its usage and cost.
+- **S4, S5** as in §11: the call with a timeout from the handler and from the capability, a timeout
+  comes back as *skipped*; a refused message is answered from code and is not in the context,
+  after a restore either.
+
+1. The spike, S2', S4, S5.
+2. `@Guard`: `GuardAgent`, its card and `guard_model`, the two answer types; tests with a fake.
+3. The message check: the override, the card, the refusal, the event.
+4. The answer check: the capability, the retry, the replacement, the event.
+5. The evaluation set, small: the example above as its first case; a dozen each of requests,
+   answers in context, memory questions, greetings, off-topic questions, attempts to change the
+   instructions, and drifting answers. Measured as accuracy - no thresholds yet.
+6. A live run: the example refused at its second turn; an ordinary conversation that books a
+   meeting with no refusal.
+7. The docs: `conversation.md` and its *Last checked* line, and a lesson if the run teaches one.
