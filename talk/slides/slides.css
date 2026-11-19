@@ -834,8 +834,8 @@ pre.code.tight { font-size: 24px; }
 .soup-trace { list-style: none; margin: 0; padding: 0; }
 .soup-trace li { font-size: 28px; padding: 18px 24px; margin-bottom: 14px; background: #fff; border-radius: 14px; line-height: 1.35; }
 .soup-trace .who { display: block; font: 600 24px var(--mono); color: var(--muted); }
-.soup-trace .chip { display: inline-block; padding: 2px 14px; border-radius: 20px; font: 600 22px var(--mono); vertical-align: 3px; }
-.soup-trace .chip.refused { background: #b4371f; color: #fff; }
+.soup-trace .chip, .guard-ex .chip { display: inline-block; padding: 2px 14px; border-radius: 20px; font: 600 22px var(--mono); vertical-align: 3px; }
+.soup-trace .chip.refused, .guard-ex .chip.refused { background: #b4371f; color: #fff; }
 .soup-trace .chip.passed { background: #1f7a4d; color: #fff; }
 .guard-soups .note { margin-top: auto; font-size: 24px; color: var(--muted); }
 .guard-next .wip { font-size: 26px; font-weight: 600; vertical-align: middle; margin-left: 24px; padding: 6px 20px; border: 3px dashed var(--accent); border-radius: 40px; color: var(--accent); }
@@ -846,6 +846,13 @@ pre.code.tight { font-size: 24px; }
 .guard-q li { margin-bottom: 28px; }
 .guard-q li b { display: block; font: 600 30px var(--mono); color: var(--accent); }
 .guard-q li span { font-size: 32px; }
+.guard-q li b { font-size: 28px; }
+.guard-next .guard-agent { border-style: solid; }
+.guard-q li.guard-ex { padding: 20px 28px; background: #fff; border-radius: 16px; }
+.guard-q li.guard-ex > span:not(.chip) { font-size: 28px; }
+.guard-q li.guard-ex span:first-child { display: block; font-style: italic; margin-bottom: 8px; }
+
+.guard-q li.guard-ex .chip { margin: 0 12px 0 0; }
 .guard-next .takeaway { font-size: 40px; }
 
 /* How agents talk (design_messages.md, slides 26-30). */

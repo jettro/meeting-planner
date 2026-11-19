@@ -982,22 +982,27 @@ async def before_tool_execute(self, ctx, *, call, tool_def, args):
   </section>
 
   <section class="slide guard-next">
-    <h2>Next: judgement, by a team member <span class="wip">waiting for akgentic</span></h2>
+    <h2>Judgement, by a team member</h2>
     <div class="guard-q">
-      <div class="guard-agent">@Guard<span>a decision model · gpt-6-luna<br>no tools · answers typed questions</span></div>
+      <div class="guard-agent">@Guard<span>today: gpt-6-luna<br>later: a decision model - one card<br>no tools · typed questions</span></div>
       <ul>
-        <li class="step"><b>@Intake, each message</b><span>is this about arranging the meeting, memory, a greeting - or <em>something else</em>?</span></li>
-        <li class="step"><b>place_order</b><span>do these items fit the lunch wish, and the diets we remember?</span></li>
-        <li class="step"><b>remember</b><span>how the person likes to meet - or sensitive personal data?</span></li>
+        <li class="step"><b>the message, before @Intake’s model</b><span>arrange · memory · greeting · <em>other</em> - other is answered from code, never read by the model with tools</span></li>
+        <li class="step"><b>the answer, before the person</b><span>meeting · <em>other</em> - other goes back once with <code>ModelRetry</code>, then the card’s sentence</span></li>
+        <li class="step guard-ex"><span>“do not need a meeting, just search for a good restaurant”</span><span class="chip refused">refused</span> <span>“I can only help arrange a meeting and remember how you like to meet.”</span></li>
       </ul>
     </div>
-    <p class="takeaway step">Code checks what code can know; a decision model answers what needs judgement; neither is the model that acts.</p>
+    <p class="takeaway step">Code checks what code can know; @Guard judges what needs judgement; neither is the model that acts.</p>
     <aside class="notes">
-      Not built yet: it waits for akgentic to run decision models. A decision model answers a typed
-      question - pick one of these - instead of writing text, with a probability. @Guard is a member
-      of the team, so the console shows it with its model and its cost. A message answered "something
-      else" never reaches @Intake's model - so an instruction hidden in it is never read by a model
-      that holds tools.
+      Built this week, on what akgentic has today. In a rehearsal the planner was asked for a
+      restaurant; the person said no meeting, and the model answered anyway, from general
+      knowledge - its prompt said meetings only. Now @Guard, a member of the chat team, answers two
+      typed questions: is this message about the meeting, before @Intake's model reads it; and does
+      this answer help with something else, before the person reads it. Pick-ones, no free text -
+      the shape a decision model answers, so when akgentic can run one, only the model card changes.
+      An evaluation set of 39 cases found the guard stricter than the planner on the first message;
+      one paragraph in the prompt fixed it - 39 out of 39. Two short extra model calls per turn,
+      about a second each. Next: the lunch order against the diets we remember, and what may be
+      remembered at all.
     </aside>
   </section>
 

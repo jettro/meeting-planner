@@ -97,7 +97,7 @@ The about slide uses the bio from the DevPulse page and the old deck, and the Yu
 | 34-35 | live: the planner, the console |
 | 36 | talk to the planner: `@Intake` |
 | 37-40 | memory: one item and its fields; who sees what; from a sentence to a prompt; a memory has a life |
-| 41-43 | guardrails: a check before the call; the twelve soups (code and a live run); next, `@Guard` - marked *waiting for akgentic* |
+| 41-43 | guardrails: a check before the call; the twelve soups (code and a live run); `@Guard` keeping the chat to meetings (built 2026-11-19 on gpt-6-luna) |
 | 44-45 | live again: the planner, the console |
 | 46 | beyond the demo: four lessons |
 | 47 | when is a team worth it? - and the link, thank you |
@@ -211,8 +211,9 @@ Pydantic Evals*, 16 September 2026) and my own memory notes (`docs/memory_blog.m
 - **Guardrails (41-43)**, rebuilt 2026-11-07 from what is on main (`design_guardrails.md` §14):
   where the check sits - between the model's tool call and the service, in `before_tool_execute`,
   the three rules; the live run of 6 November (*twelve soups* for two: refused, six ordered, the
-  person told why) beside a shortened copy of the capability; and `@Guard` with its three
-  questions, marked *waiting for akgentic*. The twelve soups can be shown in demo 2.
+  person told why) beside a shortened copy of the capability; and `@Guard`, built on
+  2026-11-19 on a language model: the message before @Intake's model, the answer before the
+  person, and the restaurant example refused; a decision model later is one card. The twelve soups can be shown in demo 2.
 - **Demo 2 (32-33)** are copies of 24-25; each is its own frame, so the planner is loaded twice.
 - **Evals (34-36)**: the post's point (check the route and the evidence, not only the answer), its
   one snippet, and what the planner would check - not built yet. The *8 of 8 ... 7 failed* figure
