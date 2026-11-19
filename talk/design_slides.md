@@ -104,9 +104,9 @@ The about slide uses the bio from the DevPulse page and the old deck, and the Yu
 | 48 | when is a team worth it? - and the link, thank you |
 | 49 | **Extras** - a divider; what follows is kept for questions |
 | 50 | now everybody has opinions (the first team slide, moved here 2026-11-07) |
-| 50-52 | evals: is the team any good?; Pydantic Evals; and for the planner? (moved here 2026-11-07) |
+| 51-53 | evals: is the team any good?; Pydantic Evals; and for the planner? (moved here 2026-11-07) |
 | 54 | last year I drew a crew - the 2025 crew next to this year's team (moved here 2026-11-08: nobody in the room saw the 2025 deck) |
-| 54-55 | it works, but...; when a team helps, and when it hurts (moved here 2026-11-18, replaced by the pictures and *start with one agent, but...*) |
+| 55-56 | it works, but...; when a team helps, and when it hurts (moved here 2026-11-18, replaced by the pictures and *start with one agent, but...*) |
 
 ## The comic (slide 3)
 
