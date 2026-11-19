@@ -25,6 +25,12 @@ payload:
           __ref__: intake
         headcount: 1
         members:
+          # @Guard answers @Intake's questions about the chat (design_guardrails.md
+          # §15). It is asked by a direct call, so it needs no message type.
+          - card:
+              __ref__: meeting-planner.guard
+            headcount: 1
+            members: []
           - card:
               __ref__: coordinator
             headcount: 1

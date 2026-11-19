@@ -1,0 +1,18 @@
+id: chat_guard
+kind: tool
+namespace: meeting-planner-chat
+user_id: anonymous
+model_type: meeting_agents.guard.ChatGuard
+description: >-
+  The chat guard (design_guardrails.md §15): @Guard checks the person's message
+  before @Intake's model reads it, and @Intake's answer before the person reads
+  it. The model gets no tool from it.
+payload:
+  guard_name: "@Guard"
+  timeout: 30.0
+  check_messages: true
+  check_answers: true
+  refusal: "I can only help arrange a meeting and remember how you like to meet."
+  retry_instruction: >-
+    Your answer helps with something other than this meeting. Say briefly that
+    you can only help arrange the meeting.

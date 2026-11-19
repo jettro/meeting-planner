@@ -21,10 +21,12 @@ questions are still answered on their cards - never in the chat.
 flowchart TB
     human["@Human - you"]
     intake["@Intake - the conversation"]
+    guard["@Guard - is this about the meeting?"]
     coordinator["@Coordinator"]
     scheduler["@Scheduler"]
     facility["@FacilityManager"]
     human <--> intake
+    intake -. ask .-> guard
     intake <--> coordinator
     intake -. look up people .-> scheduler
     intake -. look up a place .-> facility
@@ -35,7 +37,8 @@ flowchart TB
 `@Intake` stands between you and the coordinator. The coordinator is configured to treat it as
 its human, so every question and outcome goes to `@Intake` first. It can ask `@Scheduler` and
 `@FacilityManager` one kind of thing each - *who is this?* and *which place is this?* - and that is
-all it can ask anyone.
+all it can ask anyone. It also asks `@Guard`, before and after its model, whether the
+conversation is still about the meeting.
 
 ### Its tools
 
@@ -85,6 +88,33 @@ Typing *the second one* or *just book the ten o'clock* in the chat is understood
 nothing. In a live run the model answered: *"I can't choose or approve a time for you. Please
 select 10:00-11:00 in the question on your screen."*
 
+### What it will talk about
+
+The planner arranges meetings and remembers how you like to meet. Nothing else. A prompt can
+ask a model for that, but cannot make it stick: in a demo, *do not need a meeting, just search
+for a good restaurant* got three Amsterdam restaurants back. So the conversation is checked twice
+by **`@Guard`**, a team member whose only job is answering typed questions about it:
+
+- **Your message, before `@Intake`'s model reads it.** `@Guard` sees the message, what the
+  planner said last and whether a meeting has been requested, and picks one: *arrange*, *memory*,
+  *greeting* or *other*. *Thursday* after *which day?* is *arrange*; *a nice restaurant around
+  Amsterdam* could be a place to meet, so it is *arrange* too, and the planner asks. *Other* is
+  answered from code - *"I can only help arrange a meeting and remember how you like to meet."* -
+  and never reaches the model with the tools, so an instruction hidden in it is never read there.
+- **The planner's answer, before you read it.** `@Guard` sees the answer and your message, and
+  picks *meeting* or *other*. Saying what the planner cannot do is *meeting*. An answer that
+  helps with something else is sent back to the model once; if it drifts again, you get the same
+  sentence instead.
+
+If `@Guard` cannot answer within 30 seconds, the check is skipped and the conversation goes on;
+the trace says so. Every check is a `GuardrailChecked` row in the trace: *message check* or
+*answer check*, what `@Guard` answered, and passed, refused or skipped.
+
+`@Guard` runs on the same language model as the rest of the team, through its own model card,
+`guard_model`. It answers only with the pick-one - no reason in its own words - so that card can
+later name a decision model and nothing else changes. Its wording and the two sentences live on
+cards, and `make guard-eval` runs 39 labelled messages and answers against the real model.
+
 ## Why it is built this way
 
 **Easier input, not a model in charge.** The goal was a nicer way to ask for a meeting. A model
@@ -106,6 +136,11 @@ with what needs it: reading your sentence, and asking a good question when somet
 specialists that can, with typed questions and typed answers - a list of matches, or *nobody by
 that name*. Free text to a specialist would reach its booking tools. (I10, I12.)
 
+**Check what reaches the model, not only what it says.** A refusal written by the model after
+reading an off-topic message has already let that text into a model that holds tools. So the
+first check sits in front of the model and answers from code; the second catches what slips past
+the first. ([`design_guardrails.md`](design/design_guardrails.md) §15, GR10, GR13.)
+
 **One conversation, one meeting**, as one team is one meeting. A different meeting is a new
 conversation. (I8.)
 
@@ -122,25 +157,38 @@ A second one, from the live runs: after relaying a question the model usually sa
 because the card on the screen already spoke for itself. Narrating every step costs a model
 call and rarely adds a line.
 
+A third, from the guard: its first version refused *can you help me find a nice restaurant
+around Amsterdam*. Strictly that is not a meeting, but the planner's own answer - *do you want a
+meeting there?* - was the better one. One line in `@Guard`'s prompt (a place could be where to
+meet) fixed it, and the evaluation set has kept it since.
+
 ## What it does not do
 
 - **Change the request afterwards.** *Make it Thursday* after the request means a new
   conversation (Q2 in the design).
 - **Approve or book anything**, as above.
 - **Guess a person.** An unknown or ambiguous name is a question to you.
+- **Help with anything but the meeting** - restaurants, facts, writing, code - or take new
+  instructions from the chat.
 
 ## Where in the code
 
 | File | What is there |
 |---|---|
 | `agents/src/meeting_agents/intake.py` | `@Intake`: its tools, the checks, the relay, `TalkOnlyToHuman` |
+| `agents/src/meeting_agents/guard.py` | `@Guard`, its two questions, `ChatGuard` and the answer check |
 | `agents/catalog/meeting-planner-chat/` | the chat team, which reuses the form team's agents |
+| `agents/catalog/meeting-planner/agent/guard.yaml`, `model/guard_model.yaml`, `prompt/guard_prompt.yaml` | `@Guard`'s card, model and prompt |
+| `agents/catalog/meeting-planner-chat/tool/chat_guard.yaml` | what is checked, the timeout and the two sentences |
+| `agents/evals/guard_cases.yaml`, `meeting_agents/guard_eval.py` | the evaluation set, `make guard-eval` |
 | `agents/catalog/meeting-planner-chat/prompt/intake_prompt.yaml` | `@Intake`'s prompt |
 | `gui/src/pages/ChatPage.tsx` | the *Talk to the planner* tab |
 | `agents/tests/test_intake.py` | the relay, the refusals, and what the model is told |
+| `agents/tests/test_guard.py` | both checks, a guard that does not answer, and `@Guard` itself |
 
-The design: [`design_chat.md`](design/design_chat.md).
+The design: [`design_chat.md`](design/design_chat.md); the guard:
+[`design_guardrails.md`](design/design_guardrails.md) §15-§16.
 
 ---
 
-*Last checked against the code: 2026-11-03, `e662b7c`.*
+*Last checked against the code: 2026-11-19, the chat guard.*

@@ -5,7 +5,7 @@ SERVICES := meeting-service location-service nomnom-service
 .PHONY: help sync lint format typecheck test check \
         run-meeting run-location run-nomnom \
         run-meeting-mcp run-location-mcp run-nomnom-mcp \
-        plan-meeting plan-meeting-docker run-server \
+        plan-meeting plan-meeting-docker guard-eval run-server \
         gui-install gui-dev gui-build gui-lint \
         up down build logs ps clean reset console talk agent-demo agent-demo-stop
 
@@ -66,6 +66,9 @@ AGENT_HOST_ENV := CATALOG_PATH=agents/catalog \
 
 plan-meeting: ## Plan a meeting from the terminal; needs `make up`. Pass ARGS="--title ..."
 	@$(AGENT_HOST_ENV) uv run --env-file .env --package meeting-agents plan-meeting $(ARGS)
+
+guard-eval: ## Run the chat guard's evaluation set against the real model (needs .env)
+	@PYDANTIC_AI_NO_BANNER=1 uv run --env-file .env --package meeting-agents python -m meeting_agents.guard_eval
 
 plan-meeting-docker: ## Same, but inside the agents container. Pass ARGS="--title ..."
 	docker compose run --rm agents $(ARGS)

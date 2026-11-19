@@ -1,0 +1,22 @@
+id: guard
+kind: agent
+namespace: meeting-planner
+user_id: anonymous
+model_type: akgentic.core.AgentCard
+description: "Answers typed questions about the chat: is this about arranging the meeting?"
+payload:
+  description: "Answers one typed question at a time. No tools, no memory of earlier checks."
+  agent_class: meeting_agents.guard.GuardAgent
+  can_be_hired: false
+  skills:
+    - guardrails
+  config:
+    name: "@Guard"
+    role: Guard
+    prompt:
+      template:
+        __ref__: guard_prompt
+      params: {}
+    model_cfg:
+      __ref__: guard_model
+    tools: []

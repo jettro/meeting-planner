@@ -1,0 +1,12 @@
+id: guard_model
+kind: model
+namespace: meeting-planner
+user_id: anonymous
+model_type: akgentic.llm.ModelConfig
+description: >-
+  @Guard's model (design_guardrails.md GR12). Today the same language model as
+  the specialists; the swap to a decision model (provider openai-decisions,
+  once akgentic has it) is this card alone.
+payload:
+  provider: openai
+  model: gpt-6-luna

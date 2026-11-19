@@ -55,6 +55,15 @@ from pydantic_ai import AgentCapability, ModelRetry, RunContext
 from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.output import OutputContext
 
+from meeting_agents.guard import (
+    MESSAGE_CHECK,
+    CheckTheAnswer,
+    MessageQuestion,
+    announce,
+    ask,
+    chat_guard_in,
+    message_refused,
+)
 from meeting_agents.memory import MemoryItem, MemoryTool
 from meeting_agents.messages import (
     AssignmentFailed,
@@ -106,6 +115,9 @@ class IntakeState(AgentState):
     #: Location ids a place lookup settled. Only these may be remembered about:
     #: a place is filed under the id the facility manager gave (design_memory.md M17).
     settled_places: list[str] = Field(default_factory=list)
+    #: The last thing said to the person, so the guard reads *yes* or *Thursday*
+    #: as an answer to it (design_guardrails.md §15.2).
+    last_said: str = ""
 
 
 class IntakeAgent(BaseAgent, Akgent[IntakeConfig, IntakeState]):
@@ -122,9 +134,56 @@ class IntakeAgent(BaseAgent, Akgent[IntakeConfig, IntakeState]):
         # system prompt survives and every change here is snapshotted.
         self.state = IntakeState(backstory=self.state.backstory, tool_state=self.state.tool_state)
         self.state.observer(self)
+        #: What the model's current run answers: the person's message, or "" for an update.
+        self._answering = ""
 
     def extra_capabilities(self) -> list[AgentCapability[Any]]:
-        return [TalkOnlyToHuman(human_name=self.config.human_name)]
+        capabilities: list[AgentCapability[Any]] = [TalkOnlyToHuman(human_name=self.config.human_name)]
+        card = chat_guard_in(self.config.tools)
+        if card is not None and card.check_answers:
+            capabilities.append(
+                CheckTheAnswer(
+                    card=card, human_name=self.config.human_name, answering=lambda: self._answering
+                )
+            )
+        return capabilities
+
+    # -- the person's message: checked before any model reads it (GR10, GR13) --
+
+    def receiveMsg_AgentMessage(self, message: AgentMessage, sender: ActorAddress) -> None:  # noqa: N802
+        """The person's free text - and only that: updates go to the parent directly.
+
+        An off-topic message is answered from code and never becomes a turn, so
+        whatever it says is never read by the model that holds the tools.
+        Commands (`/...`) are the framework's and are not checked.
+        """
+        self._answering = message.content
+        card = chat_guard_in(self.config.tools)
+        if card is not None and card.check_messages and not message.content.startswith("/"):
+            question = MessageQuestion(
+                message=message.content, last_said=self.state.last_said, requested=self.state.requested
+            )
+            verdict = ask(self, card, question)
+            refused = message_refused(verdict)
+            announce(self, MESSAGE_CHECK, verdict, refused)
+            if refused:
+                self._say(card.refusal)
+                return
+        super().receiveMsg_AgentMessage(message, sender)
+
+    def _say(self, text: str) -> None:
+        """A planner line written by code, shown in the chat like the model's own."""
+        human = self._member(self.config.human_name)
+        if human is None:
+            return
+        self.send(human, AgentMessage(content=text, type="response", recipient=human))
+        self._update(last_said=text)
+
+    def _route_output(self, output: StructuredOutput) -> bool:
+        said = [request.message for request in output.messages if request.recipient == self.config.human_name]
+        if said:
+            self._update(last_said=said[-1])
+        return super()._route_output(output)
 
     # -- helpers ---------------------------------------------------------
 
@@ -162,6 +221,7 @@ class IntakeAgent(BaseAgent, Akgent[IntakeConfig, IntakeState]):
         restores with the team.
         """
         update = AgentMessage(type="notification", content=f"Update: {text}", sender=sender)
+        self._answering = ""
         super().receiveMsg_AgentMessage(update, sender)  # type: ignore[arg-type]
 
     def organiser(self) -> str:

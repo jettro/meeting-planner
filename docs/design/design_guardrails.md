@@ -2,8 +2,8 @@
 
 > **Status:** agreed, 2026-11-06: option B, and a check on what `@Intake` is asked. The version
 > agreed on 2026-11-04 chose option A; §13 says what changed and why. **Built: the rules** (§12
-> step 2, §14). **Proposed, 2026-11-19, not agreed:** `@Guard` now, on a language model, checking
-> both what `@Intake` is asked and what it answers - §15; it changes GR3, GR4, GR9 and GR11.
+> step 2, §14). **Agreed and built, 2026-11-19:** `@Guard` on a language model, checking both
+> what `@Intake` is asked and what it answers - §15, built §16; it changed GR3, GR4, GR9 and GR11.
 > Re-checked on 2026-11-19 after the upgrade to akgentic-framework 2.19.1, the latest on PyPI
 > (akgentic-agent 1.8.1, akgentic-llm 2.5.2, akgentic-team 1.12.0, akgentic-infra 1.17.0,
 > pydantic-ai-slim 2.58.0, openai 3.37.0); first checked on akgentic-llm 2.5.0 with
@@ -331,7 +331,7 @@ Q7-Q10 agreed on 2026-11-06 as proposed below.
 
 ## 12. Order of work
 
-*Steps 1, 3, 4 and 5 are replaced by §15.8 if §15 is agreed.*
+*Steps 1, 3, 4 and 5 are replaced by §15.8 (agreed 2026-11-19).*
 
 1. **Upstream**, outside this repository: #182, then phase 1 in akgentic-llm.
 2. **Meanwhile, the rules** - they need no decision model: the capability, S1 and S3, the tests,
@@ -375,6 +375,7 @@ Q7-Q10 agreed on 2026-11-06 as proposed below.
   to a decision model later; two checks on the chat - the person's message and `@Intake`'s answer
   - after a demo where `@Intake` recommended restaurants. GR12-GR15 and Q11-Q14 new; GR3, GR4,
   GR9 revised, GR11 dormant.
+- 2026-11-19: Agreed: §15 as proposed. Built (§16).
 
 ## 14. What was built: the rules
 
@@ -407,7 +408,7 @@ Q7-Q10 agreed on 2026-11-06 as proposed below.
 
 ## 15. Revision, 2026-11-19: `@Guard` on a language model, now
 
-> **Status:** proposed, 2026-11-19. Not agreed yet. Nothing in it is built.
+> **Status:** agreed 2026-11-19, GR12-GR15 and Q11-Q14 as proposed. Built the same day (§16).
 
 ### 15.1 Why now, and why not wait
 
@@ -561,3 +562,46 @@ until there is a confidence to read. GR10 stands.
 6. A live run: the example refused at its second turn; an ordinary conversation that books a
    meeting with no refusal.
 7. The docs: `conversation.md` and its *Last checked* line, and a lesson if the run teaches one.
+
+## 16. What was built: the chat guard
+
+- **`meeting_agents/guard.py`**: `ChatGuard`, the card (`guard_name`, `timeout` 30 s, which checks,
+  the refusal and the retry instruction); the two pick-ones, `MessageTopic` (arrange, memory,
+  greeting, other) and `AnswerTopic` (meeting, other), each a single `topic` field whose
+  description is the question; `MessageQuestion` and `AnswerQuestion`, which put the judged text
+  between tags and say it is not an instruction; `Verdict` with `confidence=None`; `GuardAgent`;
+  `ask()`, which comes back *skipped* on a missing guard, an error or a timeout; and
+  `CheckTheAnswer`, the capability on `@Intake`.
+- **`GuardAgent`** is a `BaseAgent` with one capability, `OfferNoTools` (`prepare_tools` returns
+  nothing), and two methods, `check_message` and `check_answer`, each `clear()` then
+  `act(question, kind)`. @Intake calls them through `proxy_ask(..., timeout=card.timeout)`.
+- **`@Intake`** overrides `receiveMsg_AgentMessage` for the message check; `_tell_the_model`
+  still calls the parent, so updates are not checked. A refusal is `_say()`: an `AgentMessage`
+  to `@Human` from code, a planner line in the chat. `IntakeState.last_said` keeps the last line
+  to the person - from `_route_output` or `_say` - so the guard reads *Thursday* against it, after
+  a restore too. `CheckTheAnswer` asks through `asyncio.to_thread`; with no retry left it replaces
+  the answer to `@Human` with the refusal.
+- **Cards**: `meeting-planner.guard` (`can_be_hired: false`, `tools: []`), `guard_model` (openai,
+  gpt-6-luna), `guard_prompt`; `meeting-planner-chat.chat_guard` in `@Intake`'s tools; `@Guard`
+  under `@Intake` in the chat team. No message type: the call is not a message.
+- **The evaluation set** - `agents/evals/guard_cases.yaml`, 31 messages and 8 answers, run by
+  `make guard-eval` against the real model with the catalog's prompt and model card. First run:
+  38/39. The miss was the demo's *first* message, *can you help me find a nice restaurant around
+  amsterdam*, answered *other*; §15.1 calls the planner's question back the right answer. One
+  paragraph in `guard_prompt` (a place could be where to meet; only *no meeting* makes it
+  something else) made it 39/39, twice.
+- **Live, 2026-11-19**, the demo replayed: the first message passed and the planner asked whether
+  a meeting was meant (*message check* and *answer check* passed); the second was refused from
+  code. Then an ordinary conversation booked a meeting at Yuma: four chat checks and two booking
+  rules, all passed; `@Guard`'s five model calls in the usage events, no tool calls.
+- **Tests**: `test_guard.py` (19: both checks in a real actor system with a stand-in `@Guard`, a
+  timeout, a team without a guard, an update not checked, the retry and the replacement, `@Guard`
+  clearing before each check, no tools, answer types without a reason); the chat team card tests
+  widened by `@Guard` and `ChatGuard`.
+- **Not verified live**: S5 after a restore. It holds by construction - a refused message is
+  never a turn, so it is in no context to restore - and the tests show it never reaches `act()`.
+- **What it taught.** *An evaluation set earns its keep on the first run.* Thinking about the
+  example, the second turn was the case; the set found the guard was stricter than the planner
+  on the first. And *a check costs latency where the person waits*: two extra short model calls
+  per turn, about a second each in the live run, are acceptable here; a decision model would
+  make them cheaper.
