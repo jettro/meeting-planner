@@ -5,7 +5,7 @@ description = "Runs the meeting-planner agent team as a service, for browsers to
 requires-python = ">=3.12"
 dependencies = [
     "meeting-agents",
-    "akgentic-framework[agent,catalog,infra]>=2.18.1",
+    "akgentic-framework[agent,catalog,infra]>=2.19.1",
     "fastapi>=0.115",
     "httpx>=0.27",
     "uvicorn[standard]>=0.30",

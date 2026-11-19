@@ -254,7 +254,9 @@ def scripted(locations: list[str], seen: list[str]) -> FunctionModel:
 
     def answer(messages, info):
         last = messages[-1].parts[-1]
-        if getattr(last, "outcome", None) == "retried":
+        # pydantic-ai before 2.60 (pinned by akgentic-llm 2.5.2) answers a ModelRetry with a
+        # retry-prompt part; from 2.60 with a tool-return whose outcome is 'retried'.
+        if last.part_kind == "retry-prompt" or getattr(last, "outcome", None) == "retried":
             seen.append(str(last.content))
         location = next(turns, None)
         if location is None:

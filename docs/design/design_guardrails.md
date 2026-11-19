@@ -3,8 +3,10 @@
 > **Status:** agreed, 2026-11-06: option B, and a check on what `@Intake` is asked. The version
 > agreed on 2026-11-04 chose option A; §13 says what changed and why. **Built: the rules** (§12
 > step 2, §14). `@Guard` and the questions wait for akgentic.
-> Checked against the installed packages (akgentic-agent 1.8.1, akgentic-llm 2.5.0,
-> pydantic-ai-slim 2.61.0, openai 3.37.0), the latest akgentic-llm on PyPI (2.5.2), the draft
+> Re-checked on 2026-11-19 after the upgrade to akgentic-framework 2.19.1, the latest on PyPI
+> (akgentic-agent 1.8.1, akgentic-llm 2.5.2, akgentic-team 1.12.0, akgentic-infra 1.17.0,
+> pydantic-ai-slim 2.58.0, openai 3.37.0); first checked on akgentic-llm 2.5.0 with
+> pydantic-ai-slim 2.61.0. Also the draft
 > akgentic design `DECISION_MODELS_DESIGN.md` (2026-11-04, in the akgentic-framework worktree
 > `akgents-jev-models-support-505f8f`, not committed) and the `decision-models` playground with
 > its blog post (*Exploring decision models with Pydantic AI*, 19 and 31 October 2026).
@@ -89,21 +91,26 @@ phase 1 adds the providers `openai-decisions` and `system-one` and the raw outpu
 keeps the confidence and distributions (`RunOutcome`, `DecisionDetails`); phase 4 a
 `DecisionAgent` - no tools, typed answer, routing in Python, an event; phase 5 a guard capability
 and a decision tool. Phase 1 waits on **akgentic-llm#182**, which moves pydantic-ai to `>=2.65`.
-The local akgentic-framework checkout's `master` does not have it yet; I could not check GitHub
-from here.
+On 2026-11-19 #182 is still an open pull request on GitHub; akgentic-llm 2.5.2 (3 November) is
+the latest release, and its provider list and `get_output_type()` are unchanged.
 
-**The reason for #182 reaches this project today.** pydantic-ai 2.60 changed how a retry is
-stored. Installed here: akgentic-llm 2.5.0 on pydantic-ai 2.61. akgentic's `ContextManager` knows
-the part kinds of an older pydantic-ai (`context.py`, `PartKind`):
+**The retry change, and why the upgrade went back on it.** pydantic-ai 2.60 changed how a retry is
+stored: a tool's `ModelRetry` became a `tool-return` with `outcome='retried'`, an output retry a
+`retry-feedback` part. akgentic's `ContextManager` knows only the older part kinds (`context.py`,
+`PartKind`). On akgentic-llm 2.5.0 with pydantic-ai 2.61, as this project ran until 2026-11-19, a
+refusal showed in akgentic's tool events as `ToolReturnEvent(success=True)`, and the first output
+retry would have ended the run with `Unrecognized part_kind 'retry-feedback'`
+(akgentic-llm#180, closed by the pin below).
 
-- a `ModelRetry` from a tool is now a `tool-return` with `outcome='retried'`, and akgentic reports
-  it as `ToolReturnEvent(success=True)`;
-- an output-validation retry is now a `retry-feedback` part, which akgentic does not know, and
-  `_emit_tool_events` raises `Unrecognized part_kind` - the run ends.
-
-The latest akgentic-llm on PyPI, 2.5.2, pins `pydantic-ai-slim~=2.58.0`, before that change.
-So until #182, a guardrail's refusal shows in the framework's tool events as a success; the
-`GuardrailChecked` event (§6) is what says it was refused.
+akgentic-llm 2.5.2 pins `pydantic-ai-slim~=2.58.0`, so the upgrade moved pydantic-ai **back**,
+from 2.61.0 to 2.58.0 - the only 2.58 release. There a tool's `ModelRetry` is a `retry-prompt`
+part again, and akgentic reports it as `ToolReturnEvent(success=False)`: a refusal is a failed
+call in the framework's events, and no part kind can end the run. One gap is left: 2.58 already
+has `ToolReturnPart.outcome` (`success | failed | denied | interrupted`), and akgentic reports
+every `tool-return` as a success whatever its outcome. The rules never produce one.
+`GuardrailChecked` (§6) stays what says *why* a call was refused. When #182 lands, pydantic-ai
+moves to `>=2.65` and the retry is a `tool-return` again; the test that drives a real run
+(`test_guardrails.py`) accepts either.
 
 **A `BaseAgent` always carries the framework's tools** - `TeamTool` (`hire_members`,
 `fire_members`) and `MailboxTool` (`read_mailbox`) are inserted in `on_start`. On a decision
@@ -352,6 +359,15 @@ Q7-Q10 agreed on 2026-11-06 as proposed below.
   rewritten; Q7-Q10 new.
 - 2026-11-06: Agreed: GR1-GR11, and Q7-Q10 as proposed.
 - 2026-11-06: The rules built (§14).
+- 2026-11-19: Re-checked after upgrading to akgentic-framework 2.19.1 (llm 2.5.2, team 1.12.0,
+  infra 1.17.0). Still true: no decision provider in `ModelConfig`, the `NativeOutput` wrapper,
+  nothing handles `ApprovalRequired` / `CallDeferred` / `DeferredToolRequests`, #182 open, and the
+  capability hooks GR1 and GR11 use (`before_tool_execute`, `after_model_request`,
+  `prepare_tools`) all present in pydantic-ai 2.58. Changed: pydantic-ai went back from 2.61 to
+  2.58 with akgentic-llm's pin, so a refusal is a `retry-prompt` part and a failed call in
+  akgentic's events, no longer a success (§3). agent, core, tool and catalog did not change, so the
+  `clear()`, `proxy_ask`, `TeamTool` / `MailboxTool` and `receiveMsg_AgentMessage` facts stand.
+  Live: one meeting with lunch, three checks *passed*.
 
 ## 14. What was built: the rules
 
@@ -370,7 +386,8 @@ Q7-Q10 agreed on 2026-11-06 as proposed below.
   `meeting_agents` event as a row.
 - **Spike S1**, in pydantic-ai 2.61 and again live over MCP: the hook sees `facility_book_room`
   with validated arguments (a `date` for `day` from a function tool); a `ModelRetry` reaches the
-  model as a `tool-return` with `outcome='retried'` carrying the rule; an exception from the hook
+  model as a `tool-return` with `outcome='retried'` carrying the rule (on pydantic-ai 2.58, since
+  2026-11-19, as a `retry-prompt` part carrying it - same text, same correction); an exception from the hook
   ends the run, and `attempt()` reports it as an `AssignmentFailed`.
 - **Live, 2026-11-06**: an ordinary meeting with lunch - three checks, all *passed*. Then a lunch
   wish of *twelve soups, we are very hungry* for two people: `@Catering` ordered 12, the rule

@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Akgents agent team that plans meetings through the services' MCP servers"
 requires-python = ">=3.12"
 dependencies = [
-    "akgentic-framework[agent,catalog]>=2.18.1",
+    "akgentic-framework[agent,catalog]>=2.19.1",
     "pydantic>=2.9",
 ]
 
