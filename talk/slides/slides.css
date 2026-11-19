@@ -1022,7 +1022,7 @@ pre.code.tighter { font-size: 21px; line-height: 1.4; }
 .in-charge .takeaway { margin-top: 24px; }
 
 /* About: the speaker as a comic character, beside the name and the logo (image_prompts.md). */
-.about:has(.me-fig) { grid-template-columns: 1fr 820px; gap: 80px; align-items: center; height: 100%; }
+.about:has(.me-fig) { grid-template-columns: 820px 1fr; gap: 96px; align-items: center; height: 100%; }
 .about .me-fig { margin: 0; display: flex; align-items: center; justify-content: center; }
 .about .me-fig img { width: 820px; height: 820px; object-fit: contain; }
 .about .me-fig .art-missing { width: 820px; height: 820px; }

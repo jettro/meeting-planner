@@ -81,7 +81,7 @@ The about slide uses the bio from the DevPulse page and the old deck, and the Yu
 | # | Slide |
 |---|---|
 | 1 | title (dark) |
-| 2 | about me - name, role and logo; on the right the speaker as a comic character (`me-comic.jpg`, prompt in [`image_prompts.md`](image_prompts.md)); what I do and believe in is in the notes |
+| 2 | about me - the speaker as a comic character on the left, looking into the slide; name, role and logo on the right (`me-comic.jpg`, prompt in [`image_prompts.md`](image_prompts.md)); what I do and believe in is in the notes |
 | 3 | the comic: a quick meeting, and what if I built a team for this? |
 | 4 | what is an agent? - four definitions, then the one sentence |
 | 5-9 | the anatomy of an agent |
