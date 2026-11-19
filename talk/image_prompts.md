@@ -72,3 +72,51 @@ Paste this block at the start of each prompt:
   and these characters"*.
 - **The background is not plain**: ask for *"the same image on a plain flat #F8F5F5
   background"*. A transparent PNG also works; the slide background is that colour.
+
+---
+
+# The speaker, as a comic character - `me-comic` (slide 2, 2026-11-19)
+
+A less corporate introduction: the presenter drawn into the comic of slide 3, at work on what
+the talk is about. The left side of the slide (name, role, logo) stays; the picture takes the
+right side, and what the slide used to say moves to the speaker notes.
+
+**How to make it**
+
+1. A **new** ChatGPT conversation (not the robot one), so it does not mix the two prompts up.
+2. **Attach** two or three recent photos of yourself - face clearly visible, different angles -
+   and, as the style reference, `meeting-01-quick-meeting.jpg` and `meeting-06-build-a-team.jpg`
+   from `talk/slides/img/`, and `robot-3.png` for the robot.
+3. **Square, 1:1 (1024 x 1024)** - it fills the right half of the slide.
+4. **Save it** as PNG; the slide uses `talk/slides/img/me-comic.jpg`, made the same way as the
+   robot pictures (background set to exactly #F8F5F5, JPEG quality 86). Until then the slide shows
+   a placeholder.
+
+The prompt keeps out names and personal details on purpose: the photos are enough.
+
+**The prompt**
+
+> Draw the person from the attached photos as a comic character, in the exact hand-drawn style of
+> the attached comic panels: bold ink outlines, warm slightly textured colours, gentle humour,
+> the same kind of character drawing as the man in those panels - but with this person's face,
+> hair, glasses (if any) and build, recognisable at a glance and friendly.
+>
+> The scene, square 1:1: the person stands at a workbench, sleeves rolled up, building a small
+> team of robots - the robot from the attached robot image, in the same cream, teal and orange.
+> One robot sits half-assembled on the bench; the person fits its head with one hand and holds a
+> big magnifying glass in the other, looking through it with curiosity at a tiny robot that
+> holds up a document - finding the right thing. A second robot, finished, stands beside the
+> person and hands over a wrench, like an apprentice. On a small shelf behind: a stack of books,
+> an open notebook with sketches of boxes and arrows, and a warm coffee mug. The person looks
+> pleased and a little amused - a builder who enjoys sharing knowledge, not a corporate
+> portrait.
+>
+> Plain, flat, very light warm off-white background (#F8F5F5) behind the scene, so it blends
+> into a presentation slide. No text, no letters, no logos, no words anywhere in the image.
+
+**If a result is off**
+
+- **Not recognisable**: attach one more photo, and say *"keep the face closer to the photos:
+  [what is off - the hair, the glasses, the beard]"*.
+- **Too realistic, or too cartoonish**: *"exactly the drawing style of the attached comic panels"*.
+- **Text appears**: *"the same image, without any text or letters"*.
