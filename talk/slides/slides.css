@@ -1034,3 +1034,20 @@ pre.code.tighter { font-size: 21px; line-height: 1.4; }
 .about .me-fig { margin: 0; display: flex; align-items: center; justify-content: center; }
 .about .me-fig img { width: 820px; height: 820px; object-fit: contain; }
 .about .me-fig .art-missing { width: 820px; height: 820px; }
+
+/* The framework, promoted: the name on the left, what it gives you on the right. */
+.slide.akgentic.current { display: grid; grid-template-columns: 560px 1fr; grid-template-rows: 1fr auto; column-gap: 72px; row-gap: 40px; padding: 90px 100px 120px; }
+.ak-side { display: flex; flex-direction: column; }
+.ak-kicker { margin: 0; font: 600 24px var(--sans); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.slide.akgentic h2.ak-name { margin: 8px 0 0; font: 800 120px/1 var(--sans); letter-spacing: -.04em; color: var(--accent); }
+.ak-tag { margin: 24px 0 0; font: 600 42px/1.25 var(--sans); }
+.ak-install { margin: 40px 0 0; padding: 18px 24px; border-radius: 14px; background: var(--text); color: #fff; font: 600 23px var(--mono); white-space: pre; }
+.ak-meta { margin: 24px 0 0; font: 22px/1.6 var(--sans); color: var(--muted); }
+.ak-powered { margin: auto 0 0; display: flex; align-items: center; gap: 18px; font: 600 24px var(--sans); color: var(--muted); }
+.ak-powered img { height: 170px; margin: -50px 0 -50px -36px; }
+.ak-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-content: start; }
+.ak-tile { display: flex; flex-direction: column; gap: 10px; padding: 26px 30px; background: #fff; border-radius: 18px; border-top: 6px solid var(--accent); }
+.ak-tile b { font: 700 34px var(--sans); }
+.ak-tile span { font: 24px/1.4 var(--sans); color: var(--text); }
+.ak-tile em { margin-top: auto; font: italic 600 20px var(--mono); color: var(--accent); }
+.slide.akgentic .takeaway { grid-column: 1 / -1; margin: 0; }

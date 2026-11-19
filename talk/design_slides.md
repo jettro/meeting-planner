@@ -91,20 +91,21 @@ The about slide uses the bio from the DevPulse page and the old deck, and the Yu
 | 16-18 | step 5: one agent, three MCP servers; the code; run it (`make run-meeting`) |
 | 19-24 | from one agent to a team: one agent, every job (picture); split the work (picture); five patterns; start with one agent, but... (both sides); put someone in charge (picture and the 17x / 4x dots); split like services ([`design_team_patterns.md`](design_team_patterns.md), pictures: [`image_prompts.md`](image_prompts.md)) |
 | 25 | the sample: how it is built |
-| 26-30 | how agents talk: chat or messages; a message is a type; the model answers in a type, too; one meeting in messages; what messages buy you ([`design_messages.md`](design_messages.md)) |
-| 31-32 | a team is configuration; the cards to scroll through - the real catalog files ([`design_config_and_navigation.md`](design_config_and_navigation.md)) |
-| 33 | the repository |
-| 34-35 | live: the planner, the console |
-| 36 | talk to the planner: `@Intake` |
-| 37-40 | memory: one item and its fields; who sees what; from a sentence to a prompt; a memory has a life |
-| 41-43 | guardrails: a check before the call; the twelve soups (code and a live run); `@Guard` keeping the chat to meetings (built 2026-11-19 on gpt-6-luna) |
-| 44-45 | live again: the planner, the console |
-| 46 | beyond the demo: four lessons |
-| 47 | when is a team worth it? - and the link, thank you |
-| 48 | **Extras** - a divider; what follows is kept for questions |
-| 49 | now everybody has opinions (the first team slide, moved here 2026-11-07) |
+| 26 | akgentic, the framework under the sample: six tiles, each with where it showed tonight (facts from the akgentic-framework README; added 2026-11-19) |
+| 27-31 | how agents talk: chat or messages; a message is a type; the model answers in a type, too; one meeting in messages; what messages buy you ([`design_messages.md`](design_messages.md)) |
+| 32-33 | a team is configuration; the cards to scroll through - the real catalog files ([`design_config_and_navigation.md`](design_config_and_navigation.md)) |
+| 34 | the repository |
+| 35-36 | live: the planner, the console |
+| 37 | talk to the planner: `@Intake` |
+| 38-41 | memory: one item and its fields; who sees what; from a sentence to a prompt; a memory has a life |
+| 42-44 | guardrails: a check before the call; the twelve soups (code and a live run); `@Guard` keeping the chat to meetings (built 2026-11-19 on gpt-6-luna) |
+| 45-46 | live again: the planner, the console |
+| 47 | beyond the demo: four lessons |
+| 48 | when is a team worth it? - and the link, thank you |
+| 49 | **Extras** - a divider; what follows is kept for questions |
+| 50 | now everybody has opinions (the first team slide, moved here 2026-11-07) |
 | 50-52 | evals: is the team any good?; Pydantic Evals; and for the planner? (moved here 2026-11-07) |
-| 53 | last year I drew a crew - the 2025 crew next to this year's team (moved here 2026-11-08: nobody in the room saw the 2025 deck) |
+| 54 | last year I drew a crew - the 2025 crew next to this year's team (moved here 2026-11-08: nobody in the room saw the 2025 deck) |
 | 54-55 | it works, but...; when a team helps, and when it hurts (moved here 2026-11-18, replaced by the pictures and *start with one agent, but...*) |
 
 ## The comic (slide 3)
