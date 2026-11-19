@@ -971,7 +971,8 @@ pre.code.tight { font-size: 24px; }
 /* The YAML viewer: the files as tabs, the chosen one in a panel that scrolls. */
 .slide.yaml-viewer.current { display: grid; grid-template-columns: 420px 1fr; gap: 40px; padding: 72px 100px 110px; }
 .yv-tabs { display: flex; flex-direction: column; gap: 10px; }
-.yv-tabs button { text-align: left; padding: 14px 20px; border: 0; border-radius: 12px; background: #fff; font: 600 22px var(--mono); color: var(--muted); cursor: pointer; }
+.yv-tabs button { text-align: left; padding: 10px 20px; border: 0; border-radius: 12px; background: #fff; font: 600 22px var(--mono); color: var(--muted); cursor: pointer; }
+.yv-group { margin: 14px 0 0; font: 600 18px var(--sans, inherit); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
 .yv-tabs button.on { background: var(--accent); color: #fff; }
 .yv-help { margin-top: auto; font-size: 20px; color: var(--muted); }
 .yv-help kbd { font: 600 18px var(--mono); padding: 2px 8px; border: 1px solid currentColor; border-radius: 6px; }

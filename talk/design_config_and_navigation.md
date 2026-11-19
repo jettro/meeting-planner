@@ -29,7 +29,7 @@ location_mcp.yaml ── url: ${LOCATION_MCP_URL}, bearer_token: ${LOCATION_MCP_
 | # | Slide | Content |
 |---|---|---|
 | Y1 | **A team is configuration** | a small diagram of the cards for one agent: the team card's tree, then `@FacilityManager`'s card with arrows to its prompt, model and three tools. One line each on what is *not* in code: who is on the team and under whom, which model, which prompt, which tools, which guardrail. Takeaway: *change a prompt or a model without touching Python* |
-| Y2 | **The cards, to scroll through** | a viewer: the file names on the left as tabs - `team.yaml`, `facility_manager.yaml`, `facility_manager_prompt.yaml`, `default_model.yaml`, `location_mcp.yaml`, `booking_rules.yaml` - and the chosen file on the right, highlighted, in a panel that scrolls |
+| Y2 | **The cards, to scroll through** | a viewer: the file names on the left as tabs - `team.yaml`, `facility_manager.yaml`, `facility_manager_prompt.yaml`, `default_model.yaml`, `location_mcp.yaml`, `booking_rules.yaml`, then under *the chat guard* (2026-11-19) `chat_guard.yaml`, `guard.yaml`, `guard_prompt.yaml`, `guard_model.yaml` - and the chosen file on the right, highlighted, in a panel that scrolls |
 
 ### How you move through the viewer
 

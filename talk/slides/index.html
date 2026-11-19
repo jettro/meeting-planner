@@ -720,7 +720,7 @@ def receiveMsg_BookMeetingAssignment(self, message, sender):
       the Python class that reads it. Cards point at each other by name. The team card is the tree:
       who creates whom. The facility manager's card names its prompt, its model and its tools - and
       the booking rules, which give the model no tool at all. Change the model or the prompt here,
-      and the code does not change. 29 cards in three teams.
+      and the code does not change. 30 cards in three teams - four of them the chat guard.
     </aside>
   </section>
 
@@ -732,6 +732,11 @@ def receiveMsg_BookMeetingAssignment(self, message, sender):
       <button data-file="meeting-planner/model/default_model.yaml">default_model.yaml</button>
       <button data-file="meeting-planner/tool/location_mcp.yaml">location_mcp.yaml</button>
       <button data-file="meeting-planner/tool/booking_rules.yaml">booking_rules.yaml</button>
+      <p class="yv-group">the chat guard</p>
+      <button data-file="meeting-planner-chat/tool/chat_guard.yaml">chat_guard.yaml</button>
+      <button data-file="meeting-planner/agent/guard.yaml">guard.yaml</button>
+      <button data-file="meeting-planner/prompt/guard_prompt.yaml">guard_prompt.yaml</button>
+      <button data-file="meeting-planner/model/guard_model.yaml">guard_model.yaml</button>
       <p class="yv-help">→ next file · scroll, or <kbd>j</kbd> <kbd>k</kbd></p>
     </div>
     <div class="yv-panel"><pre class="yv-code"></pre></div>
@@ -740,6 +745,10 @@ def receiveMsg_BookMeetingAssignment(self, message, sender):
       the next file; scroll with the trackpad, or j and k. Point at: the tree of references in the
       team; the agent card naming its prompt, model and tools; the prompt as plain text; the model
       in three lines; the MCP server's URL and key from the environment - no secret in the file.
+      Then the chat guard, four cards: chat_guard is a tool on @Intake that gives the model no
+      tool - it checks the message before the model reads it and the answer before the person
+      does; guard is @Guard itself, no tools, no memory; its prompt says what is on topic; and its
+      model is one card - today gpt-6-luna, the swap to a decision model touches this card alone.
     </aside>
   </section>
 
