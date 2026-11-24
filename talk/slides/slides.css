@@ -1051,3 +1051,41 @@ pre.code.tighter { font-size: 21px; line-height: 1.4; }
 .ak-tile span { font: 24px/1.4 var(--sans); color: var(--text); }
 .ak-tile em { margin-top: auto; font: italic 600 20px var(--mono); color: var(--accent); }
 .slide.akgentic .takeaway { grid-column: 1 / -1; margin: 0; }
+
+/* Security, 1: three ways an agent calls, side by side; the overlap underneath. */
+.slide.sec-who.current, .slide.sec-team.current { display: flex; flex-direction: column; gap: 30px; }
+.sec-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+.sec-col { display: flex; flex-direction: column; padding: 26px 30px; background: #fff; border-radius: 20px; border-top: 6px solid var(--muted); }
+.sec-col.best { border-top-color: var(--accent); box-shadow: 0 0 0 3px var(--accent); }
+.sec-how { margin: 0; font: 700 40px var(--sans); }
+.sec-col.best .sec-how { color: var(--accent); }
+.sec-sub { margin: 4px 0 18px; font: 24px var(--sans); color: var(--muted); }
+.sec-col dl { margin: 0; display: grid; grid-template-columns: 128px 1fr; gap: 10px 14px; }
+.sec-col dt { font: 600 20px var(--mono); color: var(--muted); padding-top: 4px; }
+.sec-col dd { margin: 0; font: 25px/1.35 var(--sans); }
+.sec-badge { margin: auto 0 0; padding-top: 22px; font: 600 21px var(--mono); color: var(--muted); }
+.sec-badge.no { color: #b4371f; }
+.sec-badge.yes { color: var(--accent); }
+.sec-bottom { display: flex; align-items: center; gap: 40px; }
+.sec-venn { width: 260px; flex: none; }
+.sec-venn circle { fill: var(--accent); fill-opacity: .14; stroke: var(--accent); stroke-width: 3; }
+.sec-venn text { font: 600 21px var(--sans); fill: var(--text); text-anchor: middle; }
+.sec-bottom .takeaway { margin: 0; }
+
+/* Security, 2: the chain, with the rights narrowing at every hop. */
+.sec-chain { display: flex; align-items: center; gap: 18px; }
+.sec-chain .hop { flex: 1; display: flex; flex-direction: column; gap: 10px; padding: 22px 24px; background: #fff; border-radius: 16px; }
+.sec-chain .hop b { font: 600 26px var(--mono); }
+.sec-chain .hop i { font: italic 21px var(--sans); color: var(--muted); }
+.sec-chain .rights { display: block; height: 12px; width: var(--w); border-radius: 6px; background: var(--accent); }
+.sec-chain .hop.sys { border: 3px dashed var(--accent); background: transparent; }
+.sec-chain .hop.sys i { color: var(--accent); font-weight: 600; }
+.sec-chain > em { font: 600 36px var(--sans); color: var(--muted); font-style: normal; }
+.sec-two { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; }
+.sec-h { margin: 0 0 14px; font: 600 22px var(--sans); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.sec-list { list-style: none; margin: 0; padding: 0; }
+.sec-list li { position: relative; margin-bottom: 16px; padding-left: 40px; font: 26px/1.35 var(--sans); }
+.sec-list li::before { position: absolute; left: 0; top: 0; font-weight: 700; }
+.sec-list.bad li::before { content: "✗"; color: #b4371f; }
+.sec-list.good li::before { content: "✓"; color: #1f7a4d; }
+.sec-team .takeaway { margin: auto 0 0; }

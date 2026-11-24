@@ -1037,6 +1037,108 @@ async def before_tool_execute(self, ctx, *, call, tool_def, args):
     </aside>
   </section>
 
+  <!-- Security, 1: one agent - whose rights does it use? (2026-11-24; sources in design_security_slides.md) -->
+  <section class="slide sec-who">
+    <h2>Who is the agent, when it calls?</h2>
+    <div class="sec-cols">
+      <div class="sec-col step">
+        <p class="sec-how">as the person</p>
+        <p class="sec-sub">it passes the person’s token on</p>
+        <dl>
+          <dt>may do</dt><dd>everything the person may</dd>
+          <dt>the risk</dt><dd>one injected instruction carries all of it</dd>
+          <dt>logged as</dt><dd>the person - did they?</dd>
+        </dl>
+        <p class="sec-badge no">MCP: token passthrough is forbidden</p>
+      </div>
+      <div class="sec-col step">
+        <p class="sec-how">as itself</p>
+        <p class="sec-sub">one generic key for the system</p>
+        <dl>
+          <dt>may do</dt><dd>everything the key may - often more than the person</dd>
+          <dt>the risk</dt><dd>the <em>confused deputy</em>: the person gets the agent to do what they may not</dd>
+          <dt>logged as</dt><dd>“the agent” - for whom?</dd>
+        </dl>
+        <p class="sec-badge">when the system knows no users</p>
+      </div>
+      <div class="sec-col best step">
+        <p class="sec-how">on behalf of</p>
+        <p class="sec-sub">a token for the person <em>and</em> the agent</p>
+        <dl>
+          <dt>may do</dt><dd>only what both may, for this task, for a while</dd>
+          <dt>the risk</dt><dd>more to set up: an exchange, short-lived and scoped</dd>
+          <dt>logged as</dt><dd>the person, and which agent acted</dd>
+        </dl>
+        <p class="sec-badge yes">OAuth token exchange · RFC 8693</p>
+      </div>
+    </div>
+    <div class="sec-bottom step">
+      <svg class="sec-venn" viewBox="0 0 300 150" aria-hidden="true">
+        <circle cx="105" cy="75" r="68"/><circle cx="195" cy="75" r="68"/>
+        <text x="78" y="70">who</text><text x="78" y="94">asks</text><text x="222" y="70">what it</text><text x="222" y="94">is for</text>
+      </svg>
+      <p class="takeaway">An agent’s rights are the overlap: never more than who asks, never more than what it is for.</p>
+    </div>
+    <aside class="notes">
+      An agent calls a system. Whose rights does it use? Three answers. As the person: pass their
+      token on - the agent can do everything they can, and one instruction hidden in an email
+      carries all of it. The MCP specification forbids exactly this: an MCP server must not accept a
+      token that was not issued for it, and must not pass on the one it got. As itself: one key for
+      the agent - what most of us do, and sometimes the only option, when the system behind the
+      MCP server has no idea of users. Then the agent can do more than the person who asks: the
+      confused deputy. And the log says "the agent" - for whom? On behalf of: exchange the person's
+      token for one that names both - RFC 8693, the act claim says which agent acted - scoped to the
+      task, short-lived. More work, and the only one where both questions have an answer. With a
+      generic key, the checks move into your own code: the guardrails we just saw.
+    </aside>
+  </section>
+
+  <!-- Security, 2: a team - rights travel with messages -->
+  <section class="slide sec-team">
+    <h2>In a team, rights travel with messages</h2>
+    <div class="sec-chain">
+      <div class="hop"><b>@Human</b><span class="rights" style="--w:100%"></span><i>Sanne, all she may</i></div><em>→</em>
+      <div class="hop"><b>@Intake</b><span class="rights" style="--w:72%"></span><i>arrange a meeting</i></div><em>→</em>
+      <div class="hop"><b>@Coordinator</b><span class="rights" style="--w:50%"></span><i>this plan, once approved</i></div><em>→</em>
+      <div class="hop"><b>@FacilityManager</b><span class="rights" style="--w:30%"></span><i>this room, this day</i></div><em>→</em>
+      <div class="hop sys"><b>location service</b><i>who is asking now?</i></div>
+    </div>
+    <div class="sec-two">
+      <div>
+        <p class="sec-h">What goes wrong</p>
+        <ul class="sec-list bad">
+          <li class="step"><b>Escalation by asking</b> - no tools itself, but it can ask the agent that has them</li>
+          <li class="step"><b>A key in a message</b> - every agent that reads it now holds it</li>
+          <li class="step"><b>An injection that travels</b> - one agent’s input becomes another’s instruction</li>
+        </ul>
+      </div>
+      <div>
+        <p class="sec-h">What holds</p>
+        <ul class="sec-list good">
+          <li class="step"><b>Rights only narrow</b> along the chain, never grow</li>
+          <li class="step"><b>A key stays with its agent</b> - on its card, never in a message</li>
+          <li class="step"><b>A request asks only what its type allows</b> - fields, not free text</li>
+          <li class="step"><b>The receiver checks</b> - with the person’s identity when it can, with rules when it cannot</li>
+        </ul>
+      </div>
+    </div>
+    <p class="takeaway step">In a team, check rights where the work is done, not where it was asked for.</p>
+    <aside class="notes">
+      One agent has one question: whose rights. A team has it at every hop. The person asks
+      @Intake, @Intake asks the coordinator, the coordinator asks the facility manager, and that
+      one calls the location service. Who is asking now? Three ways it goes wrong. An agent without
+      tools asks one that has them - @Intake cannot book, but it can ask. A credential put in a
+      message is held by every agent that reads it. And text one agent read becomes another
+      agent's instruction. What holds: rights only narrow - each hop can do less than the one
+      before. A key lives on one agent's card - in the sample each specialist has the key to one
+      service, and a test keeps it that way. A typed request cannot ask for more than its fields.
+      And the one that does the work checks: on behalf of, if the system knows people; if it only
+      knows a generic key, as our services do, then our own rules - the booking rules check every
+      call against what the person approved. What the sample does not have yet: the meeting service
+      does not know it is Sanne who asks. That is the next step, and it needs the token exchange.
+    </aside>
+  </section>
+
   <!-- Demo 2: the team you talk to, and memory - the same two frames as before -->
   <section class="slide demo" data-still="img/still-planner.png" data-src="http://localhost:8300" data-zoom="1.25">
     <aside class="notes">

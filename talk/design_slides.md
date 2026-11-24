@@ -99,14 +99,15 @@ The about slide uses the bio from the DevPulse page and the old deck, and the Yu
 | 37 | talk to the planner: `@Intake` |
 | 38-41 | memory: one item and its fields; who sees what; from a sentence to a prompt; a memory has a life |
 | 42-44 | guardrails: a check before the call; the twelve soups (code and a live run); `@Guard` keeping the chat to meetings (built 2026-11-19 on gpt-6-luna) |
-| 45-46 | live again: the planner, the console |
-| 47 | beyond the demo: four lessons |
-| 48 | when is a team worth it? - and the link, thank you |
-| 49 | **Extras** - a divider; what follows is kept for questions |
-| 50 | now everybody has opinions (the first team slide, moved here 2026-11-07) |
-| 51-53 | evals: is the team any good?; Pydantic Evals; and for the planner? (moved here 2026-11-07) |
-| 54 | last year I drew a crew - the 2025 crew next to this year's team (moved here 2026-11-08: nobody in the room saw the 2025 deck) |
-| 55-56 | it works, but...; when a team helps, and when it hurts (moved here 2026-11-18, replaced by the pictures and *start with one agent, but...*) |
+| 45-46 | security: who is the agent, when it calls? (as the person, as itself, on behalf of); in a team, rights travel with messages ([`design_security_slides.md`](design_security_slides.md)) |
+| 47-48 | live again: the planner, the console |
+| 49 | beyond the demo: four lessons |
+| 50 | when is a team worth it? - and the link, thank you |
+| 51 | **Extras** - a divider; what follows is kept for questions |
+| 52 | now everybody has opinions (the first team slide, moved here 2026-11-07) |
+| 53-55 | evals: is the team any good?; Pydantic Evals; and for the planner? (moved here 2026-11-07) |
+| 56 | last year I drew a crew - the 2025 crew next to this year's team (moved here 2026-11-08: nobody in the room saw the 2025 deck) |
+| 57-58 | it works, but...; when a team helps, and when it hurts (moved here 2026-11-18, replaced by the pictures and *start with one agent, but...*) |
 
 ## The comic (slide 3)
 
