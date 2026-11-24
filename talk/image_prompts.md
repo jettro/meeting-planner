@@ -120,3 +120,57 @@ The prompt keeps out names and personal details on purpose: the photos are enoug
   [what is off - the hair, the glasses, the beard]"*.
 - **Too realistic, or too cartoonish**: *"exactly the drawing style of the attached comic panels"*.
 - **Text appears**: *"the same image, without any text or letters"*.
+
+---
+
+# The comic's last panel - `meeting-07-the-team-did-it` (before the wrap-up, 2026-11-24)
+
+The talk opens with six comic panels (slide 3): the quick meeting that turns into calendar tetris,
+a booked room, lunch, *move it to Friday?* - and *what if I built a team for this?*. The last
+picture closes that story: the same man, the same office, and the crew from the robot pictures
+doing the job, with one of them in charge.
+
+**How to make it**
+
+1. Best in the **robot conversation** (the one that made `art-1` to `art-3`), so the robots stay
+   the same; otherwise a new one.
+2. **Attach** from `talk/slides/img/`: `meeting-05-move-to-friday.jpg` and
+   `meeting-06-build-a-team.jpg` (the man, the office, the style) and `art-3-lead.jpg` (the
+   robots and their lead).
+3. **Landscape, 3:2 (1536 x 1024)** - it fills the slide on its own.
+4. **Save it** as PNG; the slide uses `talk/slides/img/meeting-07-the-team-did-it.jpg`, made like
+   the others (near-white background set to exactly #F8F5F5, JPEG quality 86). Until then the
+   slide shows a placeholder.
+
+**The prompt**
+
+> One more comic panel, the last one of the attached comic: the same man, the same office, the
+> same hand-drawn style - bold ink outlines, warm slightly textured colours, gentle humour - and
+> the same robots as the attached robot picture, in cream, teal and orange.
+>
+> The same desk, the same wall clock, the same laptop and mug. The man leans back in his chair,
+> relaxed and smiling, feet up on the corner of the desk, a fresh coffee in his hand. His laptop
+> screen shows a calendar with one meeting in it and a big green check mark. Around him the robot
+> team works calmly: the lead robot with the headset and clipboard stands beside him, ticking off
+> the last item on its checklist and holding out a small card for him to approve with a thumbs
+> up; the calendar robot pins the meeting on the wall calendar on Friday; the room-key robot
+> hangs a key with a tag on a hook; the lunch robot brings a tray with neatly wrapped sandwiches
+> and a salad. The same colleague as in the first panels looks in through the doorway, surprised
+> and pleased.
+>
+> The colleague has a speech bubble: "Could we move it to Friday?" The man has a speech bubble:
+> "Already done." No other text, letters or words anywhere in the image.
+>
+> Plain, flat, very light warm off-white background (#F8F5F5) around the panel, so it blends into
+> a presentation slide. Landscape 3:2.
+
+**Without words** (if the bubbles come out wrong, or you prefer to say it yourself): drop the
+speech-bubble paragraph and end with *"No text, no letters, no words anywhere in the image."*
+
+**If a result is off**
+
+- **The man looks different**: *"keep the man exactly as in the attached comic panels: face,
+  hair, clothes"*.
+- **The robots look different**: *"keep the robots exactly as in the attached robot picture"*.
+- **Text is misspelled or extra text appears**: ask for the version without words, and say the
+  line yourself.

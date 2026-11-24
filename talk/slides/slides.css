@@ -1089,3 +1089,11 @@ pre.code.tighter { font-size: 21px; line-height: 1.4; }
 .sec-list.bad li::before { content: "✗"; color: #b4371f; }
 .sec-list.good li::before { content: "✓"; color: #1f7a4d; }
 .sec-team .takeaway { margin: auto 0 0; }
+
+/* The one-agent run, back in the story: four facts, then the question. */
+.solo-but .buts li { font-size: 38px; margin-bottom: 24px; }
+.solo-but .note { margin-bottom: 16px; }
+.solo-but .takeaway { margin: 0; }
+
+/* The comic's last panel: the picture alone, as large as the slide allows. */
+.slide.art-slide.comic-end { padding: 48px 120px 96px; }

@@ -359,14 +359,35 @@ print(result.output)
 
 
   <!-- 10. The sample: how it is built -->
+  <!-- What the one agent decided (back from the extras 2026-11-24: the bridge needs a fact) -->
+  <section class="slide solo-but">
+    <h2>It worked. And it decided everything.</h2>
+    <ul class="buts">
+      <li class="step">it chose <b>the time</b> - 11:00, 13:00, 14:00 in three runs; nobody asked you</li>
+      <li class="step">it chose <b>the lunch</b> - two or three sandwiches; nobody asked what</li>
+      <li class="step">nothing checked <b>what it booked</b> against what was asked</li>
+      <li class="step">because we told it <b>nobody can answer</b> - without that line it asked about lunch, and nobody could reply</li>
+    </ul>
+    <p class="note step">From the rehearsal runs, 7 November - about ten tool calls each, all of it booked.</p>
+    <p class="takeaway step">A real job needs someone to ask you, and something that checks. In the same prompt?</p>
+    <aside class="notes">
+      It did the job - in one go, about a minute. Look at what it did without asking: the time, a
+      different one every run, and your lunch. And nothing between the model and the services
+      checked any of it. That is our shortcut - we told it nobody could answer, and a simplified
+      script. But a real job needs exactly those two things: a moment where it asks you, and
+      something that checks what it books. Both could go into the one prompt, next to the sixteen
+      tools. That is the question of the next picture.
+    </aside>
+  </section>
   <section class="slide art-slide">
     <h2>One agent, every job</h2>
     <figure class="art-fig"><img src="img/art-1-solo.jpg" alt="One robot at a desk, overwhelmed by stacks of work and a wall of tools" onerror="this.outerHTML='<div class=art-missing>image to come: art-1-solo.jpg - see talk/image_prompts.md</div>'"></figure>
     <p class="art-caption step">Sixteen tools, three services, every step - one prompt holds it all.</p>
     <aside class="notes">
-      It worked - but look at what we asked of it. One prompt with every tool of three services,
-      every lookup's result piling up in one conversation, every booking in one pair of hands. It
-      manages. The question is how far this goes when the work grows.
+      Now add the approvals and the checks to what we ask of it. One prompt with every tool of three
+      services, every lookup's result piling up in one conversation, every booking and every
+      question to you in one pair of hands. It manages - for now. The question is how far this goes
+      when the work grows.
     </aside>
   </section>
 
@@ -1172,6 +1193,14 @@ async def before_tool_execute(self, ctx, *, call, tool_def, args):
   </section>
 
   <!-- Part 8: when is a team worth it, and goodbye -->
+  <!-- The comic, closed (2026-11-24): the last panel - prompt in image_prompts.md -->
+  <section class="slide art-slide comic-end">
+    <figure class="art-fig"><img src="img/meeting-07-the-team-did-it.jpg" alt="The same office as the comic: the man relaxed with coffee while a team of robots, one with a clipboard in charge, arranges the meeting" onerror="this.outerHTML='<div class=art-missing>image to come: meeting-07-the-team-did-it.jpg - see talk/image_prompts.md</div>'"></figure>
+    <aside class="notes">
+      Back to where we started. The same request, the same Friday. This time the crew does it: one
+      in charge, each specialist its own job - and it still asks him before it books.
+    </aside>
+  </section>
   <section class="slide wrap-up">
     <div class="worth">
       <h2>When is a team worth it?</h2>
@@ -1290,24 +1319,6 @@ dataset.add_evaluator(ToolEvidenceContainsTerms(
 
 
   <!-- In the extras since 2026-11-18: replaced by the three pictures and one agent versus a team -->
-  <section class="slide solo-but">
-    <h2>It works, but…</h2>
-    <ul class="buts">
-      <li class="step">we told it <b>nobody can answer</b> - so it decided for you</li>
-      <li class="step">it chose <b>the time</b> - 11:00, 13:00, 14:00 in three runs</li>
-      <li class="step">it chose <b>the lunch</b> - two or three sandwiches, nobody asked what</li>
-      <li class="step">nothing checked <b>what it booked</b> against what was asked</li>
-      <li class="step"><b>one prompt</b> carries every tool, and every risk</li>
-    </ul>
-    <p class="note step">From the rehearsal runs, 7 November - about ten tool calls each, all of it booked.</p>
-    <aside class="notes">
-      It did the job - in one go, about a minute. And that is the point: it did all of it without
-      asking, because we told it nobody could answer. Without that line it asked about lunch - and
-      the script had no way to reply. A simplified version of reality: no approvals, no checks.
-      It picked a time, decided what you eat. Nothing between the model and the services checked any of it. This is where the
-      team comes in - not because one agent cannot, but because you want someone in charge.
-    </aside>
-  </section>
 
   <section class="slide helps-hurts">
     <h2>When a team helps, and when it hurts</h2>
