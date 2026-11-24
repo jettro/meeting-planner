@@ -142,6 +142,10 @@ doing the job, with one of them in charge.
    the others (near-white background set to exactly #F8F5F5, JPEG quality 86). Until then the
    slide shows a placeholder.
 
+**Made on 2026-11-24**: a 1536 x 1024 PNG with both speech bubbles, a framed panel on a thin
+warm-white margin. The JPEG (about 490 KB) has only that margin - the light pixels reached from
+the image's edge - set to #F8F5F5; inside the frame nothing changed.
+
 **The prompt**
 
 > One more comic panel, the last one of the attached comic: the same man, the same office, the
