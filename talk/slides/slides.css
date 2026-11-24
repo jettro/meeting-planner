@@ -976,7 +976,7 @@ pre.code.tight { font-size: 24px; }
 .team-config .takeaway { font-size: 44px; }
 
 /* The YAML viewer: the files as tabs, the chosen one in a panel that scrolls. */
-.slide.yaml-viewer.current { display: grid; grid-template-columns: 420px 1fr; gap: 40px; padding: 72px 100px 110px; }
+.slide.yaml-viewer.current { display: grid; grid-template-columns: 420px 1fr; gap: 40px; padding: 86px 100px 110px; }
 .yv-tabs { display: flex; flex-direction: column; gap: 10px; }
 .yv-tabs button { text-align: left; padding: 10px 20px; border: 0; border-radius: 12px; background: #fff; font: 600 22px var(--mono); color: var(--muted); cursor: pointer; }
 .yv-group { margin: 14px 0 0; font: 600 18px var(--sans, inherit); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
@@ -1097,3 +1097,60 @@ pre.code.tighter { font-size: 21px; line-height: 1.4; }
 
 /* The comic's last panel: the picture alone, as large as the slide allows. */
 .slide.art-slide.comic-end { padding: 48px 120px 96px; }
+
+/* The five questions: a corner label on every slide of a section, and the map that introduces them. */
+.slide[data-q]::before { content: attr(data-q); position: absolute; top: 30px; left: 100px; padding: 5px 18px; border-radius: 22px; background: var(--panel); font: 600 24px var(--sans); letter-spacing: .04em; color: var(--accent); }
+.fq-lead { margin: 0 0 8px; font: 600 30px var(--sans); color: var(--muted); }
+.five-q h2 { margin-bottom: 40px; }
+.fq-table { display: flex; flex-direction: column; gap: 14px; }
+.fq-head, .fq-row { display: grid; grid-template-columns: 560px 1fr 1.25fr; gap: 32px; align-items: center; }
+.fq-head span { font: 600 22px var(--sans); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.fq-row { padding: 18px 28px; background: #fff; border-radius: 16px; }
+.fq-row b { display: flex; align-items: center; gap: 20px; font: 700 36px var(--sans); }
+.fq-row b i { display: inline-grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: var(--accent); color: #fff; font: 700 28px var(--sans); font-style: normal; flex: none; }
+.fq-row span { font: 28px/1.3 var(--sans); color: var(--muted); }
+.fq-row span:last-child { color: var(--text); font-weight: 600; }
+
+/* Question 3: the saga on the left, one agent against a team on the right. */
+.fh-grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 64px; }
+.fh-saga { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.fh-saga li { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; padding: 16px 24px; border-radius: 14px; background: #fff; font: 28px/1.35 var(--sans); border-left: 8px solid var(--muted); }
+.fh-saga li b { font: 600 28px var(--mono); }
+.fh-saga li span { color: var(--muted); }
+.fh-saga li.ok { border-left-color: #1f7a4d; }
+.fh-saga li.bad { border-left-color: #b4371f; }
+.fh-saga li.bad span { color: #b4371f; font-weight: 600; }
+.fh-saga li.report { border-left-color: var(--accent); font-size: 25px; }
+.fh-saga li.report code { font: 600 24px var(--mono); color: var(--accent); }
+.fh-saga li.undo { border-left-color: var(--accent); }
+.fh-saga li.undo span { font-size: 25px; }
+.fh-compare { display: flex; flex-direction: column; gap: 24px; }
+.fh-compare > div { padding: 24px 30px; border-radius: 16px; background: var(--panel); }
+.fh-compare p { margin: 0; font: 28px/1.4 var(--sans); }
+.fh-compare .fh-who { margin-bottom: 8px; font: 600 22px var(--sans); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.fh-compare .fh-who.team { color: var(--accent); }
+.fail-half .takeaway { margin: auto 0 0; font-size: 46px; }
+
+/* The close: the five questions as the checklist, the link beside them. */
+.slide.wrap-five { padding-top: 88px; }
+.slide.wrap-five.current { display: grid; grid-template-columns: 1fr 460px; gap: 96px; }
+.wf-when { margin: 0 0 32px; font: 40px/1.35 var(--sans); }
+.wf-q { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+.wf-q li { display: flex; align-items: center; gap: 22px; font: 700 42px var(--sans); }
+.wf-q li i { display: inline-grid; place-items: center; width: 60px; height: 60px; border-radius: 50%; background: var(--accent); color: #fff; font: 700 32px var(--sans); font-style: normal; flex: none; }
+.wrap-five .bye { align-self: center; text-align: center; }
+.wrap-five .qr { width: 400px; height: 400px; image-rendering: pixelated; }
+.wrap-five .link { font: 600 36px var(--mono); margin: 20px 0 0; }
+.wrap-five .thanks { font-size: 72px; font-weight: 700; color: var(--accent); margin: 40px 0 0; }
+
+/* What it costs: one bar per way of running it, input tokens to scale. */
+.cost-rows { display: flex; flex-direction: column; gap: 22px; }
+.cost-row { display: grid; grid-template-columns: 520px 1fr 120px; grid-template-rows: auto auto; column-gap: 32px; row-gap: 8px; align-items: center; padding: 22px 30px; background: #fff; border-radius: 16px; }
+.cost-row b { grid-row: 1 / 3; font: 700 36px var(--sans); }
+.cost-row .bar { display: block; height: 28px; width: var(--w); border-radius: 14px; background: var(--accent); }
+.cost-row .num { font: 26px var(--sans); color: var(--muted); }
+.cost-row i { grid-row: 1 / 3; grid-column: 3; justify-self: end; font: 700 48px var(--sans); font-style: normal; color: var(--accent); }
+.cost-notes { display: flex; gap: 40px; margin-top: 32px; }
+.cost-notes p { margin: 0; flex: 1; font: 26px/1.4 var(--sans); }
+.cost-notes b { display: block; font: 600 20px var(--sans); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.cost .takeaway { margin: auto 0 0; font-size: 44px; }

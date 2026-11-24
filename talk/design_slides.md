@@ -92,24 +92,28 @@ The about slide uses the bio from the DevPulse page and the old deck, and the Yu
 | 19 | it worked, and it decided everything: the time, the lunch, nothing checked - because we told it nobody can answer (back from the extras 2026-11-24, so the move to a team rests on a fact) |
 | 20-25 | from one agent to a team: one agent, every job (picture); split the work (picture); five patterns; start with one agent, but... (both sides); put someone in charge (picture and the 17x / 4x dots); split like services ([`design_team_patterns.md`](design_team_patterns.md), pictures: [`image_prompts.md`](image_prompts.md)) |
 | 26 | the sample: how it is built |
-| 27 | akgentic, the framework under the sample: six tiles, each with where it showed tonight (facts from the akgentic-framework README; added 2026-11-19) |
-| 28-32 | how agents talk: chat or messages; a message is a type; the model answers in a type, too; one meeting in messages; what messages buy you ([`design_messages.md`](design_messages.md)) |
-| 33-34 | a team is configuration; the cards to scroll through - the real catalog files ([`design_config_and_navigation.md`](design_config_and_navigation.md)) |
-| 35 | the repository |
-| 36-37 | live: the planner, the console |
-| 38 | talk to the planner: `@Intake` |
-| 39-42 | memory: one item and its fields; who sees what; from a sentence to a prompt; a memory has a life |
-| 43-45 | guardrails: a check before the call; the twelve soups (code and a live run); `@Guard` keeping the chat to meetings (built 2026-11-19 on gpt-6-luna) |
-| 46-47 | security: who is the agent, when it calls? (as the person, as itself, on behalf of); in a team, rights travel with messages ([`design_security_slides.md`](design_security_slides.md)) |
-| 48-49 | live again: the planner, the console |
-| 50 | beyond the demo: four lessons |
-| 51 | the comic, closed: the last panel - the same office, the crew does it (`meeting-07-the-team-did-it.jpg`, prompt in [`image_prompts.md`](image_prompts.md); a placeholder until it exists) |
-| 52 | when is a team worth it? - and the link, thank you |
-| 53 | **Extras** - a divider; what follows is kept for questions |
-| 54 | now everybody has opinions (the first team slide, moved here 2026-11-07) |
-| 55-57 | evals: is the team any good?; Pydantic Evals; and for the planner? (moved here 2026-11-07) |
-| 58 | last year I drew a crew - the 2025 crew next to this year's team (moved here 2026-11-08: nobody in the room saw the 2025 deck) |
-| 59 | when a team helps, and when it hurts (moved here 2026-11-18, replaced by *start with one agent, but...*) |
+| 27 | **five questions for every team** - who does what, how do they talk, what if a step fails, what do they remember, who may do what - one agent against a team; from here each slide carries its question's number in the corner (added 2026-11-24, [`design_five_questions.md`](design_five_questions.md)) |
+| 28 | 1 - akgentic, the framework under the sample: six tiles, each with where it showed tonight (facts from the akgentic-framework README; added 2026-11-19) |
+| 29-30 | 1 - a team is configuration; the cards to scroll through - the real catalog files ([`design_config_and_navigation.md`](design_config_and_navigation.md); moved before the messages 2026-11-24) |
+| 31-35 | 2 - how agents talk: chat or messages; a message is a type; the model answers in a type, too; one meeting in messages; what messages buy you ([`design_messages.md`](design_messages.md)) |
+| 36 | 3 - what if a step fails halfway? the saga: a failure reports what is still booked, Cancel undoes it in reverse order; one agent against a team (added 2026-11-24) |
+| 37 | the repository |
+| 38-39 | live: the planner, the console |
+| 40 | talk to the planner: `@Intake` |
+| 41-44 | 4 - memory: one item and its fields; who sees what; from a sentence to a prompt; a memory has a life |
+| 45-47 | 5 - guardrails: a check before the call; the twelve soups (code and a live run); `@Guard` keeping the chat to meetings (built 2026-11-19 on gpt-6-luna) |
+| 48-49 | 5 - security: who is the agent, when it calls? (as the person, as itself, on behalf of); in a team, rights travel with messages ([`design_security_slides.md`](design_security_slides.md)) |
+| 50-51 | live again: the planner, the console |
+| 52 | what did that meeting cost? one agent, the team, the chat team with @Guard - measured 2026-11-24 (added 2026-11-24) |
+| 53 | beyond the demo: four lessons |
+| 54 | the comic, closed: the last panel - the same office, the crew does it (`meeting-07-the-team-did-it.jpg`, prompt in [`image_prompts.md`](image_prompts.md)) |
+| 55 | start with one agent - and the five questions; the link, thank you (replaces *when is a team worth it?* 2026-11-24) |
+| 56 | **Extras** - a divider; what follows is kept for questions |
+| 57 | when is a team worth it? - the old close (moved here 2026-11-24) |
+| 58 | now everybody has opinions (the first team slide, moved here 2026-11-07) |
+| 59-61 | evals: is the team any good?; Pydantic Evals; and for the planner? (moved here 2026-11-07) |
+| 62 | last year I drew a crew - the 2025 crew next to this year's team (moved here 2026-11-08: nobody in the room saw the 2025 deck) |
+| 63 | when a team helps, and when it hurts (moved here 2026-11-18, replaced by *start with one agent, but...*) |
 
 ## The comic (slide 3)
 

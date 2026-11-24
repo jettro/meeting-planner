@@ -583,8 +583,28 @@ print(result.output)
     </aside>
   </section>
 
+  <!-- Five questions (2026-11-24): the thread for the second half; each section carries its number -->
+  <section class="slide five-q">
+    <p class="fq-lead">What if I built a team for this? Then it has to answer</p>
+    <h2>Five questions for every team</h2>
+    <div class="fq-table">
+      <div class="fq-head"><span></span><span>one agent</span><span>a team</span></div>
+      <div class="fq-row step"><b><i>1</i>Who does what?</b><span>one prompt does it all</span><span>each agent its part - in configuration</span></div>
+      <div class="fq-row step"><b><i>2</i>How do they talk?</b><span>one conversation</span><span>typed messages, addressed to one agent</span></div>
+      <div class="fq-row step"><b><i>3</i>What if a step fails?</b><span>the model has to remember</span><span>the one in charge holds the record</span></div>
+      <div class="fq-row step"><b><i>4</i>What do they remember?</b><span>its own conversation</span><span>who sees what - decided in code</span></div>
+      <div class="fq-row step"><b><i>5</i>Who may do what?</b><span>one set of rights</span><span>rights at every hop</span></div>
+    </div>
+    <aside class="notes">
+      The comic asked: what if I built a team for this? Then it has to answer five questions that
+      one agent never had to. Who does what. How they talk. What happens when a step fails halfway.
+      What they remember, and who gets to see it. And who may do what. The rest of the talk is
+      those five, in the sample - the number is in the corner of every slide.
+    </aside>
+  </section>
+
   <!-- The framework, promoted (2026-11-19): facts from the akgentic-framework README -->
-  <section class="slide akgentic">
+  <section class="slide akgentic" data-q="1 · who does what?">
     <div class="ak-side">
       <p class="ak-kicker">the framework under the sample</p>
       <h2 class="ak-name">akgentic</h2>
@@ -614,134 +634,8 @@ print(result.output)
     </aside>
   </section>
 
-  <!-- How agents talk: messages and types (design_messages.md, M1-M5) -->
-  <section class="slide talk-how">
-    <h2>How do agents talk?</h2>
-    <div class="talk-cols">
-      <div class="talk-col chat">
-        <p class="lead">A shared conversation</p>
-        <div class="bubbles">
-          <p><b>@Scheduler</b> Tuesday 10:00 works for everyone, I think?</p>
-          <p><b>@FacilityManager</b> The Library is quiet. Shall I book it?</p>
-          <p><b>@Catering</b> Sandwiches for three, or was it four?</p>
-        </div>
-        <ul><li>everyone reads everything</li><li>free text, in and out</li><li>who decides?</li></ul>
-      </div>
-      <div class="talk-col msgs step">
-        <p class="lead">Messages</p>
-        <div class="envelopes">
-          <p><span>@Coordinator → @Scheduler</span><code>FindSlotsAssignment</code></p>
-          <p><span>@Scheduler → @Coordinator</span><code>SlotsFound</code></p>
-          <p><span>@Coordinator → you</span><code>SlotApprovalRequest</code></p>
-        </div>
-        <ul><li>addressed to one agent</li><li>a fixed shape - a type</li><li>the receiver’s code decides what happens</li></ul>
-      </div>
-    </div>
-    <p class="takeaway step">Agents talk in messages, not in a chat.</p>
-    <aside class="notes">
-      Two ways to let agents work together. A shared conversation - the group chat from the
-      patterns: everyone reads everything, in text, and it is unclear who decides. Or messages:
-      addressed, with a fixed shape, and code on the receiving side that decides what happens with
-      it. The sample uses messages only. None of this is specific to a framework.
-    </aside>
-  </section>
-
-  <section class="slide code-step msg-type">
-    <header><h2>A message is a type</h2><span class="part">Pydantic</span></header>
-    <pre class="code tight" data-new="9,10">
-class BookMeetingAssignment(Message):
-    """@Scheduler: the human approved this slot; put it in the agendas."""
-    plan_id: str
-    title: str
-    participant_emails: list[str]
-    day: date
-    slot: ProposedSlot
-
-    def rendering(self) -> str:   # the words the model reads
-        return f"Book '{self.title}' on {self.day} from ... Report the meeting id you get back."
-
-class MeetingBooked(Message):
-    """@Scheduler -> @Coordinator."""
-    plan_id: str
-    meeting_id: int
-    </pre>
-    <div class="msg-points">
-      <p class="step"><b>Validated when it is made</b>a day that is not a date never leaves the coordinator</p>
-      <p class="step"><b>A contract between two agents</b>a renamed field breaks a test, not a demo</p>
-      <p class="step"><b>Typed for code, words for the model</b><code>rendering()</code> is the instruction it gets</p>
-    </div>
-    <aside class="notes">
-      The real classes from messages.py, shortened. An assignment and its answer. The coordinator
-      builds it, so a wrong type fails there, not three agents later. The plan_id ties every message
-      to one meeting. And the model never sees the object: rendering() turns it into a sentence.
-      "A field the agent is not given is a field it will invent" - the title is a field here
-      because it once was not.
-    </aside>
-  </section>
-
-  <section class="slide code-step msg-answer">
-    <header><h2>The model answers in a type, too</h2><span class="part">structured output</span></header>
-    <div class="answer-flow">
-      <code>BookMeetingAssignment</code><i>→</i><span class="llm">the model + its tools</span><i>→</i><code>BookedMeeting</code><i>→</i><code>MeetingBooked</code>
-    </div>
-    <pre class="code tight" data-new="4-7,11">
-class BookedMeeting(BaseModel):
-    """@Scheduler's answer to 'book this slot'."""
-    succeeded: bool
-    meeting_id: int | None = Field(
-        default=None,
-        description="The exact meeting id the booking tool returned. Never invent one.",
-    )
-    reason: str = Field(default="", description="If succeeded is false, why not.")
-
-def receiveMsg_BookMeetingAssignment(self, message, sender):
-    booked = self.attempt(message, BookedMeeting, message.plan_id, sender)
-    if booked is None:
-        return
-    if not booked.succeeded or booked.meeting_id is None:
-        self.fail(message.plan_id, booked.reason or "the meeting was not booked", sender)
-        return
-    self.send(sender, MeetingBooked(plan_id=message.plan_id, meeting_id=booked.meeting_id))
-    </pre>
-    <p class="takeaway step">Free text never crosses from one agent to the next. A failure is a field.</p>
-    <aside class="notes">
-      Every specialist has this shape: an assignment in, the model with its tools answering in a
-      type - pydantic-ai's output type - and a typed message out. The description of a field is part
-      of the prompt: "Never invent one". If the model says it failed, or gives no id, the code
-      reports a failure - it never passes a made-up id on.
-    </aside>
-  </section>
-
-  <section class="slide msg-flow">
-    <h2>One meeting, in messages</h2>
-    <div class="seq"></div>
-    <aside class="notes">
-      The whole saga, as the coordinator runs it: find a place, find slots, ask you, ask about lunch,
-      book the meeting, book the room - the facility manager asks catering for lunch - and report.
-      Every arrow is a typed message, every message carries the plan_id. Two of them wait for you,
-      for as long as you take. This is exactly what the trace shows in the demo.
-    </aside>
-  </section>
-
-  <section class="slide msg-buy">
-    <h2>What messages buy you</h2>
-    <div class="buys">
-      <div class="buy step"><b>A trace, for free</b><span>every message is an event - who sent what to whom, and when</span></div>
-      <div class="buy step"><b>Waiting costs nothing</b><span>your answer may come a day later; nothing is blocked while it does</span></div>
-      <div class="buy step"><b>Durable</b><span>keep the messages, and a stopped team can be revived where it was</span></div>
-      <div class="buy step"><b>Testable</b><span>send an agent a message, check what it sends back - no model needed</span></div>
-    </div>
-    <p class="takeaway step">Design the messages, and the team follows.</p>
-    <aside class="notes">
-      What you get from messages, whatever runs them. The trace and the console are just the
-      messages, shown. A question to you is a message out; your answer is a message in - no thread
-      waits. The coordinator's record lives in its state, and the messages can rebuild it. And each
-      agent can be tested by sending it a message. A framework can give you all four.
-    </aside>
-  </section>
-
   <!-- The team as configuration (design_config_and_navigation.md Y1, Y2) -->
-  <section class="slide team-config">
+  <section class="slide team-config" data-q="1 · who does what?">
     <h2>A team is configuration</h2>
     <div class="cfg-grid">
       <div class="cfg-tree">
@@ -776,7 +670,7 @@ def receiveMsg_BookMeetingAssignment(self, message, sender):
     </aside>
   </section>
 
-  <section class="slide yaml-viewer">
+  <section class="slide yaml-viewer" data-q="1 · who does what?">
     <div class="yv-tabs">
       <button data-file="meeting-planner/team/team.yaml">team.yaml</button>
       <button data-file="meeting-planner/agent/facility_manager.yaml">facility_manager.yaml</button>
@@ -804,7 +698,167 @@ def receiveMsg_BookMeetingAssignment(self, message, sender):
     </aside>
   </section>
 
+  <!-- How agents talk: messages and types (design_messages.md, M1-M5) -->
+  <section class="slide talk-how" data-q="2 · how do they talk?">
+    <h2>How do agents talk?</h2>
+    <div class="talk-cols">
+      <div class="talk-col chat">
+        <p class="lead">A shared conversation</p>
+        <div class="bubbles">
+          <p><b>@Scheduler</b> Tuesday 10:00 works for everyone, I think?</p>
+          <p><b>@FacilityManager</b> The Library is quiet. Shall I book it?</p>
+          <p><b>@Catering</b> Sandwiches for three, or was it four?</p>
+        </div>
+        <ul><li>everyone reads everything</li><li>free text, in and out</li><li>who decides?</li></ul>
+      </div>
+      <div class="talk-col msgs step">
+        <p class="lead">Messages</p>
+        <div class="envelopes">
+          <p><span>@Coordinator → @Scheduler</span><code>FindSlotsAssignment</code></p>
+          <p><span>@Scheduler → @Coordinator</span><code>SlotsFound</code></p>
+          <p><span>@Coordinator → you</span><code>SlotApprovalRequest</code></p>
+        </div>
+        <ul><li>addressed to one agent</li><li>a fixed shape - a type</li><li>the receiver’s code decides what happens</li></ul>
+      </div>
+    </div>
+    <p class="takeaway step">Agents talk in messages, not in a chat.</p>
+    <aside class="notes">
+      Two ways to let agents work together. A shared conversation - the group chat from the
+      patterns: everyone reads everything, in text, and it is unclear who decides. Or messages:
+      addressed, with a fixed shape, and code on the receiving side that decides what happens with
+      it. The sample uses messages only. None of this is specific to a framework.
+    </aside>
+  </section>
 
+  <section class="slide code-step msg-type" data-q="2 · how do they talk?">
+    <header><h2>A message is a type</h2><span class="part">Pydantic</span></header>
+    <pre class="code tight" data-new="9,10">
+class BookMeetingAssignment(Message):
+    """@Scheduler: the human approved this slot; put it in the agendas."""
+    plan_id: str
+    title: str
+    participant_emails: list[str]
+    day: date
+    slot: ProposedSlot
+
+    def rendering(self) -> str:   # the words the model reads
+        return f"Book '{self.title}' on {self.day} from ... Report the meeting id you get back."
+
+class MeetingBooked(Message):
+    """@Scheduler -> @Coordinator."""
+    plan_id: str
+    meeting_id: int
+    </pre>
+    <div class="msg-points">
+      <p class="step"><b>Validated when it is made</b>a day that is not a date never leaves the coordinator</p>
+      <p class="step"><b>A contract between two agents</b>a renamed field breaks a test, not a demo</p>
+      <p class="step"><b>Typed for code, words for the model</b><code>rendering()</code> is the instruction it gets</p>
+    </div>
+    <aside class="notes">
+      The real classes from messages.py, shortened. An assignment and its answer. The coordinator
+      builds it, so a wrong type fails there, not three agents later. The plan_id ties every message
+      to one meeting. And the model never sees the object: rendering() turns it into a sentence.
+      "A field the agent is not given is a field it will invent" - the title is a field here
+      because it once was not.
+    </aside>
+  </section>
+
+  <section class="slide code-step msg-answer" data-q="2 · how do they talk?">
+    <header><h2>The model answers in a type, too</h2><span class="part">structured output</span></header>
+    <div class="answer-flow">
+      <code>BookMeetingAssignment</code><i>→</i><span class="llm">the model + its tools</span><i>→</i><code>BookedMeeting</code><i>→</i><code>MeetingBooked</code>
+    </div>
+    <pre class="code tight" data-new="4-7,11">
+class BookedMeeting(BaseModel):
+    """@Scheduler's answer to 'book this slot'."""
+    succeeded: bool
+    meeting_id: int | None = Field(
+        default=None,
+        description="The exact meeting id the booking tool returned. Never invent one.",
+    )
+    reason: str = Field(default="", description="If succeeded is false, why not.")
+
+def receiveMsg_BookMeetingAssignment(self, message, sender):
+    booked = self.attempt(message, BookedMeeting, message.plan_id, sender)
+    if booked is None:
+        return
+    if not booked.succeeded or booked.meeting_id is None:
+        self.fail(message.plan_id, booked.reason or "the meeting was not booked", sender)
+        return
+    self.send(sender, MeetingBooked(plan_id=message.plan_id, meeting_id=booked.meeting_id))
+    </pre>
+    <p class="takeaway step">Free text never crosses from one agent to the next. A failure is a field.</p>
+    <aside class="notes">
+      Every specialist has this shape: an assignment in, the model with its tools answering in a
+      type - pydantic-ai's output type - and a typed message out. The description of a field is part
+      of the prompt: "Never invent one". If the model says it failed, or gives no id, the code
+      reports a failure - it never passes a made-up id on.
+    </aside>
+  </section>
+
+  <section class="slide msg-flow" data-q="2 · how do they talk?">
+    <h2>One meeting, in messages</h2>
+    <div class="seq"></div>
+    <aside class="notes">
+      The whole saga, as the coordinator runs it: find a place, find slots, ask you, ask about lunch,
+      book the meeting, book the room - the facility manager asks catering for lunch - and report.
+      Every arrow is a typed message, every message carries the plan_id. Two of them wait for you,
+      for as long as you take. This is exactly what the trace shows in the demo.
+    </aside>
+  </section>
+
+  <section class="slide msg-buy" data-q="2 · how do they talk?">
+    <h2>What messages buy you</h2>
+    <div class="buys">
+      <div class="buy step"><b>A trace, for free</b><span>every message is an event - who sent what to whom, and when</span></div>
+      <div class="buy step"><b>Waiting costs nothing</b><span>your answer may come a day later; nothing is blocked while it does</span></div>
+      <div class="buy step"><b>Durable</b><span>keep the messages, and a stopped team can be revived where it was</span></div>
+      <div class="buy step"><b>Testable</b><span>send an agent a message, check what it sends back - no model needed</span></div>
+    </div>
+    <p class="takeaway step">Design the messages, and the team follows.</p>
+    <aside class="notes">
+      What you get from messages, whatever runs them. The trace and the console are just the
+      messages, shown. A question to you is a message out; your answer is a message in - no thread
+      waits. The coordinator's record lives in its state, and the messages can rebuild it. And each
+      agent can be tested by sending it a message. A framework can give you all four.
+    </aside>
+  </section>
+
+
+
+
+
+
+
+  <!-- Question 3 (2026-11-24): a saga that can undo itself (docs/design/design_cancel.md) -->
+  <section class="slide fail-half" data-q="3 · what if a step fails?">
+    <h2>What if a step fails halfway?</h2>
+    <div class="fh-grid">
+      <ol class="fh-saga">
+        <li class="ok step"><b>book_meeting</b><span>meeting 34</span></li>
+        <li class="bad step"><b>book_room</b><span>failed - the room was taken</span></li>
+        <li class="report step"><code>PlanFailed</code> “Still booked, and not yet undone: cancel_meeting 34”</li>
+        <li class="undo step"><b>you press Cancel</b><span>cancel_meeting 34</span></li>
+        <li class="undo step"><b>a whole meeting</b><span>cancel_order → cancel_room_booking → cancel_meeting - reverse order, one at a time</span></li>
+      </ol>
+      <div class="fh-compare">
+        <div class="step"><p class="fh-who">one agent</p><p>the bookings are somewhere in one long conversation; undoing them is something the model has to think of</p></div>
+        <div class="step"><p class="fh-who team">a team</p><p>@Coordinator holds the record - every id, saved on every change - and code knows what to undo, and in which order</p></div>
+      </div>
+    </div>
+    <p class="takeaway step">Someone holds the record, so someone can undo it.</p>
+    <aside class="notes">
+      The question nobody asks in a demo. The meeting is in the agendas - and the room turns out to
+      be taken. Now what? In the sample the coordinator holds the record of the whole meeting: the
+      meeting id, the booking id, the order id, in its state, saved by the framework on every
+      change. A failure is reported with exactly what is still booked. Cancel runs the undo steps:
+      in reverse order, one at a time, each by the agent that owns that service. This is a saga -
+      an old pattern from distributed systems, and it fits a team of agents just as well. One
+      choice on purpose: a failure reports, it does not undo by itself - you see the mess, then you
+      clean it up. With one agent all of this lives in one conversation, and undoing is up to the
+      model.
+    </aside>
+  </section>
 
   <!-- 11. The repository - arranged by the crew, approved by the human (repo.js) -->
   <section class="slide repo">
@@ -878,7 +932,7 @@ def receiveMsg_BookMeetingAssignment(self, message, sender):
   </section>
 
   <!-- Memory, four slides (docs/memory.md, and the lifecycle from my own notes) -->
-  <section class="slide memory-item">
+  <section class="slide memory-item" data-q="4 · what do they remember?">
     <h2>What outlives the team: one memory</h2>
     <div class="item">
       <code class="f">---</code><span></span>
@@ -900,7 +954,7 @@ def receiveMsg_BookMeetingAssignment(self, message, sender):
     </aside>
   </section>
 
-  <section class="slide memory-scopes">
+  <section class="slide memory-scopes" data-q="4 · what do they remember?">
     <h2>Shared files, not a shared brain</h2>
     <table class="scopes">
       <thead>
@@ -927,7 +981,7 @@ def receiveMsg_BookMeetingAssignment(self, message, sender):
     </aside>
   </section>
 
-  <section class="slide memory-flow">
+  <section class="slide memory-flow" data-q="4 · what do they remember?">
     <h2>From a sentence to a prompt</h2>
     <div class="lane">
       <span class="lane-name">write</span>
@@ -954,7 +1008,7 @@ def receiveMsg_BookMeetingAssignment(self, message, sender):
     </aside>
   </section>
 
-  <section class="slide memory-life">
+  <section class="slide memory-life" data-q="4 · what do they remember?">
     <h2>A memory has a life</h2>
     <ol class="life">
       <li class="step done"><b>Signal</b><span>after booking, offer one thing worth keeping</span></li>
@@ -977,7 +1031,7 @@ def receiveMsg_BookMeetingAssignment(self, message, sender):
   </section>
 
   <!-- Guardrails, three slides (docs/design/design_guardrails.md, §14 what was built) -->
-  <section class="slide guard-where">
+  <section class="slide guard-where" data-q="5 · who may do what?">
     <h2>Guardrails: a check before the call</h2>
     <div class="guard-flow">
       <div class="g-stop llm">@FacilityManager’s model<span>fills in the arguments itself</span></div><i>→</i>
@@ -1002,7 +1056,7 @@ def receiveMsg_BookMeetingAssignment(self, message, sender):
     </aside>
   </section>
 
-  <section class="slide guard-soups">
+  <section class="slide guard-soups" data-q="5 · who may do what?">
     <h2>“Twelve soups, we are very hungry”</h2>
     <div class="soup-grid">
       <pre class="code tight">
@@ -1033,7 +1087,7 @@ async def before_tool_execute(self, ctx, *, call, tool_def, args):
     </aside>
   </section>
 
-  <section class="slide guard-next">
+  <section class="slide guard-next" data-q="5 · who may do what?">
     <h2>Judgement, by a team member</h2>
     <div class="guard-q">
       <div class="guard-agent">@Guard<span>today: gpt-6-luna<br>later: a decision model - one card<br>no tools · typed questions</span></div>
@@ -1059,7 +1113,7 @@ async def before_tool_execute(self, ctx, *, call, tool_def, args):
   </section>
 
   <!-- Security, 1: one agent - whose rights does it use? (2026-11-24; sources in design_security_slides.md) -->
-  <section class="slide sec-who">
+  <section class="slide sec-who" data-q="5 · who may do what?">
     <h2>Who is the agent, when it calls?</h2>
     <div class="sec-cols">
       <div class="sec-col step">
@@ -1115,7 +1169,7 @@ async def before_tool_execute(self, ctx, *, call, tool_def, args):
   </section>
 
   <!-- Security, 2: a team - rights travel with messages -->
-  <section class="slide sec-team">
+  <section class="slide sec-team" data-q="5 · who may do what?">
     <h2>In a team, rights travel with messages</h2>
     <div class="sec-chain">
       <div class="hop"><b>@Human</b><span class="rights" style="--w:100%"></span><i>Sanne, all she may</i></div><em>→</em>
@@ -1176,6 +1230,34 @@ async def before_tool_execute(self, ctx, *, call, tool_def, args):
   </section>
 
   <!-- Part 7: beyond the demo (docs/lessons.md) -->
+  <!-- What it costs (2026-11-24): measured, three runs each - design_five_questions.md -->
+  <section class="slide cost">
+    <h2>What did that meeting cost?</h2>
+    <div class="cost-rows">
+      <div class="cost-row step"><b>one agent</b><span class="bar" style="--w:15%"></span><span class="num">5 model calls · 11k tokens</span><i>1×</i></div>
+      <div class="cost-row step"><b>the team, from the form</b><span class="bar" style="--w:44%"></span><span class="num">13-15 calls · 31-35k tokens</span><i>3×</i></div>
+      <div class="cost-row step"><b>the chat team, with @Guard</b><span class="bar" style="--w:90%"></span><span class="num">25-30 calls · 64-80k tokens</span><i>6×</i></div>
+    </div>
+    <div class="cost-notes step">
+      <p><b>per meeting, on gpt-6-luna:</b> about 0.2 to 0.3 of a cent - all three</p>
+      <p><b>@Guard:</b> 3 of the chat team’s calls, 2k tokens</p>
+      <p><b>the papers say:</b> 3 to 15 times the tokens of one agent</p>
+    </div>
+    <p class="takeaway step">Three to six times the tokens - for approvals, checks and a record. Measure it, per agent.</p>
+    <aside class="notes">
+      Measured on 24 November: the sample's request, three runs each, input tokens counted from
+      akgentic's usage events - the same numbers the console shows per agent. One agent: five model
+      calls, eleven thousand tokens. The team: three times that - every specialist reads its own
+      instructions and its own tool results. The chat team doubles it again: @Intake holds the
+      conversation, and the guard checks it - but the guard is the small part, three calls. In
+      money it is nothing at this size - a fifth to a third of a cent per meeting on a small model,
+      partly because repeated prompts are cached. In time: one agent 16 to 33 seconds; the team
+      about half a minute of model time, plus however long you take to answer. The papers say 3 to
+      15 times; we are at 3 and 6. What you pay for: the questions to you, the checks and the
+      record. Whether that is worth it is the real question - and the console tells you per agent.
+    </aside>
+  </section>
+
   <section class="slide lessons">
     <h2>Beyond the demo</h2>
     <div class="lesson-grid">
@@ -1201,6 +1283,39 @@ async def before_tool_execute(self, ctx, *, call, tool_def, args):
       in charge, each specialist its own job - and it still asks him before it books.
     </aside>
   </section>
+  <!-- The close (2026-11-24): the five questions as the checklist; the old checklist is in the extras -->
+  <section class="slide wrap-five">
+    <div class="wf-main">
+      <h2>Start with one agent.</h2>
+      <p class="wf-when step">Build a team when the work, the context or the risk pulls apart - and then answer:</p>
+      <ol class="wf-q step">
+        <li><i>1</i>Who does what?</li>
+        <li><i>2</i>How do they talk?</li>
+        <li><i>3</i>What if a step fails?</li>
+        <li><i>4</i>What do they remember?</li>
+        <li><i>5</i>Who may do what?</li>
+      </ol>
+    </div>
+    <div class="bye step">
+      <img class="qr" src="img/qr-pulse.svg" alt="QR code for go.jettro.dev/pulse">
+      <p class="link">go.jettro.dev/pulse</p>
+      <p class="thanks">Thank you</p>
+    </div>
+    <aside class="notes">
+      Where we started: start with one agent - everybody who builds these says so. Build a team
+      when the work, the context or the risk pulls apart. And when you do, these are the five
+      questions it has to answer - the sample is one set of answers. The code, the designs and the
+      lessons are in the repository. Thank you.
+    </aside>
+  </section>
+
+
+  <!-- Extras: kept, out of the way -->
+  <section class="slide extras-divider">
+    <h2>Extras</h2>
+    <aside class="notes">Slides kept for questions, or for a longer version of the talk.</aside>
+  </section>
+  <!-- The old close (until 2026-11-24): replaced by the five questions -->
   <section class="slide wrap-up">
     <div class="worth">
       <h2>When is a team worth it?</h2>
@@ -1221,13 +1336,6 @@ async def before_tool_execute(self, ctx, *, call, tool_def, args):
       The checklist. One system, reversible actions, a context that fits: one agent is fine - and
       cheaper. The code, the designs and the lessons are in the repository. Thank you.
     </aside>
-  </section>
-
-
-  <!-- Extras: kept, out of the way -->
-  <section class="slide extras-divider">
-    <h2>Extras</h2>
-    <aside class="notes">Slides kept for questions, or for a longer version of the talk.</aside>
   </section>
   <section class="slide anatomy-team">
     <aside class="notes">One agent with every tool is overloaded. Split it - and now they have to talk.</aside>
