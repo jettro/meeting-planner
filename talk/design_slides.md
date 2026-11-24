@@ -109,7 +109,7 @@ The about slide uses the bio from the DevPulse page and the old deck, and the Yu
 | 54 | now everybody has opinions (the first team slide, moved here 2026-11-07) |
 | 55-57 | evals: is the team any good?; Pydantic Evals; and for the planner? (moved here 2026-11-07) |
 | 58 | last year I drew a crew - the 2025 crew next to this year's team (moved here 2026-11-08: nobody in the room saw the 2025 deck) |
-| 58 | when a team helps, and when it hurts (moved here 2026-11-18, replaced by *start with one agent, but...*) |
+| 59 | when a team helps, and when it hurts (moved here 2026-11-18, replaced by *start with one agent, but...*) |
 
 ## The comic (slide 3)
 
