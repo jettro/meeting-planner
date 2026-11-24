@@ -594,13 +594,24 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
     def receiveMsg_AssignmentFailed(  # noqa: N802
         self, message: AssignmentFailed, sender: ActorAddress
     ) -> None:
-        """A specialist could not do its part."""
+        """A specialist could not do its part.
+
+        It may still have booked something on the way: a room, before the lunch
+        that failed. That is recorded first, so the failure's undo list - and a
+        cancel - include it (R8: state first, then send).
+        """
         plan = self._plan(message.plan_id)
         if plan is None:
             return
+        if message.booking_id is not None:
+            plan = plan.model_copy(update={"room_code": message.room_code, "booking_id": message.booking_id})
         if self._being_cancelled(plan):
-            # Nothing was booked by the step that failed, so there is nothing
-            # to add to the release - only a note that it was still running.
             logger.info("[%s] %s failed after the cancel: %s", self.config.name, plan.plan_id, message.reason)
+            if message.booking_id is not None:
+                # Same as a late FacilitiesBooked: the room arrived after the
+                # cancel started, so it joins the release.
+                late = [c for c in plan.compensations() if c.step is CompensationStep.CANCEL_ROOM_BOOKING]
+                self._update(plan=plan.model_copy(update={"cancelled": False}))
+                self._release(late)
             return
         self._fail(plan, message.reason)

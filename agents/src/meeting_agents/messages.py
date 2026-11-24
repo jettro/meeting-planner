@@ -534,10 +534,18 @@ class LunchOrdered(Message):
 
 
 class AssignmentFailed(Message):
-    """Any specialist -> its requester. Triggers compensation upstream."""
+    """Any specialist -> its requester. Triggers compensation upstream.
+
+    `room_code` and `booking_id` are set only by @FacilityManager, when the room
+    was booked and the lunch after it failed. The coordinator's record must hold
+    every id the moment it exists - otherwise a failure reports, and a cancel
+    releases, everything except that room.
+    """
 
     plan_id: str
     reason: str
+    room_code: str | None = None
+    booking_id: int | None = None
 
 
 class CancelAssignment(Message):

@@ -117,6 +117,9 @@ If a step fails, it tells you what failed and what is still booked, newest first
 in which it would be released. Cancelling later runs that list: the lunch order, then the room,
 then the meeting.
 
+That includes a room booked just before its lunch failed: @FacilityManager sends the room with
+the failure, so it is on the coordinator's list and not only in the message's words.
+
 ## Why it is built this way
 
 **Code where the answer is known, a model where judgement is needed.** Which step follows which

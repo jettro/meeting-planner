@@ -44,13 +44,12 @@ Built from `coordinator.py`, `plan.py` and `design_cancel.md`:
 The slide's example is a room that fails after the meeting is booked: `outstanding` is then
 `cancel_meeting`, and Cancel releases it - all as the code does it.
 
-**Found while checking the example - not on the slide.** When *lunch* fails after the room is
-booked, `@FacilityManager` names the room only in the failure's text
-(`receiveMsg_AssignmentFailed`, "room ..., booking ... still booked"). The coordinator never got
-`FacilitiesBooked`, so the booking id is not on the plan and not in `outstanding` - and Cancel
-would leave that room booked. The code says so itself: running that compensation is "iteration
-2". A candidate for the sample's roadmap, and a good line for questions: *the record must hold an
-id the moment it is booked*.
+**Found while checking the example - and fixed the same day.** When *lunch* failed after the
+room was booked, `@FacilityManager` named the room only in the failure's text; the coordinator
+never got `FacilitiesBooked`, so the booking id was not on the plan or in `outstanding`, and Cancel
+left that room booked. Now `AssignmentFailed` carries the room (`room_code`, `booking_id`), the
+coordinator records it before reporting, and a cancel releases it - see `design_cancel.md` §8.3.
+A good line for questions: *the record must hold an id the moment it is booked*.
 
 ## What a meeting costs - measured 2026-11-24
 

@@ -32,6 +32,7 @@ from akgentic.team import TeamCard, TeamCardMember, TeamFactory
 from meeting_agents.coordinator import Coordinator, CoordinatorConfig, CoordinatorState
 from meeting_agents.messages import (
     MESSAGE_TYPES,
+    AssignmentFailed,
     BookFacilitiesAssignment,
     BookMeetingAssignment,
     CancelAssignment,
@@ -444,4 +445,28 @@ def test_late_facilities_are_released_lunch_first(team):
         CompensationStep.CANCEL_ROOM_BOOKING,
     ]
     assert (late.plan.booking_id, late.plan.order_id) == (BOOKING_ID, ORDER_ID)
+    assert late.plan.status is PlanStatus.CANCELLED
+
+
+def test_a_room_named_in_a_late_failure_is_released(team):
+    """The room was booked, lunch failed, and the cancel was already running."""
+    Inbox.hold = {BookFacilitiesAssignment}
+    plan_id = ask_for_a_meeting(team)
+    wait_until(team, lambda state: state.plan.meeting_id is not None)
+
+    cancel(team, plan_id)
+    Inbox.expect(PlanCancelled)
+    assert Inbox.steps() == [CompensationStep.CANCEL_MEETING]
+
+    team.send_from_to(
+        "@FacilityManager",
+        "@Coordinator",
+        AssignmentFailed(
+            plan_id=plan_id, reason="the kitchen is closed", room_code="study", booking_id=BOOKING_ID
+        ),
+    )
+
+    late = Inbox.expect(PlanCancelled)
+    assert Inbox.steps() == [CompensationStep.CANCEL_MEETING, CompensationStep.CANCEL_ROOM_BOOKING]
+    assert late.plan.booking_id == BOOKING_ID
     assert late.plan.status is PlanStatus.CANCELLED

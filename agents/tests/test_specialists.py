@@ -48,7 +48,7 @@ from meeting_agents.outputs import (
     ReleasedBooking,
     SlotOut,
 )
-from meeting_agents.plan import PlanStatus
+from meeting_agents.plan import CompensationStep, PlanStatus
 from meeting_agents.specialists import (
     MAX_CANDIDATES,
     Catering,
@@ -366,6 +366,41 @@ def test_failed_lunch_names_the_room_that_is_still_booked(team):
     assert "kitchen is closed" in failed.reason
     assert ROOM_CODE in failed.reason
     assert str(BOOKING_ID) in failed.reason
+
+
+def test_failed_lunch_puts_the_booked_room_in_the_record(team):
+    """Not only in the words: the room is on the plan and in the undo list."""
+    Script.give(FoundSlots, good_slots())
+    Script.give(BookedMeeting, BookedMeeting(succeeded=True, meeting_id=MEETING_ID))
+    Script.give(BookedRoom, BookedRoom(succeeded=True, room_code=ROOM_CODE, booking_id=BOOKING_ID))
+    Script.give(OrderedLunch, OrderedLunch(succeeded=False, reason="the kitchen is closed"))
+
+    run_to_completion(team)
+    failed = Inbox.expect(PlanFailed)
+
+    assert (failed.plan.room_code, failed.plan.booking_id) == (ROOM_CODE, BOOKING_ID)
+    assert [step.step for step in failed.outstanding] == [
+        CompensationStep.CANCEL_ROOM_BOOKING,
+        CompensationStep.CANCEL_MEETING,
+    ]
+
+
+def test_cancelling_after_a_failed_lunch_releases_the_room_too(team):
+    Script.give(FoundSlots, good_slots())
+    Script.give(BookedMeeting, BookedMeeting(succeeded=True, meeting_id=MEETING_ID))
+    Script.give(BookedRoom, BookedRoom(succeeded=True, room_code=ROOM_CODE, booking_id=BOOKING_ID))
+    Script.give(OrderedLunch, OrderedLunch(succeeded=False, reason="the kitchen is closed"))
+    run_to_completion(team)
+    plan = Inbox.expect(PlanFailed).plan
+
+    Script.give(ReleasedBooking, ReleasedBooking(succeeded=True), ReleasedBooking(succeeded=True))
+    Script.prompts.clear()
+    team.send_from_to("@Human", "@Coordinator", CancelPlanRequest(plan_id=plan.plan_id))
+    cancelled = Inbox.expect(PlanCancelled)
+
+    assert cancelled.failures == []
+    assert any(str(BOOKING_ID) in prompt for prompt in Script.prompts)
+    assert any(str(MEETING_ID) in prompt for prompt in Script.prompts)
 
 
 def test_a_failed_room_booking_never_orders_lunch(team):

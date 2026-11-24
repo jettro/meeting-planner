@@ -366,7 +366,16 @@ class FacilityManager(SpecialistAgent, Akgent[FacilityManagerConfig, AgentState]
 
         catering = self.get_team_member(self.config.catering_name)
         if catering is None:
-            self.fail(message.plan_id, f"no {self.config.catering_name} on the team", sender)
+            self.send(
+                sender,
+                AssignmentFailed(
+                    plan_id=message.plan_id,
+                    reason=f"no {self.config.catering_name} on the team"
+                    f" (room {booked.room_code}, booking {booked.booking_id} still booked)",
+                    room_code=booked.room_code,
+                    booking_id=booked.booking_id,
+                ),
+            )
             return
 
         self._pending[message.plan_id] = PendingFacilities(
@@ -414,14 +423,27 @@ class FacilityManager(SpecialistAgent, Akgent[FacilityManagerConfig, AgentState]
         """@Catering could not order lunch.
 
         The room is already booked at this point, so this is the first place a
-        compensation is genuinely owed. Running it is iteration 2; what matters
-        now is that the coordinator is told rather than left waiting, and that
-        the booked room is named in the reason so it is never silently lost.
+        compensation is genuinely owed. The coordinator is told rather than left
+        waiting, and the room goes with it - named in the reason for the person,
+        and as fields for the coordinator's record, so the failure's undo list
+        and a later cancel both include it.
         """
         room = self._take_pending(message.plan_id)
         detail = f" (room {room.room_code}, booking {room.booking_id} still booked)" if room else ""
         coordinator = self.get_team_member(self.config.coordinator_name)
-        self.fail(message.plan_id, f"{message.reason}{detail}", coordinator)
+        if coordinator is None:
+            return
+        # The room travels as fields, not only as words: the coordinator records
+        # it, so the failure's undo list - and a cancel - include it.
+        self.send(
+            coordinator,
+            AssignmentFailed(
+                plan_id=message.plan_id,
+                reason=f"{message.reason}{detail}",
+                room_code=room.room_code if room else None,
+                booking_id=room.booking_id if room else None,
+            ),
+        )
 
     def receiveMsg_CancelAssignment(  # noqa: N802
         self, message: CancelAssignment, sender: ActorAddress

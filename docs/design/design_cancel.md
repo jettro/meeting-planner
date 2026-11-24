@@ -275,6 +275,17 @@ them. Should a failure run them automatically, or keep reporting and let the
 human press Cancel? Reporting is the more honest demo — it shows the mess,
 then shows it being cleaned up.
 
+**Fixed 2026-11-24: a room booked before a failed lunch.** When @Catering
+failed, @FacilityManager named the booked room only in the reason's words; the
+coordinator never got `FacilitiesBooked`, so the booking id was not on the
+plan, not in `outstanding`, and a Cancel left the room booked. `AssignmentFailed`
+now carries optional `room_code` and `booking_id`, set by @FacilityManager
+when a room was booked; the coordinator records them before it reports, and
+releases the room when the failure lands after a cancel started. Tests:
+`test_failed_lunch_puts_the_booked_room_in_the_record`,
+`test_cancelling_after_a_failed_lunch_releases_the_room_too`,
+`test_a_room_named_in_a_late_failure_is_released`.
+
 ---
 
 ## Appendix A: what the dropped designs measured
