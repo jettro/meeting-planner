@@ -108,11 +108,11 @@ The about slide uses the bio from the DevPulse page and the old deck, and the Yu
 | 46-47 | 5 - security: who is the agent, when it calls? (as the person, as itself, on behalf of - one short line each, 2026-11-25); in a team, rights travel with messages ([`design_security_slides.md`](design_security_slides.md)) |
 | 48-49 | live again: the planner (with the guard refusing a restaurant), the console |
 | 50 | what did that meeting cost? one agent, the team, the chat team with @Guard - measured 2026-11-24 |
-| 51 | beyond the demo: four lessons |
-| 52 | the comic, closed: the last panel - the same office, the crew does it (`meeting-07-the-team-did-it.jpg`) |
-| 53 | start with one agent - and the five questions; the link, thank you |
-| 54 | **Extras** - a divider; what follows is kept for questions |
-| 55 | when is a team worth it? - the old close (moved here 2026-11-24) |
+| 51 | the comic, closed: the last panel - the same office, the crew does it (`meeting-07-the-team-did-it.jpg`) |
+| 52 | start with one agent - and the five questions; the link, thank you |
+| 53 | **Extras** - a divider; what follows is kept for questions |
+| 54 | when is a team worth it? - the old close (moved here 2026-11-24) |
+| 55 | beyond the demo: four lessons (moved here 2026-11-25) |
 | 56-57 | memory: from a sentence to a prompt; a memory has a life (moved here 2026-11-25) |
 | 58 | it works, and it decided everything - the first version of slide 19 (moved here 2026-11-25) |
 | 59 | now everybody has opinions (the first team slide, moved here 2026-11-07) |

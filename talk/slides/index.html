@@ -1205,21 +1205,6 @@ async def before_tool_execute(self, ctx, *, call, tool_def, args):
     </aside>
   </section>
 
-  <section class="slide lessons">
-    <h2>Beyond the demo</h2>
-    <div class="lesson-grid">
-      <div class="lesson step"><b>A field the agent is not given is a field it will invent.</b><span>The first booking was titled “Meeting”.</span></div>
-      <div class="lesson step"><b>Delivered is not used.</b><span>It knew Sanne was vegetarian, and still asked “what kind of lunch?”</span></div>
-      <div class="lesson step"><b>Silent loss is the worst failure.</b><span>The event store dropped messages while the team ran fine.</span></div>
-      <div class="lesson step"><b>Live runs find what stubs cannot.</b><span>Six bugs in the first real run - each one now a test.</span></div>
-    </div>
-    <aside class="notes">
-      What the demo does not show. The booking titled "Meeting": the title was not in the
-      assignment, so the model made one up. Memory proved delivered, not used. The event store
-      could not write a clock time and dropped messages - nothing failed, the record was just gone.
-      And the first run against real services and a real model found six bugs the stubs had hidden.
-    </aside>
-  </section>
 
   <!-- Part 8: when is a team worth it, and goodbye -->
   <!-- The comic, closed (2026-11-24): the last panel - prompt in image_prompts.md -->
@@ -1282,6 +1267,22 @@ async def before_tool_execute(self, ctx, *, call, tool_def, args):
     <aside class="notes">
       The checklist. One system, reversible actions, a context that fits: one agent is fine - and
       cheaper. The code, the designs and the lessons are in the repository. Thank you.
+    </aside>
+  </section>
+  <!-- Beyond the demo: four lessons (moved to the extras 2026-11-25) -->
+  <section class="slide lessons">
+    <h2>Beyond the demo</h2>
+    <div class="lesson-grid">
+      <div class="lesson step"><b>A field the agent is not given is a field it will invent.</b><span>The first booking was titled “Meeting”.</span></div>
+      <div class="lesson step"><b>Delivered is not used.</b><span>It knew Sanne was vegetarian, and still asked “what kind of lunch?”</span></div>
+      <div class="lesson step"><b>Silent loss is the worst failure.</b><span>The event store dropped messages while the team ran fine.</span></div>
+      <div class="lesson step"><b>Live runs find what stubs cannot.</b><span>Six bugs in the first real run - each one now a test.</span></div>
+    </div>
+    <aside class="notes">
+      What the demo does not show. The booking titled "Meeting": the title was not in the
+      assignment, so the model made one up. Memory proved delivered, not used. The event store
+      could not write a clock time and dropped messages - nothing failed, the record was just gone.
+      And the first run against real services and a real model found six bugs the stubs had hidden.
     </aside>
   </section>
   <!-- Memory, in depth (moved to the extras 2026-11-25) -->
