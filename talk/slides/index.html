@@ -115,7 +115,7 @@
     <aside class="notes">Tools do the work; MCP is one way to connect them, not the only one.</aside>
   </section>
   <section class="slide anatomy" data-stage="4">
-    <aside class="notes">Four kinds of context. The meeting planner has all four - memory gets a moment in demo 2.</aside>
+    <aside class="notes">Four kinds of context. The meeting planner has all four - each comes back later tonight.</aside>
   </section>
   <section class="slide anatomy" data-stage="5">
     <aside class="notes">
@@ -358,24 +358,26 @@ print(result.output)
 
 
   <!-- 10. The sample: how it is built -->
-  <!-- What the one agent decided (back from the extras 2026-11-24: the bridge needs a fact) -->
-  <section class="slide solo-but">
+  <!-- What the one agent decided, against what a real task needs (2026-11-25; the earlier version is in the extras) -->
+  <section class="slide solo-decided">
     <h2>It worked. And it decided everything.</h2>
-    <ul class="buts">
-      <li class="step">it chose <b>the time</b> - 11:00, 13:00, 14:00 in three runs; nobody asked you</li>
-      <li class="step">it chose <b>the lunch</b> - two or three sandwiches; nobody asked what</li>
-      <li class="step">nothing checked <b>what it booked</b> against what was asked</li>
-      <li class="step">because we told it <b>nobody can answer</b> - without that line it asked about lunch, and nobody could reply</li>
-    </ul>
-    <p class="note step">From the rehearsal runs, 7 November - about ten tool calls each, all of it booked.</p>
-    <p class="takeaway step">A real job needs someone to ask you, and something that checks. In the same prompt?</p>
+    <div class="sd-table">
+      <div class="sd-head"><span></span><span>the agent</span><span>a real task</span></div>
+      <div class="sd-row step"><b>the time</b><span>picked one: 11:00, 13:00, 14:00 in three runs</span><span>the organiser approves the time</span></div>
+      <div class="sd-row step"><b>the lunch</b><span>ordered two or three sandwiches</span><span>the organiser says what to eat</span></div>
+      <div class="sd-row step"><b>the bookings</b><span>went out unchecked</span><span>each booking is checked against the request</span></div>
+    </div>
+    <p class="sd-why step">Its prompt said: <q>Nobody can answer questions: decide for yourself.</q></p>
+    <p class="takeaway step">A real task needs approvals and checks. In the same prompt as sixteen tools?</p>
     <aside class="notes">
-      It did the job - in one go, about a minute. Look at what it did without asking: the time, a
-      different one every run, and your lunch. And nothing between the model and the services
-      checked any of it. That is our shortcut - we told it nobody could answer, and a simplified
-      script. But a real job needs exactly those two things: a moment where it asks you, and
-      something that checks what it books. Both could go into the one prompt, next to the sixteen
-      tools. That is the question of the next picture.
+      It did the whole job, in about a minute. But look at who decided. The time: a different one
+      every run - in a real task the organiser approves it before anything is booked. Lunch: it
+      ordered sandwiches - in a real task someone says what they eat. And nothing checked a booking
+      against what was asked. That was our shortcut: the prompt told it nobody could answer. Without
+      that line it asked about lunch, and the script had nobody to reply. A real version needs a
+      moment to ask the organiser and a check on every booking. You could put both into this one
+      prompt, next to the sixteen tools - that is the question of the next picture. From the
+      rehearsal runs of 7 November.
     </aside>
   </section>
   <section class="slide art-slide">
@@ -398,10 +400,46 @@ print(result.output)
       The obvious move: give each part to its own agent - one for the agenda, one for the rooms,
       one for lunch. Each has fewer tools and a smaller job. But now they have to work together,
       and nobody is in charge: two reach for the same room, messages go back and forth, one waits.
-      How do you arrange a team at all? There are only a few shapes.
+      So should you split at all?
     </aside>
   </section>
 
+  <section class="slide one-or-team">
+    <h2>Start with one agent, but…</h2>
+    <p class="voices">“Find the simplest solution possible” - Anthropic · “Maximize a single agent’s capabilities first” - OpenAI · “Don’t build multi-agents” - Cognition</p>
+    <div class="ot-cols">
+      <div class="ot-col">
+        <p class="lead">Start with one agent</p>
+        <ul class="step">
+          <li><b>simpler</b> to build, trace and debug</li>
+          <li><b>one context</b> - no decision gets lost between agents</li>
+          <li><b>cheaper</b> - a team costs 3 to 15 times the tokens</li>
+          <li><b>work in a chain</b> gets worse with a team: −39 to −70 %</li>
+        </ul>
+      </div>
+      <div class="ot-col team">
+        <p class="lead">Move to a team when</p>
+        <ul class="step">
+          <li>the context fills up with what <b>the other parts do not need</b></li>
+          <li>the work <b>splits up</b>, and can run side by side: +81 %</li>
+          <li>one prompt holds <b>too many tools</b> to choose well</li>
+          <li>the parts carry <b>different risks</b> - agendas, rooms, money</li>
+        </ul>
+      </div>
+    </div>
+    <cite class="source">Anthropic, <i>When to use multi-agent systems</i>, January 2026 · Google Research, <i>Towards a science of scaling agent systems</i>, January 2026 · Cognition, 2025</cite>
+    <p class="takeaway step">Split when the work, the context or the risk pulls apart.</p>
+    <aside class="notes">
+      Everybody who builds these says it first: one agent, as far as it goes. It is simpler, keeps
+      one context - Cognition's point: actions carry decisions, and two agents make conflicting
+      ones - and it is cheaper. And Google found that work where every step needs the one before
+      gets worse with a team, every time. Move to a team when the context fills up with things the
+      other parts do not need, when the work splits and can run side by side, when one prompt has
+      too many tools - Anthropic says around twenty - or when the parts carry different risks. Our
+      meeting has sixteen tools, so tools alone would not do it; the risks do: an agenda, a room,
+      and money for lunch. And if you split: how do you arrange them? There are only a few shapes.
+    </aside>
+  </section>
   <section class="slide patterns">
     <h2>Five ways to arrange a team</h2>
     <div class="pattern-row">
@@ -440,42 +478,6 @@ print(result.output)
     </aside>
   </section>
 
-  <section class="slide one-or-team">
-    <h2>Start with one agent, but…</h2>
-    <p class="voices">“Find the simplest solution possible” - Anthropic · “Maximize a single agent’s capabilities first” - OpenAI · “Don’t build multi-agents” - Cognition</p>
-    <div class="ot-cols">
-      <div class="ot-col">
-        <p class="lead">Start with one agent</p>
-        <ul>
-          <li class="step"><b>simpler</b> to build, trace and debug</li>
-          <li class="step"><b>one context</b> - no decision gets lost between agents</li>
-          <li class="step"><b>cheaper</b> - a team costs 3 to 15 times the tokens</li>
-          <li class="step"><b>work in a chain</b> gets worse with a team: −39 to −70 %</li>
-        </ul>
-      </div>
-      <div class="ot-col team">
-        <p class="lead">Move to a team when</p>
-        <ul>
-          <li class="step">the context fills up with what <b>the other parts do not need</b></li>
-          <li class="step">the work <b>splits up</b>, and can run side by side: +81 %</li>
-          <li class="step">one prompt holds <b>too many tools</b> to choose well</li>
-          <li class="step">the parts carry <b>different risks</b> - agendas, rooms, money</li>
-        </ul>
-      </div>
-    </div>
-    <cite class="source">Anthropic, <i>When to use multi-agent systems</i>, January 2026 · Google Research, <i>Towards a science of scaling agent systems</i>, January 2026 · Cognition, 2025</cite>
-    <p class="takeaway step">Split when the work, the context or the risk pulls apart.</p>
-    <aside class="notes">
-      Everybody who builds these says it first: one agent, as far as it goes. It is simpler, keeps
-      one context - Cognition's point: actions carry decisions, and two agents make conflicting
-      ones - and it is cheaper. And Google found that work where every step needs the one before
-      gets worse with a team, every time. Move to a team when the context fills up with things the
-      other parts do not need, when the work splits and can run side by side, when one prompt has
-      too many tools - Anthropic says around twenty - or when the parts carry different risks. Our
-      meeting has sixteen tools, so tools alone would not do it; the risks do: an agenda, a room,
-      and money for lunch.
-    </aside>
-  </section>
 
   <section class="slide in-charge">
     <h2>Put someone in charge</h2>
@@ -507,15 +509,15 @@ print(result.output)
   <section class="slide split-services">
     <h2>Split agents like services</h2>
     <div class="contexts">
-      <div class="context step">
+      <div class="context">
         <div class="service-box">meeting service<span>people · agendas</span></div>
         <div class="agent-box">@Scheduler</div>
       </div>
-      <div class="context step">
+      <div class="context">
         <div class="service-box">location service<span>places · rooms</span></div>
         <div class="agent-box">@FacilityManager</div>
       </div>
-      <div class="context step">
+      <div class="context">
         <div class="service-box">nomnom service<span>lunch menu · orders</span></div>
         <div class="agent-box">@Catering</div>
       </div>
@@ -532,26 +534,25 @@ print(result.output)
 
   <section class="slide architecture">
     <h2>How it is built</h2>
-    <!-- Built bottom-up: the services are there, then each key adds the agents, the
-         coordinator and you. The grid places each box; the order here is the order it appears. -->
+    <!-- The whole picture at once (2026-11-25); the grid places each box. -->
     <div class="arch">
-      <div class="node llm scheduler step">
+      <div class="node llm scheduler">
         <div class="name">@Scheduler <span class="tag">LLM</span></div>
         <div class="what">finds a time, books it</div>
       </div>
-      <div class="node llm facility step">
+      <div class="node llm facility">
         <div class="name">@FacilityManager <span class="tag">LLM</span></div>
         <div class="what">chooses a place, books a room</div>
       </div>
-      <div class="node llm catering step">
+      <div class="node llm catering">
         <div class="name">@Catering <span class="tag">LLM</span></div>
         <div class="what">reads the menu, orders lunch</div>
       </div>
-      <div class="node code coordinator step">
+      <div class="node code coordinator">
         <div class="name">@Coordinator <span class="tag">plain code · no LLM</span></div>
         <div class="what">knows the steps, asks you twice, keeps the record</div>
       </div>
-      <div class="node human step">
+      <div class="node human">
         <div class="name">@Human</div>
         <div class="what">you, inside the team</div>
       </div>
@@ -613,23 +614,24 @@ print(result.output)
       <p class="ak-powered">powered by <img src="img/yuma-logo-black.svg" alt="Yuma"></p>
     </div>
     <div class="ak-grid">
-      <div class="ak-tile"><b>Actors</b><span>every agent has its own mailbox and state; agents talk in typed messages</span><em>tonight: 26 message types</em></div>
-      <div class="ak-tile"><b>Teams</b><span>a tree of who creates whom; hire and fire members by role while it runs</span><em>tonight: @Coordinator and its crew</em></div>
-      <div class="ak-tile"><b>Catalog</b><span>assemble a team from YAML - no code changes; YAML, MongoDB or PostgreSQL</span><em>tonight: 30 cards</em></div>
-      <div class="ak-tile"><b>Any model</b><span>pydantic-ai underneath: OpenAI, Azure, Anthropic, Google, Mistral, NVIDIA</span><em>tonight: gpt-6-luna</em></div>
-      <div class="ak-tile"><b>Tools and hooks</b><span>MCP servers, web search, a workspace, a knowledge graph; a hook before every tool call</span><em>tonight: MCP, the booking rules</em></div>
-      <div class="ak-tile"><b>Durable, and visible</b><span>event sourced: recover from a crash, resume a stopped team; a console to watch it work</span><em>tonight: the console demo</em></div>
+      <div class="ak-tile"><b>Actors</b><span>every agent has its own mailbox and state; agents talk in typed messages</span><em>in the sample: 26 message types</em></div>
+      <div class="ak-tile"><b>Teams</b><span>a tree of who creates whom; hire and fire members by role while it runs</span><em>in the sample: the crew</em></div>
+      <div class="ak-tile"><b>Catalog</b><span>assemble a team from YAML - no code changes; YAML, MongoDB or PostgreSQL</span><em>in the sample: 30 cards</em></div>
+      <div class="ak-tile"><b>Any model</b><span>pydantic-ai underneath: OpenAI, Azure, Anthropic, Google, Mistral, NVIDIA</span><em>in the sample: gpt-6-luna</em></div>
+      <div class="ak-tile"><b>Tools and hooks</b><span>MCP servers, web search, a workspace, a knowledge graph; a hook before every tool call</span><em>in the sample: MCP, booking rules</em></div>
+      <div class="ak-tile"><b>Durable, and visible</b><span>event sourced: recover from a crash, resume a stopped team; a console to watch it work</span><em>in the sample: the console</em></div>
     </div>
     <p class="takeaway step">The framework does the plumbing. The sample is only the team.</p>
     <aside class="notes">
-      Everything you saw so far runs on akgentic: an open-source framework for teams of agents,
-      built at Yuma. Each agent is an actor - its own mailbox, its own state, messages instead of
-      shared memory - which is why a team of five does not trip over itself. The team, the models,
-      the prompts and the tools are cards in a catalog. Underneath, pydantic-ai, so any model.
-      Every event is recorded, so a team survives a restart and the console can show you what each
-      agent was given and what it cost. It is used in production - SD Worx runs it for payroll
-      operations. pip install, Python 3.12, AGPL. The rest of the talk shows how the sample uses
-      these pieces: messages, configuration, memory, guardrails.
+      The team on the last slides runs on akgentic: an open-source framework for teams of agents,
+      built at Yuma. The agent of steps 1 to 5 was plain pydantic-ai - akgentic uses pydantic-ai
+      underneath, so any model, and adds what a team needs. Each agent is an actor - its own
+      mailbox, its own state, messages instead of shared memory - which is why a team of five does
+      not trip over itself. The team, the models, the prompts and the tools are cards in a catalog.
+      Every event is recorded, so a team survives a restart and the console shows what each agent
+      was given and what it cost. It is used in production - SD Worx runs it for payroll
+      operations. pip install, Python 3.12, AGPL. Each tile says where it shows up in the sample;
+      the next slides go through the five questions with it.
     </aside>
   </section>
 
@@ -980,54 +982,7 @@ def receiveMsg_BookMeetingAssignment(self, message, sender):
     </aside>
   </section>
 
-  <section class="slide memory-flow" data-q="4 · what do they remember?">
-    <h2>From a sentence to a prompt</h2>
-    <div class="lane">
-      <span class="lane-name">write</span>
-      <div class="stop">“Remember that Sanne is vegetarian”</div><i>→</i>
-      <div class="stop llm step"><code>remember</code><span>@Intake’s tool</span></div><i class="step">→</i>
-      <div class="stop code step">code checks<span>looked up? no secret, no id?</span></div><i class="step">→</i>
-      <div class="stop file step">people/sanne@….md<span>+ the journal (git)</span></div>
-    </div>
-    <div class="lane">
-      <span class="lane-name">read</span>
-      <div class="stop step">a later conversation looks Sanne up</div><i class="step">→</i>
-      <div class="stop code step">code selects<span>at a fixed moment</span></div><i class="step">→</i>
-      <div class="stop llm step">the instructions<span>“remembered from an earlier conversation: …”</span></div><i class="step">→</i>
-      <div class="stop trace step"><code>MemoryApplied</code><span>in the trace: how did it know?</span></div>
-    </div>
-    <p class="takeaway step">Memory is evidence, not authority.</p>
-    <aside class="notes">
-      Writing goes through one narrow tool, and code checks it first: only about someone this
-      conversation looked up, and nothing that looks like a password, key or booking id. Reading is
-      never the model's choice: code puts it in the instructions, labelled as what someone said
-      before - never an order - and logs that it did. A lesson: "for a sportive environment, choose
-      Campus" lost to a one-line place description, until the prompt framed memory as first-hand
-      knowledge. How memory is framed decides how much it counts.
-    </aside>
-  </section>
 
-  <section class="slide memory-life" data-q="4 · what do they remember?">
-    <h2>A memory has a life</h2>
-    <ol class="life">
-      <li class="step done"><b>Signal</b><span>after booking, offer one thing worth keeping</span></li>
-      <li class="step done"><b>Capture</b><span>what was said, as said, at once</span></li>
-      <li class="step part"><b>Interpret</b><span>nothing an agent concludes is kept without your yes</span></li>
-      <li class="step done"><b>Bound</b><span>scope and situation: for whom, and when</span></li>
-      <li class="step done"><b>Merge</b><span>a new item replaces the old; a keeper proposes merges</span></li>
-      <li class="step part"><b>Evaluate</b><span>we can prove it was delivered - not that it was used</span></li>
-      <li class="step part"><b>Revise or forget</b><span>edit and delete on the Memory page; no expiry yet</span></li>
-    </ol>
-    <p class="legend step"><span class="dot done"></span>in the planner <span class="dot part"></span>partly, or on purpose not</p>
-    <p class="takeaway step">Ask of every memory: which future behaviour should it change?</p>
-    <aside class="notes">
-      A memory is not a row you write once. It is noticed, captured, interpreted, given a scope,
-      merged with what is there, checked for use, and one day revised or forgotten. The user stays
-      in control: a suggestion is a question, never a conclusion. "Delivered is not used": in one
-      run the model knew Sanne was vegetarian and still asked what kind of lunch. If you cannot say which
-      behaviour a memory should change, do not store it.
-    </aside>
-  </section>
 
   <!-- Guardrails, three slides (docs/design/design_guardrails.md, §14 what was built) -->
   <section class="slide guard-where" data-q="5 · who may do what?">
@@ -1118,31 +1073,19 @@ async def before_tool_execute(self, ctx, *, call, tool_def, args):
       <div class="sec-col step">
         <p class="sec-how">as the person</p>
         <p class="sec-sub">it passes the person’s token on</p>
-        <dl>
-          <dt>may do</dt><dd>everything the person may</dd>
-          <dt>the risk</dt><dd>one injected instruction carries all of it</dd>
-          <dt>logged as</dt><dd>the person - did they?</dd>
-        </dl>
+        <p class="sec-line">Everything the person may - and so may one injected instruction.</p>
         <p class="sec-badge no">MCP: token passthrough is forbidden</p>
       </div>
       <div class="sec-col step">
         <p class="sec-how">as itself</p>
         <p class="sec-sub">one generic key for the system</p>
-        <dl>
-          <dt>may do</dt><dd>everything the key may - often more than the person</dd>
-          <dt>the risk</dt><dd>the <em>confused deputy</em>: the person gets the agent to do what they may not</dd>
-          <dt>logged as</dt><dd>“the agent” - for whom?</dd>
-        </dl>
+        <p class="sec-line">Everything the key may - often more than the person.</p>
         <p class="sec-badge">when the system knows no users</p>
       </div>
       <div class="sec-col best step">
         <p class="sec-how">on behalf of</p>
         <p class="sec-sub">a token for the person <em>and</em> the agent</p>
-        <dl>
-          <dt>may do</dt><dd>only what both may, for this task, for a while</dd>
-          <dt>the risk</dt><dd>more to set up: an exchange, short-lived and scoped</dd>
-          <dt>logged as</dt><dd>the person, and which agent acted</dd>
-        </dl>
+        <p class="sec-line">Only what both may, for this task - and the log names both.</p>
         <p class="sec-badge yes">OAuth token exchange · RFC 8693</p>
       </div>
     </div>
@@ -1160,7 +1103,7 @@ async def before_tool_execute(self, ctx, *, call, tool_def, args):
       token that was not issued for it, and must not pass on the one it got. As itself: one key for
       the agent - what most of us do, and sometimes the only option, when the system behind the
       MCP server has no idea of users. Then the agent can do more than the person who asks: the
-      confused deputy. And the log says "the agent" - for whom? On behalf of: exchange the person's
+      confused deputy: the person gets the agent to do what they may not. And the log says "the agent" - for whom? On behalf of: exchange the person's
       token for one that names both - RFC 8693, the act claim says which agent acted - scoped to the
       task, short-lived. More work, and the only one where both questions have an answer. With a
       generic key, the checks move into your own code: the guardrails we just saw.
@@ -1219,12 +1162,17 @@ async def before_tool_execute(self, ctx, *, call, tool_def, args):
       Demo 2 (docs/demo.md acts 4 and 5). Talk to the planner: "A design review with Sanne and Daan
       on Tuesday, somewhere in nature, no lunch." Type "the second one" in the chat - understood,
       authorises nothing. Then memory: "Sanne is vegetarian", and the Memory tab with its history.
+      Then the guard, in a new conversation: "Can you help me find a nice restaurant around
+      Amsterdam?" - the planner asks whether a meeting is meant; answer "I do not need a meeting,
+      just search for a good restaurant" - refused from code: "I can only help arrange a meeting
+      and remember how you like to meet." In the console the next slide shows @Guard's two checks.
     </aside>
   </section>
   <section class="slide demo" data-still="img/still-console.png" data-src="http://localhost:8400" data-zoom="1.25">
     <aside class="notes">
       The console: the chat team, and exactly what @Intake's model was told - including the
-      remembered items and the MemoryApplied event.
+      remembered items and the MemoryApplied event. And @Guard: a member of the team, with its own
+      model calls and cost, and the GuardrailChecked events of the refused message.
     </aside>
   </section>
 
@@ -1334,6 +1282,74 @@ async def before_tool_execute(self, ctx, *, call, tool_def, args):
     <aside class="notes">
       The checklist. One system, reversible actions, a context that fits: one agent is fine - and
       cheaper. The code, the designs and the lessons are in the repository. Thank you.
+    </aside>
+  </section>
+  <!-- Memory, in depth (moved to the extras 2026-11-25) -->
+  <section class="slide memory-flow">
+    <h2>From a sentence to a prompt</h2>
+    <div class="lane">
+      <span class="lane-name">write</span>
+      <div class="stop">“Remember that Sanne is vegetarian”</div><i>→</i>
+      <div class="stop llm step"><code>remember</code><span>@Intake’s tool</span></div><i class="step">→</i>
+      <div class="stop code step">code checks<span>looked up? no secret, no id?</span></div><i class="step">→</i>
+      <div class="stop file step">people/sanne@….md<span>+ the journal (git)</span></div>
+    </div>
+    <div class="lane">
+      <span class="lane-name">read</span>
+      <div class="stop step">a later conversation looks Sanne up</div><i class="step">→</i>
+      <div class="stop code step">code selects<span>at a fixed moment</span></div><i class="step">→</i>
+      <div class="stop llm step">the instructions<span>“remembered from an earlier conversation: …”</span></div><i class="step">→</i>
+      <div class="stop trace step"><code>MemoryApplied</code><span>in the trace: how did it know?</span></div>
+    </div>
+    <p class="takeaway step">Memory is evidence, not authority.</p>
+    <aside class="notes">
+      Writing goes through one narrow tool, and code checks it first: only about someone this
+      conversation looked up, and nothing that looks like a password, key or booking id. Reading is
+      never the model's choice: code puts it in the instructions, labelled as what someone said
+      before - never an order - and logs that it did. A lesson: "for a sportive environment, choose
+      Campus" lost to a one-line place description, until the prompt framed memory as first-hand
+      knowledge. How memory is framed decides how much it counts.
+    </aside>
+  </section>
+  <section class="slide memory-life">
+    <h2>A memory has a life</h2>
+    <ol class="life">
+      <li class="step done"><b>Signal</b><span>after booking, offer one thing worth keeping</span></li>
+      <li class="step done"><b>Capture</b><span>what was said, as said, at once</span></li>
+      <li class="step part"><b>Interpret</b><span>nothing an agent concludes is kept without your yes</span></li>
+      <li class="step done"><b>Bound</b><span>scope and situation: for whom, and when</span></li>
+      <li class="step done"><b>Merge</b><span>a new item replaces the old; a keeper proposes merges</span></li>
+      <li class="step part"><b>Evaluate</b><span>we can prove it was delivered - not that it was used</span></li>
+      <li class="step part"><b>Revise or forget</b><span>edit and delete on the Memory page; no expiry yet</span></li>
+    </ol>
+    <p class="legend step"><span class="dot done"></span>in the planner <span class="dot part"></span>partly, or on purpose not</p>
+    <p class="takeaway step">Ask of every memory: which future behaviour should it change?</p>
+    <aside class="notes">
+      A memory is not a row you write once. It is noticed, captured, interpreted, given a scope,
+      merged with what is there, checked for use, and one day revised or forgotten. The user stays
+      in control: a suggestion is a question, never a conclusion. "Delivered is not used": in one
+      run the model knew Sanne was vegetarian and still asked what kind of lunch. If you cannot say which
+      behaviour a memory should change, do not store it.
+    </aside>
+  </section>
+  <!-- The first version of "it decided everything" (2026-11-24; replaced 2026-11-25) -->
+  <section class="slide solo-but">
+    <h2>It worked. And it decided everything.</h2>
+    <ul class="buts">
+      <li class="step">it chose <b>the time</b> - 11:00, 13:00, 14:00 in three runs; nobody asked you</li>
+      <li class="step">it chose <b>the lunch</b> - two or three sandwiches; nobody asked what</li>
+      <li class="step">nothing checked <b>what it booked</b> against what was asked</li>
+      <li class="step">because we told it <b>nobody can answer</b> - without that line it asked about lunch, and nobody could reply</li>
+    </ul>
+    <p class="note step">From the rehearsal runs, 7 November - about ten tool calls each, all of it booked.</p>
+    <p class="takeaway step">A real job needs someone to ask you, and something that checks. In the same prompt?</p>
+    <aside class="notes">
+      It did the job - in one go, about a minute. Look at what it did without asking: the time, a
+      different one every run, and your lunch. And nothing between the model and the services
+      checked any of it. That is our shortcut - we told it nobody could answer, and a simplified
+      script. But a real job needs exactly those two things: a moment where it asks you, and
+      something that checks what it books. Both could go into the one prompt, next to the sixteen
+      tools. That is the question of the next picture.
     </aside>
   </section>
   <section class="slide anatomy-team">

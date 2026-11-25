@@ -1154,3 +1154,18 @@ pre.code.tighter { font-size: 21px; line-height: 1.4; }
 .cost-notes p { margin: 0; flex: 1; font: 26px/1.4 var(--sans); }
 .cost-notes b { display: block; font: 600 20px var(--sans); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
 .cost .takeaway { margin: auto 0 0; font-size: 44px; }
+
+/* What the one agent decided, against what a real task needs. */
+.slide.solo-decided { padding-top: 88px; }
+.sd-table { display: flex; flex-direction: column; gap: 16px; }
+.sd-head, .sd-row { display: grid; grid-template-columns: 300px 1fr 1fr; gap: 36px; align-items: center; }
+.sd-head span { font: 600 22px var(--sans); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.sd-row { padding: 22px 30px; background: #fff; border-radius: 16px; }
+.sd-row b { font: 700 38px var(--sans); color: var(--accent); }
+.sd-row span { font: 32px/1.3 var(--sans); }
+.sd-row span:nth-child(2) { color: #b4371f; }
+.sd-row span:last-child { font-weight: 600; }
+.sd-why { margin: 32px 0 0; font: 30px var(--sans); color: var(--muted); }
+.sd-why q { font-family: var(--mono); font-size: 26px; color: var(--text); }
+.solo-decided .takeaway { margin: auto 0 0; }
+.sec-line { margin: 0; font: 32px/1.35 var(--sans); }
