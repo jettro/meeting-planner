@@ -506,6 +506,11 @@ footer {
 .about .role { font-size: 40px; color: var(--muted); margin-bottom: 80px; }
 /* The SVG has its own white margin; pull it back so the mark lines up with the name. */
 .about .logo { display: block; width: 420px; margin-left: -72px; }
+.about:has(.me-link) .role { margin-bottom: 40px; }
+.about .me-link { display: flex; align-items: center; gap: 28px; margin-top: 24px; }
+.about .me-link .qr { width: 150px; height: 150px; image-rendering: pixelated; }
+.about .me-link span { font: 600 28px var(--mono); color: var(--muted); }
+.about .me-link b { color: var(--accent); }
 .about ul { list-style: none; margin: 0; padding: 0; }
 .about li { margin-bottom: 36px; padding-left: 48px; position: relative; }
 .about li::before {
@@ -1139,8 +1144,11 @@ pre.code.tighter { font-size: 21px; line-height: 1.4; }
 .wf-q li { display: flex; align-items: center; gap: 22px; font: 700 42px var(--sans); }
 .wf-q li i { display: inline-grid; place-items: center; width: 60px; height: 60px; border-radius: 50%; background: var(--accent); color: #fff; font: 700 32px var(--sans); font-style: normal; flex: none; }
 .wrap-five .bye { align-self: center; text-align: center; }
-.wrap-five .qr { width: 400px; height: 400px; image-rendering: pixelated; }
-.wrap-five .link { font: 600 36px var(--mono); margin: 20px 0 0; }
+.wrap-five .bye { text-align: left; }
+.wrap-five .qr-row { display: flex; align-items: center; gap: 28px; margin-bottom: 28px; }
+.wrap-five .qr { width: 170px; height: 170px; image-rendering: pixelated; flex: none; }
+.wrap-five .qr-row span { font: 600 22px var(--mono); color: var(--muted); }
+.wrap-five .qr-row b { display: block; font: 700 36px var(--sans); color: var(--text); margin-bottom: 4px; }
 .wrap-five .thanks { font-size: 72px; font-weight: 700; color: var(--accent); margin: 40px 0 0; }
 
 /* What it costs: one bar per way of running it, input tokens to scale. */

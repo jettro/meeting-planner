@@ -205,7 +205,7 @@ arranges a meeting:
 `repo.js` plays it when the slide is shown; `slides.js` now sends a `shown` event to a slide when
 it becomes current, and says whether it arrived fully built (coming back from the demo), in which
 case everything shows at once. The QR code is `img/qr-pulse.svg`, generated once with Python's
-`qrcode` package (29 x 29, error correction M), so nothing is needed at the venue.
+`qrcode` package (29 x 29, error correction M), so nothing is needed at the venue. `qr-linkedin.svg` (slide 2 and the close) and `qr-blog.svg` (the close) were made the same way on 2026-11-26, for go.jettro.dev/linkedin and go.jettro.dev/blog.
 
 Other ideas, not built: the three robots holding up the QR code as a sign; `git clone` typed in a
 terminal, letter by letter; the QR code assembling itself from the trace's characters.
