@@ -1123,19 +1123,19 @@ async def before_tool_execute(self, ctx, *, call, tool_def, args):
     <div class="sec-two">
       <div>
         <p class="sec-h">What goes wrong</p>
-        <ul class="sec-list bad">
-          <li class="step"><b>Escalation by asking</b> - no tools itself, but it can ask the agent that has them</li>
-          <li class="step"><b>A key in a message</b> - every agent that reads it now holds it</li>
-          <li class="step"><b>An injection that travels</b> - one agent’s input becomes another’s instruction</li>
+        <ul class="sec-list bad step">
+          <li><b>Escalation by asking</b> - no tools itself, but it can ask the agent that has them</li>
+          <li><b>A key in a message</b> - every agent that reads it now holds it</li>
+          <li><b>An injection that travels</b> - one agent’s input becomes another’s instruction</li>
         </ul>
       </div>
       <div>
         <p class="sec-h">What holds</p>
-        <ul class="sec-list good">
-          <li class="step"><b>Rights only narrow</b> along the chain, never grow</li>
-          <li class="step"><b>A key stays with its agent</b> - on its card, never in a message</li>
-          <li class="step"><b>A request asks only what its type allows</b> - fields, not free text</li>
-          <li class="step"><b>The receiver checks</b> - with the person’s identity when it can, with rules when it cannot</li>
+        <ul class="sec-list good step">
+          <li><b>Rights only narrow</b> along the chain, never grow</li>
+          <li><b>A key stays with its agent</b> - on its card, never in a message</li>
+          <li><b>A request asks only what its type allows</b> - fields, not free text</li>
+          <li><b>The receiver checks</b> - with the person’s identity when it can, with rules when it cannot</li>
         </ul>
       </div>
     </div>
