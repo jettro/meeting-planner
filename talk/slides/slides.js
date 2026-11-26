@@ -160,7 +160,20 @@
     overview = document.createElement("div");
     overview.className = "overview";
     overview.hidden = true;
-    overview.innerHTML = `<div class="ov-head"><b>Slides</b><span>click · arrows and Enter · a number and Enter · Esc</span></div><div class="ov-grid"></div>`;
+    overview.innerHTML = `<div class="ov-head"><b>Slides</b><span>click · arrows and Enter · a number and Enter · Esc</span>
+      <form class="ov-export">
+        <select class="ex-what" aria-label="What to export">
+          <option value="talk">presentation</option>
+          <option value="all">presentation + extras</option>
+          <option value="range">range</option>
+        </select>
+        <input class="ex-from" type="number" min="1" max="${total}" aria-label="First slide" disabled>
+        <span>–</span>
+        <input class="ex-to" type="number" min="1" max="${total}" aria-label="Last slide" disabled>
+        <label><input class="ex-notes" type="checkbox" checked> with notes</label>
+        <button type="submit">Export PDF</button>
+      </form></div><div class="ov-grid"></div>`;
+    wireExport(overview.querySelector(".ov-export"));
     const grid = overview.querySelector(".ov-grid");
     slides.forEach((slide, n) => {
       const thumb = document.createElement("button");
@@ -220,8 +233,98 @@
   }
   overviewToggle.addEventListener("click", () => { openOverview(); overviewToggle.blur(); });
 
+  // PDF export, from the slide switcher: one slide per page, built from copies of the slides
+  // with every step shown and a live slide as its still, then the browser's print dialog
+  // (Save as PDF). With notes: A4 portrait, the notes under the slide; without: A4 landscape.
+  const divider = slides.findIndex((s) => s.classList.contains("extras-divider"));
+  const talkEnd = divider > 0 ? divider : total; // the presentation: the slides before the extras
+  const MM = 96 / 25.4; // CSS px per mm
+  function wireExport(form) {
+    const what = form.querySelector(".ex-what"), from = form.querySelector(".ex-from"), to = form.querySelector(".ex-to");
+    const range = () => ({ talk: [1, talkEnd], all: [1, total] })[what.value];
+    function sync() {
+      const custom = what.value === "range";
+      from.disabled = to.disabled = !custom;
+      if (!custom) [from.value, to.value] = range();
+    }
+    what.addEventListener("change", sync);
+    sync();
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      let a = parseInt(from.value, 10) || 1, b = parseInt(to.value, 10) || total;
+      a = Math.max(1, Math.min(total, a)); b = Math.max(1, Math.min(total, b));
+      if (a > b) [a, b] = [b, a];
+      [from.value, to.value] = [a, b];
+      form.querySelector("button").blur();
+      exportPdf(a, b, form.querySelector(".ex-notes").checked);
+    });
+  }
+
+  function printCopy(slide, n) {
+    const copy = slide.cloneNode(true);
+    copy.querySelectorAll(".notes, iframe, .bar, .frame").forEach((el) => el.remove());
+    copy.querySelectorAll(".step").forEach((el) => el.classList.add("shown"));
+    copy.querySelectorAll(".repo-trace .line, .gate").forEach((el) => el.classList.add("in")); // built, not played
+    copy.classList.add("current");
+    const counter = copy.querySelector(".slide-number");
+    if (counter) counter.textContent = `${n + 1} / ${total}`;
+    if (slide.classList.contains("demo")) {
+      const src = slide.dataset.src;
+      const shot = slide.dataset.still
+        ? `<img class="still-img" src="${slide.dataset.still}" alt="">`
+        : `<div class="still-img none">no still for ${src}</div>`;
+      copy.insertAdjacentHTML("afterbegin", `<div class="bar"><span class="still-label">● still</span><span>${src}</span></div><div class="frame">${shot}</div>`);
+    }
+    return copy;
+  }
+
+  async function exportPdf(a, b, withNotes) {
+    // A slide that fills itself when shown (the YAML viewer) gets ready before it is copied.
+    await Promise.all(slides.slice(a - 1, b).map((s) => s.printReady?.()));
+    document.querySelector(".print-deck")?.remove();
+    document.getElementById("print-page-size")?.remove();
+    const widthMm = withNotes ? 180 : 277; // A4 minus the margins
+    const scale = (widthMm * MM) / W;
+    const out = document.createElement("div");
+    out.className = `print-deck ${withNotes ? "with-notes" : "landscape"}`;
+    for (let n = a - 1; n < b; n++) {
+      const page = document.createElement("div");
+      page.className = "print-page";
+      page.innerHTML = `<div class="print-slide" style="width:${widthMm}mm;height:${(widthMm * H) / W}mm"></div>`;
+      const inner = document.createElement("div");
+      inner.className = "deck still print-inner";
+      inner.style.transform = `scale(${scale})`;
+      inner.appendChild(printCopy(slides[n], n));
+      page.firstChild.appendChild(inner);
+      if (withNotes) {
+        const title = slides[n].querySelector("h1, h2")?.textContent.trim() || "";
+        const notes = slides[n].querySelector(".notes");
+        page.insertAdjacentHTML("beforeend", `<div class="print-notes"><div class="pn-head"><b>${n + 1}</b> ${title}</div>
+          <div class="pn-body">${notes ? notes.innerHTML : "<em>No notes for this slide.</em>"}</div></div>`);
+      }
+      out.appendChild(page);
+    }
+    document.body.appendChild(out);
+    document.head.insertAdjacentHTML("beforeend",
+      `<style id="print-page-size">@page { size: A4 ${withNotes ? "portrait" : "landscape"}; margin: ${withNotes ? "15mm" : "10mm"}; }</style>`);
+    // The PDF's default file name comes from the title.
+    const docTitle = document.title;
+    document.title = `${docTitle} - slides ${a}-${b}${withNotes ? " with notes" : ""}`;
+    const cleanup = () => {
+      document.title = docTitle;
+      out.remove();
+      document.getElementById("print-page-size")?.remove();
+      window.removeEventListener("afterprint", cleanup);
+    };
+    window.addEventListener("afterprint", cleanup);
+    // Wait for the stills and pictures, so no page prints without them.
+    const images = [...out.querySelectorAll("img")].map((img) =>
+      img.complete ? null : new Promise((ok) => { img.onload = img.onerror = ok; }));
+    Promise.all(images).then(() => window.print());
+  }
+
   document.addEventListener("keydown", (e) => {
-    if (e.target.closest("input, textarea, iframe")) return;
+    if (e.target.closest("input, textarea, select, iframe, .ov-export")) return;
     if (overviewOpen()) { overviewKey(e); return; }
     switch (e.key) {
       case "ArrowRight": case "ArrowDown": case " ": case "PageDown": forward(); break;

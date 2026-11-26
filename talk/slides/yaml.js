@@ -60,6 +60,8 @@
   const sync = () => open(steps.filter((s) => s.classList.contains("shown")).length);
   slide.addEventListener("shown", sync);
   slide.addEventListener("steps", sync);
+  // The PDF export copies the slide: it asks for the first file to be in the panel first.
+  slide.printReady = () => open(0);
 
   tabs.forEach((tab, n) => tab.addEventListener("click", () => {
     steps.forEach((s, i) => s.classList.toggle("shown", i < n));
