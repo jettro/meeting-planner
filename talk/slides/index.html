@@ -45,9 +45,10 @@
     <aside class="notes">
       What I do: software architect; more than ten years of making search engines find the right
       thing; machine learning and NLP, and now AI agents - building them, not only demoing them.
-      What I believe in: knowledge grows by sharing it - Yuma's mantra, and why I give talks like
-      this one; and curiosity with a healthy scepticism - tonight includes the experiments that did
-      not go to plan, what happens beyond the demo.
+      What I believe in: knowledge grows by sharing it - Yuma's mantra, and why I give talks
+      like this one; and curiosity with a healthy scepticism - tonight includes the experiments
+      that did not go to plan, what happens beyond the demo. The QR code is my LinkedIn:
+      go.jettro.dev/linkedin.
     </aside>
   </section>
 
@@ -244,9 +245,12 @@ print(second.output)
       <p class="muted">gpt-6-luna · pydantic-ai</p>
     </div>
     <aside class="notes">
-      Click into the terminal and type. It starts with make up (or make agent-demo for only this)
-      (it needs OPENAI_API_KEY in .env). make help lists the steps. Click the bar to get the keys
-      back for the slides.
+      Run the four steps in the terminal, one after the other. make run-llm gets next Friday
+      wrong - it does not know what day it is. make run-system gets it right, because today's
+      date is in the instructions. make run-memory remembers Sam, because we send the
+      conversation along. make run-tool prints the tool call as it is made. Setup: make up (or
+      make agent-demo for only this terminal), with OPENAI_API_KEY in .env; make help lists the
+      steps. Click the bar to get the keys back for the slides.
     </aside>
   </section>
 
@@ -276,8 +280,9 @@ print(second.output)
     <p class="takeaway step">A job everybody knows - you focus on the agents, not the domain.</p>
     <aside class="notes">
       Everybody knows this job. You say who, which day, roughly where. The team finds a time,
-      chooses a place, books a room, puts it in the agendas and orders lunch - and asks you twice
-      before anything is booked. The planner itself is boring on purpose.
+      chooses a place, books a room, puts it in the agendas and orders lunch - and asks you
+      twice before anything is booked. Because everybody knows the job, the attention can go to
+      the agents, not to the domain.
     </aside>
   </section>
 
@@ -299,8 +304,8 @@ print(second.output)
     <p class="takeaway step">Sixteen tools, one prompt. Can it do the whole job?</p>
     <aside class="notes">
       Before the team: what does one agent do with the sample's request? Give it all three MCP
-      servers - every tool the team has, sixteen of them - and one sentence of instructions. The
-      MCP servers are the same ones the team uses; each needs its own key.
+      servers - every tool the team has, sixteen of them - and two sentences of instructions.
+      The MCP servers are the same ones the team uses; each needs its own key.
     </aside>
   </section>
   <section class="slide code-step">
@@ -344,9 +349,10 @@ print(result.output)
       <p class="muted">it books for real - in the local services</p>
     </div>
     <aside class="notes">
-      Click into the terminal: make run-meeting. Each tool call is printed as it is made. It prints the
-      request first. Expect about ten calls: it looks people, places and the menu up, picks a time, books the meeting and
-      the room, orders lunch. It really books - cancel rehearsal bookings before the talk.
+      Click into the terminal and type make run-meeting. It prints the request first, then every
+      tool call as it is made. Expect about ten calls: it looks up people, places and the menu,
+      picks a time, books the meeting and the room, and orders lunch. It really books - cancel
+      rehearsal bookings before the talk.
     </aside>
   </section>
 
@@ -372,14 +378,14 @@ print(result.output)
     <p class="sd-why step">Its prompt said: <q>Nobody can answer questions: decide for yourself.</q></p>
     <p class="takeaway step">A real task needs approvals and checks.</p>
     <aside class="notes">
-      It did the whole job, in about a minute. But look at who decided. The time: a different one
-      every run - in a real task the organiser approves it before anything is booked. Lunch: it
-      ordered sandwiches - in a real task someone says what they eat. And nothing checked a booking
-      against what was asked. That was our shortcut: the prompt told it nobody could answer. Without
-      that line it asked about lunch, and the script had nobody to reply. A real version needs a
-      moment to ask the organiser and a check on every booking. You could put both into this one
-      prompt, next to the sixteen tools - that is the question of the next picture. From the
-      rehearsal runs of 7 November.
+      It did the whole job, in under half a minute. But look at who decided. The time: a
+      different one every run - in a real task the organiser approves it before anything is
+      booked. Lunch: it ordered sandwiches - in a real task someone says what they eat. And
+      nothing checked a booking against what was asked. That was our shortcut: the prompt told
+      it nobody could answer. Without that line it asked about lunch, and the script had nobody
+      to reply. A real version needs a moment to ask the organiser and a check on every booking.
+      You could put both into this one prompt, next to the sixteen tools - that is the question
+      of the next picture. From the rehearsal runs of 7 November.
     </aside>
   </section>
   <section class="slide art-slide">
@@ -891,17 +897,24 @@ def receiveMsg_BookMeetingAssignment(self, message, sender):
   <!-- 12. Demo: the planner, live (design_slides.md S10) -->
   <section class="slide demo" data-still="img/still-planner.png" data-src="http://localhost:8300" data-zoom="1.25">
     <aside class="notes">
-      The planner, live, inside the deck. Click the bar above it to come back to the slides; the
-      keys go to the planner while it has focus.
+      Demo 1 (docs/demo.md act 1). The planner, live, inside the deck. Plan the sample's request
+      from the form: Design review, Sanne and Daan, 60 minutes, somewhere quiet. The first
+      question is the time: the card names the place the facility manager chose, and why -
+      approving the time approves the place, and nothing is booked yet. The second is lunch, in
+      your own words: something vegetarian, no bread. Then the confirmation, and the Trace tab:
+      who asked whom for what, one typed message per row. Click the bar above the page to come
+      back to the slides; the keys go to the planner while it has focus.
     </aside>
   </section>
 
   <!-- 13. Demo: the akgentic console - the team, not the meeting -->
   <section class="slide demo" data-still="img/still-console.png" data-src="http://localhost:8400" data-zoom="1.25">
     <aside class="notes">
-      The planner shows the meeting; the console shows the team. The framework's own front end,
-      unchanged, against the same server: the agents, what each model was given, what it cost.
-      Log in with the API key from API_KEYS that maps to your email.
+      Demo 1, continued (docs/demo.md act 3). The planner shows the meeting; the console shows
+      the team - akgentic's own front end, unchanged, against the same server. Open the design
+      review's team: the transcript, the hierarchy, and what the run cost. Then an agent's LLM
+      context and system prompt: exactly what the model saw. Log in with the API key from
+      API_KEYS that maps to your email.
     </aside>
   </section>
 
@@ -1055,16 +1068,16 @@ async def before_tool_execute(self, ctx, *, call, tool_def, args):
     </div>
     <p class="takeaway step">Code checks what code can know; @Guard judges what needs judgement; neither is the model that acts.</p>
     <aside class="notes">
-      Built this week, on what akgentic has today. In a rehearsal the planner was asked for a
-      restaurant; the person said no meeting, and the model answered anyway, from general
-      knowledge - its prompt said meetings only. Now @Guard, a member of the chat team, answers two
-      typed questions: is this message about the meeting, before @Intake's model reads it; and does
-      this answer help with something else, before the person reads it. Pick-ones, no free text -
-      the shape a decision model answers, so when akgentic can run one, only the model card changes.
-      An evaluation set of 39 cases found the guard stricter than the planner on the first message;
-      one paragraph in the prompt fixed it - 39 out of 39. Two short extra model calls per turn,
-      about a second each. Next: the lunch order against the diets we remember, and what may be
-      remembered at all.
+      Built for this talk, on what akgentic has today. In a rehearsal the planner was asked for
+      a restaurant; the person said no meeting, and the model answered anyway, from general
+      knowledge - its prompt said meetings only. Now @Guard, a member of the chat team, answers
+      two typed questions: is this message about the meeting, before @Intake's model reads it;
+      and does this answer help with something else, before the person reads it. Pick-ones, no
+      free text - the shape a decision model answers, so when akgentic can run one, only the
+      model card changes. An evaluation set of 39 cases found the guard stricter than the
+      planner on the first message; one paragraph in the prompt fixed it - 39 out of 39. Two
+      short extra model calls per turn, about a second each. Next: the lunch order against the
+      diets we remember, and what may be remembered at all.
     </aside>
   </section>
 
@@ -1213,8 +1226,9 @@ async def before_tool_execute(self, ctx, *, call, tool_def, args):
   <section class="slide art-slide comic-end">
     <figure class="art-fig"><img src="img/meeting-07-the-team-did-it.jpg" alt="The same office as the comic: the man relaxed with coffee while a team of robots, one with a clipboard in charge, arranges the meeting" onerror="this.outerHTML='<div class=art-missing>image to come: meeting-07-the-team-did-it.jpg - see talk/image_prompts.md</div>'"></figure>
     <aside class="notes">
-      Back to where we started. The same request, the same Friday. This time the crew does it: one
-      in charge, each specialist its own job - and it still asks him before it books.
+      Back to where we started. The same request, the same Friday. This time the crew does it:
+      one in charge, each specialist its own job - and it still asks the organiser before it
+      books.
     </aside>
   </section>
   <!-- The close (2026-11-24): the five questions as the checklist; the old checklist is in the extras -->
@@ -1242,8 +1256,9 @@ async def before_tool_execute(self, ctx, *, call, tool_def, args):
     <aside class="notes">
       Where we started: start with one agent - everybody who builds these says so. Build a team
       when the work, the context or the risk pulls apart. And when you do, these are the five
-      questions it has to answer - the sample is one set of answers. The code, the designs and the
-      lessons are in the repository. Thank you.
+      questions it has to answer - the sample is one set of answers. The code, the designs and
+      the lessons are in the repository - the first QR code; the other two are my LinkedIn and
+      my blog. Thank you.
     </aside>
   </section>
 
