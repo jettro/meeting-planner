@@ -15,8 +15,10 @@ import {
 import { useState } from "react";
 import {
   CHAT_NAMESPACE,
+  isBooked,
   isDomainEvent,
-  PLAN_COMPLETED,
+  MOVE_FAILED,
+  PLAN_MOVED,
   shortName,
   type MeetingPlan,
 } from "../api/client";
@@ -61,7 +63,8 @@ export default function PlanPage() {
     });
 
   const plan = team.outcome?.plan as MeetingPlan | undefined;
-  const succeeded = team.outcome?.__model__ === PLAN_COMPLETED;
+  const succeeded = isBooked(team.outcome);
+  const kind = team.outcome?.__model__;
   // The provider holds one team at a time; a conversation belongs on its own
   // page, so here it reads as "nothing planned from the form yet".
   const watching = team.teamId !== null && team.namespace !== CHAT_NAMESPACE;
@@ -173,13 +176,19 @@ export default function PlanPage() {
             <GatePrompt question={team.pending} onAnswer={team.answer} />
           )}
 
-          {team.outcome && (
-            <Alert severity={succeeded ? "success" : "error"}>
-              {succeeded ? "Booked." : String(team.outcome.reason ?? "The plan failed.")}
+          {team.outcome && !team.pending && (
+            <Alert severity={kind === MOVE_FAILED ? "warning" : succeeded ? "success" : "error"}>
+              {kind === MOVE_FAILED
+                ? `Not moved: ${String(team.outcome.reason)}. The meeting stays as it was.`
+                : kind === PLAN_MOVED
+                  ? "Moved."
+                  : succeeded
+                    ? "Booked."
+                    : String(team.outcome.reason ?? "The plan failed.")}
             </Alert>
           )}
 
-          {plan && succeeded && <PlanSummary plan={plan} />}
+          {plan && succeeded && !team.pending && <PlanSummary plan={plan} />}
 
           <Box>
             <Button onClick={team.reset}>Plan another</Button>

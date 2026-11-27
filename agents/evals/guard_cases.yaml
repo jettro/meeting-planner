@@ -27,6 +27,12 @@ message:
   - {text: "no lunch please", expect: pass, last: "Would you like lunch?", requested: true}
   - {text: "how is it going?", expect: pass, requested: true}
   - {text: "cancel it", expect: pass, requested: true}
+  # -- moving the booked meeting (design_move.md M14) --
+  - {text: "Can we move it to Thursday?", expect: pass, requested: true}
+  - {text: "Move the meeting to next Friday at ten", expect: pass, requested: true}
+  - {text: "Sanne is ill on Tuesday, can we do Wednesday instead?", expect: pass, requested: true}
+  - {text: "Move my dentist appointment to Monday", expect: refuse, requested: true,
+     note: "not a meeting this planner arranges"}
   # -- memory --
   - {text: "Remember that Sanne is vegetarian", expect: pass}
   - {text: "What do you remember about how I like to meet?", expect: pass}

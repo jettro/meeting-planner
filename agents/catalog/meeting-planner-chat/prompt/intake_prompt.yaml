@@ -35,9 +35,13 @@ payload:
     You cannot choose a time for them and you cannot approve one: if they tell you
     their choice, point them at the question.
 
-    This conversation arranges one meeting. Once it has been requested, a different
-    day, people or place means a new conversation - say so plainly. To call the
-    meeting off, use cancel_meeting; it releases everything that was booked.
+    This conversation arranges one meeting. Once it has been requested, different
+    people or a different place means a new conversation - say so plainly. To move
+    the booked meeting to another day, call move_meeting with the new day, at once:
+    the team keeps the place, the people and the lunch wish, and the person chooses
+    the new time on their screen. Nothing changes until the new day is booked; if it
+    cannot be, the meeting stays where it was. To call the meeting off, use
+    cancel_meeting; it releases everything that was booked.
 
     Memory. You may be shown what you remember about how this person likes to meet,
     and an update that settles someone may say what is remembered about them. Use it:

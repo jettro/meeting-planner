@@ -38,6 +38,7 @@ import logging
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import date
 from typing import Any, Self
 
 from akgentic.agent import BaseAgent
@@ -72,12 +73,15 @@ from meeting_agents.messages import (
     FindPlaceAssignment,
     LunchApprovalDecision,
     LunchApprovalRequest,
+    MoveFailed,
+    MovePlanRequest,
     PeopleFound,
     PlaceFound,
     PlanCancelled,
     PlanCompleted,
     PlanFailed,
     PlanMeetingRequest,
+    PlanMoved,
     SlotApprovalDecision,
     SlotApprovalRequest,
 )
@@ -349,6 +353,29 @@ class IntakeAgent(BaseAgent, Akgent[IntakeConfig, IntakeState]):
         self.send(coordinator, CancelPlanRequest(plan_id=self.state.plan_id))
         return "Asked the team to cancel. It releases everything that was booked; an update will follow."
 
+    def move(self, day: date) -> str:
+        """Ask the team to move this conversation's meeting to another day (design_move.md M12).
+
+        Only the day goes: the coordinator copies everything else from its own
+        record, and the new time is a question on the person's screen. Whether
+        the meeting can move at all is the coordinator's to say.
+        """
+        if not self.state.requested:
+            return "Refused: nothing has been requested in this conversation, so there is nothing to move."
+        if self.state.cancelled:
+            return "Refused: the meeting is cancelled. A new meeting needs a new conversation."
+        if not self.state.plan_id:
+            return "Refused: the team has not said anything about the meeting yet. Try again in a moment."
+        coordinator = self._member(self.config.coordinator_name)
+        if coordinator is None:
+            return "Refused: there is no coordinator on this team to send the move to."
+        self.send(coordinator, MovePlanRequest(plan_id=self.state.plan_id, day=day))
+        return (
+            f"Asked the team to move the meeting to {day.isoformat()}. It keeps the place, the people "
+            "and the lunch wish; the person chooses the new time on their screen. Nothing changes "
+            "until the new day is booked."
+        )
+
     # -- the coordinator's questions and outcomes: relayed, then explained ----
 
     def receiveMsg_SlotApprovalRequest(  # noqa: N802
@@ -402,6 +429,29 @@ class IntakeAgent(BaseAgent, Akgent[IntakeConfig, IntakeState]):
         self._relay(message)
         left = f" Could not release: {'; '.join(message.failures)}." if message.failures else ""
         self._tell_the_model(f"the meeting is cancelled and its bookings released.{left}", sender)
+
+    def receiveMsg_PlanMoved(  # noqa: N802
+        self, message: PlanMoved, sender: ActorAddress
+    ) -> None:
+        self._relay(message)
+        left = f" Could not release: {'; '.join(message.failures)}." if message.failures else ""
+        self._tell_the_model(
+            f"the meeting has moved. {describe(message.plan)} The booking on "
+            f"{message.previous.day.isoformat()} is released.{left}",
+            sender,
+        )
+
+    def receiveMsg_MoveFailed(  # noqa: N802
+        self, message: MoveFailed, sender: ActorAddress
+    ) -> None:
+        self._relay(message)
+        undone = " What was booked for the new day has been released." if message.released else ""
+        left = f" Could not release: {'; '.join(message.failures)}." if message.failures else ""
+        self._tell_the_model(
+            f"the meeting could not be moved: {message.reason}.{undone}{left} It stays as it was: "
+            f"{describe(message.plan)}",
+            sender,
+        )
 
     # -- the human's answers: forwarded unchanged ---------------------------
 
@@ -491,7 +541,7 @@ def describe(plan: MeetingPlan) -> str:
 
 
 class IntakeTools(ToolCard):
-    """The five things the model may do, and nothing that books (I3).
+    """The six things the model may do, and nothing that books (I3).
 
     The tools are thin: they validate what the model passed and hand it to the
     agent, whose methods hold the rules, so the rules are testable without a
@@ -565,6 +615,19 @@ class IntakeTools(ToolCard):
             """Call the meeting off. Everything it booked is released."""
             return self._agent().cancel()
 
+        def move_meeting(day: str) -> str:
+            """Move the booked meeting to another day. The team keeps the place, the people and the
+            lunch wish, and the person chooses the new time on their screen.
+
+            Args:
+                day: The new day, as YYYY-MM-DD.
+            """
+            try:
+                new_day = date.fromisoformat(day)
+            except ValueError as exc:
+                raise RetriableError(f"That day is not a date as YYYY-MM-DD: {day!r}") from exc
+            return self._agent().move(new_day)
+
         def remember(kind: str, about: str, situation: str, text: str) -> str:
             """Remember, for next time, something the person told you that will still be true then.
 
@@ -584,7 +647,7 @@ class IntakeTools(ToolCard):
             """
             return self._agent().remember_said(kind, about, situation, text)
 
-        return [look_up_people, look_up_place, plan_meeting, cancel_meeting, remember]
+        return [look_up_people, look_up_place, plan_meeting, cancel_meeting, move_meeting, remember]
 
     def get_context_states(self) -> list[Callable[[], ContextState | None]]:
         # The framework keys providers by function name, per agent: `MemoryTool`

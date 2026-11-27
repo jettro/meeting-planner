@@ -1,6 +1,14 @@
 # Moving a meeting to another day — design
 
-> **Status:** reviewed 2026-11-27: Q1-Q3 answered by the human, Q4 on the recommendation. Nothing is built. The work stays on the branch
+> **Status:** built 2026-11-27 on the branch, as designed: Q1-Q3 answered by the human, Q4 on the
+> recommendation. Tested without the stack (`test_move.py`, the move tests in `test_intake.py`),
+> the guard's set at 43/43, a live run of the form team (book, move, cancel) and the chat in the
+> planner (book, "Can we move it to Thursday?", cancel) with the real model. Not tried live: the
+> planner's **Move…** dialog - the form run that was to test it hung at the scheduler's slot call,
+> before any move code, as one measurement run did on 2026-11-24.
+>
+> **If it is merged:** the deck counts "26 message types" (slides 28, 29) - now 29 - and "Five
+> tools" on slide 40 - now six. The work stays on the branch
 > `claude/reschedule-meeting` until it has been tried, so the talk's demo on `main` cannot break.
 >
 > **Revisits:** `design_cancel.md`, which decided *"There is no update. If something about a

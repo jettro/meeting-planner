@@ -53,9 +53,12 @@ payload:
     - __type__: meeting_agents.messages.LunchApprovalDecision
     - __type__: meeting_agents.messages.LunchApprovalRequest
     - __type__: meeting_agents.messages.CancelPlanRequest
+    - __type__: meeting_agents.messages.MovePlanRequest
     - __type__: meeting_agents.messages.PlanCompleted
     - __type__: meeting_agents.messages.PlanFailed
     - __type__: meeting_agents.messages.PlanCancelled
+    - __type__: meeting_agents.messages.PlanMoved
+    - __type__: meeting_agents.messages.MoveFailed
     - __type__: meeting_agents.messages.FindLocationAssignment
     - __type__: meeting_agents.messages.LocationFound
     - __type__: meeting_agents.messages.FindPeopleAssignment

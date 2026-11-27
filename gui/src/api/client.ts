@@ -35,6 +35,9 @@ export const LUNCH_QUESTION = "meeting_agents.messages.LunchApprovalRequest";
 export const PLAN_COMPLETED = "meeting_agents.messages.PlanCompleted";
 export const PLAN_FAILED = "meeting_agents.messages.PlanFailed";
 export const PLAN_CANCELLED = "meeting_agents.messages.PlanCancelled";
+/** A move's two outcomes (design_move.md): on the new day, or staying where it was. */
+export const PLAN_MOVED = "meeting_agents.messages.PlanMoved";
+export const MOVE_FAILED = "meeting_agents.messages.MoveFailed";
 
 export interface ActorRef {
   name?: string;
@@ -130,6 +133,8 @@ export interface MeetingPlan {
   order_id: string | null;
   lunch_summary: string;
   cancelled: boolean;
+  /** Earlier bookings this meeting replaced when it moved, oldest first. */
+  moved_from: PreviousBooking[];
   /** Derived on the server from which ids are present - never sent back. */
   status: string;
 }
@@ -148,6 +153,29 @@ export interface CoordinatorState {
   failure: string;
   cancelling: unknown[];
   cancel_failures: string[];
+  /** The new booking while a move runs; the meeting itself stays in `plan`. */
+  moving: MeetingPlan | null;
+}
+
+/** A booking a move replaced (design_move.md M7). */
+export interface PreviousBooking {
+  day: string;
+  start: string | null;
+  end: string | null;
+  meeting_id: number | null;
+  room_code: string | null;
+  booking_id: number | null;
+  order_id: string | null;
+}
+
+/**
+ * Whether an outcome leaves a booked meeting: booked, moved, or a move that
+ * failed and left the meeting where it was.
+ */
+export function isBooked(outcome: DomainMessage | null): boolean {
+  if (!outcome) return false;
+  if (outcome.__model__ === PLAN_COMPLETED || outcome.__model__ === PLAN_MOVED) return true;
+  return outcome.__model__ === MOVE_FAILED && (outcome.plan as MeetingPlan | undefined)?.status === "CONFIRMED";
 }
 
 /**
@@ -560,9 +588,8 @@ export const api = {
    *
    * Sent to the team that made the meeting, because that team *is* the
    * meeting: its coordinator holds the only record of what was booked. A
-   * stopped team is revived by the server to receive it (R4). There is no
-   * update in this system, so this message carries no options - to change a
-   * meeting you cancel it and plan another.
+   * stopped team is revived by the server to receive it (R4). It carries no
+   * options: everything is released. To change the day, move it instead.
    */
   cancelPlan: (teamId: string, planId: string) =>
     call<null>(`/teams/${teamId}/message/from/${HUMAN}/to/${COORDINATOR}`, {
@@ -571,6 +598,25 @@ export const api = {
         message: {
           __model__: "meeting_agents.messages.CancelPlanRequest",
           plan_id: planId,
+        },
+      }),
+    }),
+
+  /**
+   * Move a booked meeting to another day (design_move.md).
+   *
+   * Only the day: the team asks for the new time at the slot question and
+   * copies everything else from its own record. The new meeting is booked
+   * before the old one is released.
+   */
+  movePlan: (teamId: string, planId: string, day: string) =>
+    call<null>(`/teams/${teamId}/message/from/${HUMAN}/to/${COORDINATOR}`, {
+      method: "POST",
+      body: JSON.stringify({
+        message: {
+          __model__: "meeting_agents.messages.MovePlanRequest",
+          plan_id: planId,
+          day,
         },
       }),
     }),

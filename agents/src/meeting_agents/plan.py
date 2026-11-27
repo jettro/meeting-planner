@@ -54,6 +54,24 @@ class Compensation(BaseModel):
     model_config = {"frozen": True}
 
 
+class PreviousBooking(BaseModel):
+    """A booking this meeting replaced when it moved (design_move.md M7).
+
+    Kept on the record so the plan says it moved, from when, and which ids were
+    released - the ids are what a person would chase if a release failed.
+    """
+
+    day: date
+    start: time | None = None
+    end: time | None = None
+    meeting_id: int | None = None
+    room_code: str | None = None
+    booking_id: int | None = None
+    order_id: str | None = None
+
+    model_config = {"frozen": True}
+
+
 class MeetingPlan(BaseModel):
     """One end-to-end attempt to arrange a meeting with a room and lunch.
 
@@ -99,6 +117,8 @@ class MeetingPlan(BaseModel):
     lunch_summary: str = ""
 
     cancelled: bool = False
+    #: Earlier bookings this meeting replaced, oldest first (design_move.md M7).
+    moved_from: list[PreviousBooking] = Field(default_factory=list)
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -122,6 +142,39 @@ class MeetingPlan(BaseModel):
     @property
     def is_complete(self) -> bool:
         return self.status is PlanStatus.CONFIRMED
+
+    def booking(self) -> PreviousBooking:
+        """What is booked now, as the record of a move will keep it."""
+        return PreviousBooking(
+            day=self.day,
+            start=self.proposed_start,
+            end=self.proposed_end,
+            meeting_id=self.meeting_id,
+            room_code=self.room_code,
+            booking_id=self.booking_id,
+            order_id=self.order_id,
+        )
+
+    def moved_to(self, day: date) -> MeetingPlan:
+        """The same meeting on another day, with nothing booked yet (design_move.md M2).
+
+        Everything that was asked for is copied by code - who, how long, the
+        place and why it was chosen, whether there is lunch and the wish in
+        words. Only what has to be chosen or booked again is cleared.
+        """
+        return self.model_copy(
+            update={
+                "day": day,
+                "proposed_start": None,
+                "proposed_end": None,
+                "approved": False,
+                "meeting_id": None,
+                "room_code": None,
+                "booking_id": None,
+                "order_id": None,
+                "lunch_summary": "",
+            }
+        )
 
     def compensations(self) -> list[Compensation]:
         """The undo steps needed to retract this plan, in reverse booking order.

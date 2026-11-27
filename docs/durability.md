@@ -82,10 +82,11 @@ answerable later. (See [the team](team.md).)
 running. A stopped team waiting for you is resumable; a finished or failed one is not, though it
 can still be cancelled. (R6.)
 
-**There is no update.** Changing a meeting was designed twice, and dropped twice: it needed a
-chain of revisions and a saga that compared them - all scaffolding around the one piece that was
-missing, undoing. Cancel *is* that piece. To change a meeting, cancel it and plan a new one.
-([`design_cancel.md`](design/design_cancel.md).)
+**There is no update in place.** Changing a meeting was designed twice, and dropped twice: it
+needed a chain of revisions and a saga that compared them - all scaffolding around the one piece
+that was missing, undoing. Cancel *is* that piece. ([`design_cancel.md`](design/design_cancel.md).)
+A **move** to another day came later and is built from the same pieces, in the same team: book the
+new day, then release the old booking ([`design_move.md`](design/design_move.md)).
 
 ### A lesson from building it
 

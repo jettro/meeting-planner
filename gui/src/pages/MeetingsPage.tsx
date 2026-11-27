@@ -12,6 +12,7 @@ import {
   Divider,
   LinearProgress,
   Stack,
+  TextField,
   Typography,
 } from "@mui/material";
 import { DataGrid, type GridColDef } from "@mui/x-data-grid";
@@ -49,9 +50,11 @@ interface Meeting {
  * that snapshot and serves it after the team has stopped, which is what makes
  * this a history rather than a view of whatever happens to be running.
  *
- * One thing can be done to a meeting from here, and it is not an edit. There
- * is no way to change a meeting in this system: a meeting that is wrong is
- * cancelled, which releases everything it holds, and a new one is planned.
+ * Two things can be done to a meeting from here, and neither is an edit. It
+ * can be cancelled, which releases everything it holds, or moved to another
+ * day, which books it again there and only then releases the old booking
+ * (design_move.md). A meeting made in a conversation is moved in that
+ * conversation, so it offers to continue it.
  *
  * A meeting whose coordinator is waiting at a gate is offered Resume first.
  * Whether its team is still alive does not matter: answering the gate revives
@@ -60,6 +63,7 @@ interface Meeting {
 export default function MeetingsPage() {
   const [selected, setSelected] = useState<Meeting | null>(null);
   const [confirming, setConfirming] = useState<Meeting | null>(null);
+  const [moving, setMoving] = useState<Meeting | null>(null);
   const cancellation = useCancelPlan();
   const team = useTeam();
   const navigate = useNavigate();
@@ -125,6 +129,13 @@ export default function MeetingsPage() {
       renderCell: (cell) =>
         cell.value ? <Chip size="small" variant="outlined" color="warning" label="your turn" /> : null,
     },
+    {
+      field: "movingTo",
+      headerName: "",
+      width: 150,
+      renderCell: (cell) =>
+        cell.value ? <Chip size="small" variant="outlined" color="info" label={`moving to ${cell.value}`} /> : null,
+    },
   ];
 
   const rows = meetings.map((meeting) => {
@@ -145,6 +156,7 @@ export default function MeetingsPage() {
       // in the coordinator's state - so the row says it in so many words.
       status: meeting.state.failure && !plan.cancelled ? "FAILED" : plan.status,
       waiting: waitingForTheHuman(meeting.state),
+      movingTo: meeting.state.moving?.day ?? null,
       meeting,
     };
   });
@@ -192,6 +204,24 @@ export default function MeetingsPage() {
           cancellation.reset();
           setConfirming(meeting);
         }}
+        onMove={(meeting) => {
+          setSelected(null);
+          setMoving(meeting);
+        }}
+      />
+
+      <MoveDialog
+        meeting={moving}
+        onClose={() => setMoving(null)}
+        onMove={async (meeting, day) => {
+          // The same team, restored first so its stream plays; the plan page
+          // then shows the new time question as it arrives.
+          await api.restoreTeam(meeting.teamId);
+          team.attach(meeting.teamId, meeting.namespace);
+          await api.movePlan(meeting.teamId, meeting.plan.plan_id, day);
+          setMoving(null);
+          navigate("/plan");
+        }}
       />
 
       <CancelDialog
@@ -226,11 +256,13 @@ function MeetingDialog({
   onClose,
   onResume,
   onCancelMeeting,
+  onMove,
 }: {
   meeting: Meeting | null;
   onClose: () => void;
   onResume: (meeting: Meeting) => void;
   onCancelMeeting: (meeting: Meeting) => void;
+  onMove: (meeting: Meeting) => void;
 }) {
   const navigate = useNavigate();
   if (!meeting) return null;
@@ -239,6 +271,10 @@ function MeetingDialog({
   // Resumed by what the coordinator is waiting for, not by whether its team is
   // alive (R6): a stopped team is revived by the answer.
   const resumable = waitingForTheHuman(state);
+  // Only a booked meeting moves, and not while it is moving or being released.
+  const movable =
+    plan.status === "CONFIRMED" && !state.moving && state.cancelling.length === 0 && !state.failure;
+  const conversation = meeting.namespace === CHAT_NAMESPACE;
 
   const rows: [string, string][] = [
     ["Day", plan.day],
@@ -259,6 +295,9 @@ function MeetingDialog({
     ["Room", plan.room_code ?? "none"],
     ["Lunch", plan.lunch_summary || (plan.with_lunch ? "not ordered" : "none wanted")],
     ["Asked for", plan.lunch_wish || "—"],
+    ...(plan.moved_from?.length
+      ? ([["Moved from", plan.moved_from.map((booking) => booking.day).join(", then ")]] as [string, string][])
+      : []),
   ];
 
   // The ids are the whole point of the aggregate: nothing else in the system
@@ -299,7 +338,8 @@ function MeetingDialog({
         {state.cancel_failures.length > 0 && (
           <Alert severity="warning" sx={{ mt: 3 }}>
             <Typography variant="body2" gutterBottom>
-              Cancelled, but something is still held and needs releasing by hand:
+              {plan.cancelled ? "Cancelled, but something" : "Something"} is still held and needs
+              releasing by hand:
             </Typography>
             <Stack component="ul" spacing={0.5} sx={{ pl: 2, m: 0 }}>
               {state.cancel_failures.map((line) => (
@@ -335,7 +375,11 @@ function MeetingDialog({
         <Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1 }}>
           {resumable
             ? "This meeting is waiting for your answer."
-            : "A meeting cannot be changed, only called off and planned again."}
+            : movable
+              ? conversation
+                ? "Move it in its conversation, or call it off."
+                : "A booked meeting can be moved to another day, or called off."
+              : ""}
         </Typography>
         <Button onClick={onClose}>Close</Button>
         <Button
@@ -346,11 +390,88 @@ function MeetingDialog({
         >
           Cancel meeting
         </Button>
+        {movable && !conversation && (
+          <Button variant="outlined" onClick={() => onMove(meeting)}>
+            Move…
+          </Button>
+        )}
+        {movable && conversation && !resumable && (
+          <Button variant="contained" onClick={() => onResume(meeting)}>
+            Continue the conversation
+          </Button>
+        )}
         {resumable && (
           <Button variant="contained" onClick={() => onResume(meeting)}>
             Resume
           </Button>
         )}
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+/**
+ * Move a meeting: only the day is asked here (design_move.md Q1). The time is
+ * the team's question on the plan page, and everything else is copied from
+ * the meeting's record by its coordinator.
+ */
+function MoveDialog({
+  meeting,
+  onClose,
+  onMove,
+}: {
+  meeting: Meeting | null;
+  onClose: () => void;
+  onMove: (meeting: Meeting, day: string) => Promise<void>;
+}) {
+  const [day, setDay] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!meeting) return null;
+  const { plan } = meeting;
+
+  const move = async () => {
+    setSending(true);
+    setError(null);
+    try {
+      await onMove(meeting, day);
+      setDay("");
+    } catch (problem) {
+      setError(problem instanceof Error ? problem.message : String(problem));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <Dialog open fullWidth maxWidth="xs" onClose={onClose}>
+      <DialogTitle>Move “{plan.title}”</DialogTitle>
+      <DialogContent>
+        <DialogContentText gutterBottom>
+          Now on {plan.day}. The team keeps the people, the place
+          {plan.location_name ? ` (${plan.location_name})` : ""} and the lunch wish, and asks you for
+          the new time. The meeting stays where it is until the new day is booked.
+        </DialogContentText>
+        <TextField
+          label="New day"
+          type="date"
+          value={day}
+          onChange={(event) => setDay(event.target.value)}
+          slotProps={{ inputLabel: { shrink: true } }}
+          sx={{ mt: 2 }}
+          fullWidth
+        />
+        {error && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {error}
+          </Alert>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Close</Button>
+        <Button variant="contained" disabled={!day || sending} onClick={() => void move()}>
+          Move
+        </Button>
       </DialogActions>
     </Dialog>
   );

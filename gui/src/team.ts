@@ -19,7 +19,7 @@ export interface TeamState {
   error: string | null;
   /** The question the team is waiting on, or null if it is working. */
   pending: DomainMessage | null;
-  /** `PlanCompleted` or `PlanFailed`, once one has arrived. */
+  /** The latest of `PlanCompleted`, `PlanFailed`, `PlanMoved` or `MoveFailed`. */
   outcome: DomainMessage | null;
   start: (request: PlanRequest) => Promise<void>;
   /**

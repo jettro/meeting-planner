@@ -37,12 +37,14 @@ from meeting_agents.messages import (
     FindSlotsAssignment,
     LocationFound,
     MeetingBooked,
+    MoveFailed,
     NameMatch,
     PeopleFound,
     Person,
     PlanCancelled,
     PlanCompleted,
     PlanMeetingRequest,
+    PlanMoved,
     ProposedSlot,
     SlotApprovalRequest,
     SlotsFound,
@@ -336,6 +338,50 @@ def test_cancelling_releases_the_meeting_and_says_so(team, channel):
     expect(channel, PlanCancelled)
     assert "cancelled" in wait_for_update("cancelled")
     assert intake(team).cancel() == "Refused: the meeting is already cancelled."
+
+
+# -- moving the meeting (design_move.md M12) ------------------------------
+
+
+def test_moving_asks_the_new_time_on_the_screen_and_says_so(team, channel):
+    book(team, channel)
+    thursday = date(2031, 9, 18)
+
+    assert intake(team).move(thursday).startswith("Asked the team to move the meeting to 2031-09-18")
+    question = expect(channel, SlotApprovalRequest)
+    assert (question.day, question.recipient.name) == (thursday, "@Human")
+
+    team.process_human_input("1", question)
+    moved = expect(channel, PlanMoved)
+
+    assert moved.plan.day == thursday
+    assert moved.previous.day == DAY
+    update = wait_for_update("has moved")
+    assert "2031-09-18" in update
+    assert f"The booking on {DAY.isoformat()} is released" in update
+
+
+def test_a_move_the_team_refuses_is_explained(team, channel):
+    book(team, channel)
+    intake(team).move(date(2031, 9, 18))
+    expect(channel, SlotApprovalRequest)
+
+    intake(team).move(date(2031, 9, 19))
+
+    assert expect(channel, MoveFailed).reason == "the meeting is already being moved"
+    assert "It stays as it was" in wait_for_update("could not be moved")
+
+
+def test_nothing_requested_is_nothing_to_move(team):
+    assert intake(team).move(date(2031, 9, 18)).startswith("Refused: nothing has been requested")
+
+
+def test_a_cancelled_meeting_is_not_moved(team, channel):
+    book(team, channel)
+    intake(team).cancel()
+    expect(channel, PlanCancelled)
+
+    assert intake(team).move(date(2031, 9, 18)).startswith("Refused: the meeting is cancelled")
 
 
 def test_nothing_requested_is_nothing_to_cancel(team):

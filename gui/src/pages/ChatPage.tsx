@@ -18,7 +18,8 @@ import {
   HUMAN,
   INTAKE,
   PLAN_CANCELLED,
-  PLAN_COMPLETED,
+  isBooked,
+  MOVE_FAILED,
   type MeetingPlan,
   type TeamEvent,
 } from "../api/client";
@@ -75,7 +76,8 @@ export default function ChatPage() {
   const mine = team.teamId !== null && team.namespace === CHAT_NAMESPACE;
   const lines = useMemo(() => (mine ? conversation(team.events) : []), [mine, team.events]);
   const plan = team.outcome?.plan as MeetingPlan | undefined;
-  const booked = team.outcome?.__model__ === PLAN_COMPLETED;
+  const booked = isBooked(team.outcome);
+  const notMoved = team.outcome?.__model__ === MOVE_FAILED;
   const cancelled = mine && team.events.some(
     (event) => event.recipient?.name === HUMAN && event.message?.__model__ === PLAN_CANCELLED,
   );
@@ -131,8 +133,13 @@ export default function ChatPage() {
 
             {mine && team.pending && <GatePrompt question={team.pending} onAnswer={team.answer} />}
 
-            {mine && booked && plan && <PlanSummary plan={plan} />}
-            {mine && team.outcome && !booked && (
+            {mine && notMoved && (
+              <Alert severity="warning">
+                Not moved: {String(team.outcome?.reason)}. The meeting stays as it was.
+              </Alert>
+            )}
+            {mine && booked && plan && !team.pending && <PlanSummary plan={plan} />}
+            {mine && team.outcome && !booked && !notMoved && (
               <Alert severity="error">{String(team.outcome.reason ?? "The meeting could not be arranged.")}</Alert>
             )}
             {cancelled && <Chip color="error" label="cancelled — everything was released" sx={{ alignSelf: "flex-start" }} />}

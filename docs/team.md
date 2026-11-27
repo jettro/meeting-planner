@@ -120,6 +120,16 @@ then the meeting.
 That includes a room booked just before its lunch failed: @FacilityManager sends the room with
 the failure, so it is on the coordinator's list and not only in the message's words.
 
+### Moving a meeting
+
+A booked meeting can move to another day (`MovePlanRequest`, [`design_move.md`](design/design_move.md)).
+The coordinator copies the meeting from its own record - who, how long, the place and why it was
+chosen, the lunch wish in words - with only the day changed, and runs the saga again: the slots on
+the new day, **one question** (the time; the lunch wish is kept), the new meeting, the new room and
+lunch. Only when all of that is booked are the old order, room and meeting released, and you get
+`PlanMoved`. If a step fails on the new day, what was booked for it is released and the meeting
+stays where it was: `MoveFailed`. The record keeps where the meeting moved from (`moved_from`).
+
 ## Why it is built this way
 
 **Code where the answer is known, a model where judgement is needed.** Which step follows which
@@ -154,7 +164,8 @@ Appendix A records why it does not route the work.
 
 - **Release a failed plan by itself.** A failure reports what is still booked; releasing it is a
   cancel. Whether that should happen on its own is an open question (`design_cancel.md` §8.3).
-- **Change a meeting.** Cancel it and plan a new one.
+- **Change a meeting in place.** A new day is a move: booked again, then the old booking released.
+  Different people or a different place is a new meeting.
 - **Run the agents in parallel.** One step at a time, in order. The saga is short, and order makes
   the trace easy to follow.
 

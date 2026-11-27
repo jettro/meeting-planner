@@ -24,7 +24,7 @@ from datetime import date, time
 from akgentic.core.messages import Message
 from pydantic import BaseModel, Field, model_validator
 
-from meeting_agents.plan import Compensation, CompensationStep, MeetingPlan
+from meeting_agents.plan import Compensation, CompensationStep, MeetingPlan, PreviousBooking
 
 
 class ProposedSlot(BaseModel):
@@ -173,6 +173,19 @@ class CancelPlanRequest(Message):
     plan_id: str
 
 
+class MovePlanRequest(Message):
+    """Move the meeting to another day (design_move.md).
+
+    Only the day: the time is chosen again at the slot question, and everything
+    else - who, the place, the lunch wish - is copied from the record by the
+    coordinator, so nothing asked for can be lost on the way (M2). The new
+    meeting is booked before the old one is released (M3).
+    """
+
+    plan_id: str
+    day: date
+
+
 # --------------------------------------------------------------------------
 # @Coordinator -> human
 # --------------------------------------------------------------------------
@@ -260,6 +273,33 @@ class PlanCancelled(Message):
     failures: list[str] = Field(default_factory=list)
 
 
+class PlanMoved(Message):
+    """The meeting is booked on its new day, and the old booking released.
+
+    `plan` is the meeting as it now is; `previous` the booking it replaced.
+    `failures` names an old booking that could not be released: the meeting has
+    moved, but that one is still held and needs chasing by hand.
+    """
+
+    plan: MeetingPlan
+    previous: PreviousBooking
+    failures: list[str] = Field(default_factory=list)
+
+
+class MoveFailed(Message):
+    """The meeting could not be moved, and stays where it was (design_move.md M3).
+
+    `plan` is the meeting as it still is. `released` is true when something had
+    already been booked for the new day and was undone; `failures` names any of
+    that which could not be.
+    """
+
+    plan: MeetingPlan
+    reason: str
+    released: bool = False
+    failures: list[str] = Field(default_factory=list)
+
+
 # --------------------------------------------------------------------------
 # @Coordinator -> specialists  (assignments: rendered for a model)
 # --------------------------------------------------------------------------
@@ -301,15 +341,19 @@ class FindLocationAssignment(Message):
 
     def rendering(self) -> str:
         return (
-            f'Choose the location that best fits this description: "{self.wish}". '
-            f"It is for {self.headcount} people. Use your list_locations tool and read "
-            "each location's description; use list_rooms to skip a location that has no "
-            "room for that many people. Copy the location id exactly as listed. Book "
-            "nothing. If nothing fits reasonably, say so rather than picking at random."
-        ) + remembered_block(self.remembered) + (
-            "\nIn your reason, say whether you followed what was remembered, and if not, why not."
-            if self.remembered
-            else ""
+            (
+                f'Choose the location that best fits this description: "{self.wish}". '
+                f"It is for {self.headcount} people. Use your list_locations tool and read "
+                "each location's description; use list_rooms to skip a location that has no "
+                "room for that many people. Copy the location id exactly as listed. Book "
+                "nothing. If nothing fits reasonably, say so rather than picking at random."
+            )
+            + remembered_block(self.remembered)
+            + (
+                "\nIn your reason, say whether you followed what was remembered, and if not, why not."
+                if self.remembered
+                else ""
+            )
         )
 
 
@@ -594,9 +638,12 @@ MESSAGE_TYPES: list[type] = [
     LunchApprovalDecision,
     LunchApprovalRequest,
     CancelPlanRequest,
+    MovePlanRequest,
     PlanCompleted,
     PlanFailed,
     PlanCancelled,
+    PlanMoved,
+    MoveFailed,
     FindLocationAssignment,
     LocationFound,
     FindPeopleAssignment,

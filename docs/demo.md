@@ -15,6 +15,7 @@ Times are rough: the whole script is about 40 minutes, act 5 alone about 15.
 | [4](#4-the-team-you-talk-to) | a meeting from a conversation | 5 |
 | [5](#5-it-remembers) | memory: yours, about a person, about a place, suggestions, the keeper, and its limits | 15 |
 | [6](#6-cancelling) | cancelling releases everything | 2 |
+| [7](#7-moving-a-meeting) | moving a meeting: booked again, then the old one released | 4 |
 
 ---
 
@@ -280,6 +281,24 @@ Each takes under a minute; pick one or two.
 3. **Location service tab → the place it booked**: the booking is gone. **Meeting service → Sanne**: so
    is the meeting.
 4. A meeting still waiting at a gate offers **Resume** instead.
+
+---
+
+## 7. Moving a meeting
+
+**Say:** what people do most with a meeting is move it. The team that booked it still holds the
+record, so it can book the new day and only then release the old one - you always have a meeting.
+
+1. **In a conversation** (act 4's, or *Meetings → Continue the conversation*): *"Can we move it to
+   Thursday?"* `@Intake` sends only the day. The time question appears again, with the same place;
+   there is no lunch question - the wish is kept.
+2. Pick a time. The update says it has moved, and that the old booking is released.
+3. **Trace:** `MovePlanRequest`, the slots, the approval, the new meeting, room and lunch - and
+   only then three `CancelAssignment`s for the old ones, then `PlanMoved`.
+4. **From the form:** *Meetings → the meeting → Move…*, pick a day; the plan page shows the time
+   question.
+5. **What if the new day fails?** Move to a day the place is full: the new meeting is released and
+   the old one stays - `MoveFailed`, *"The meeting stays as it was"*.
 
 ---
 

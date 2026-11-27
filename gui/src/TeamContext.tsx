@@ -12,8 +12,10 @@ import {
   HUMAN,
   isDomainEvent,
   LUNCH_QUESTION,
+  MOVE_FAILED,
   PLAN_COMPLETED,
   PLAN_FAILED,
+  PLAN_MOVED,
   SLOT_QUESTION,
   TEAM_NAMESPACE,
   type DomainMessage,
@@ -25,7 +27,8 @@ import { Context, type TeamState } from "./team";
 
 
 const QUESTIONS = new Set([SLOT_QUESTION, LUNCH_QUESTION]);
-const OUTCOMES = new Set([PLAN_COMPLETED, PLAN_FAILED]);
+const OUTCOMES = new Set([PLAN_COMPLETED, PLAN_FAILED, PLAN_MOVED, MOVE_FAILED]);
+const QUESTIONS_AND_OUTCOMES = new Set([...QUESTIONS, ...OUTCOMES]);
 
 /**
  * Questions and outcomes addressed to the human (design_chat.md I9).
@@ -55,13 +58,14 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   // from a closure, so an answer cannot be attached to a stale question.
   const pendingRef = useRef<DomainMessage | null>(null);
 
-  const outcome = useMemo(
-    () => messagesOfKind(events, OUTCOMES)[0] ?? null,
-    [events],
-  );
+  // In the order they arrived. A meeting can have more than one outcome: it is
+  // booked, then moved (design_move.md M13), so the latest one is what holds,
+  // and only a question asked after it can still be open.
+  const toTheHuman = useMemo(() => messagesOfKind(events, QUESTIONS_AND_OUTCOMES), [events]);
+  const lastOutcome = toTheHuman.map((message) => OUTCOMES.has(message.__model__)).lastIndexOf(true);
+  const outcome = lastOutcome >= 0 ? toTheHuman[lastOutcome] : null;
 
   const pending = useMemo(() => {
-    if (outcome) return null;
     // A question is closed when its answer is in the stream - every decision
     // carries the question's id as its `parent_id`. Reading it from the
     // events rather than from what this browser happens to have typed is what
@@ -74,11 +78,12 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         .map((event) => event.message!.parent_id)
         .filter((id): id is string => Boolean(id)),
     );
-    const open = messagesOfKind(events, QUESTIONS).filter(
-      (question) => !closed.has(question.id) && !answered.includes(question.id),
-    );
+    const open = toTheHuman
+      .slice(lastOutcome + 1)
+      .filter((message) => QUESTIONS.has(message.__model__))
+      .filter((question) => !closed.has(question.id) && !answered.includes(question.id));
     return open[open.length - 1] ?? null;
-  }, [events, answered, outcome]);
+  }, [events, toTheHuman, lastOutcome, answered]);
 
   useEffect(() => {
     pendingRef.current = pending;

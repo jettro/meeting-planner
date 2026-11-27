@@ -48,10 +48,13 @@ from meeting_agents.messages import (
     LunchApprovalDecision,
     LunchApprovalRequest,
     MeetingBooked,
+    MoveFailed,
+    MovePlanRequest,
     PlanCancelled,
     PlanCompleted,
     PlanFailed,
     PlanMeetingRequest,
+    PlanMoved,
     ProposedSlot,
     SlotApprovalDecision,
     SlotApprovalRequest,
@@ -97,6 +100,16 @@ class CoordinatorState(BaseState):
     #: Kept after the cancellation finishes: it is the report of what may still
     #: be held, and the only place that says so.
     cancel_failures: list[str] = []
+    #: The new booking while a move runs: the meeting on its new day, filled in
+    #: as the specialists answer. `plan` stays the booking that holds until the
+    #: new one is complete - make before break (design_move.md M3, M7).
+    moving: MeetingPlan | None = None
+    #: What the release queue is for, so its end sends the right report:
+    #: "cancel", "move" (the old booking, after a move) or "move_failed" (what a
+    #: failed move had booked on the new day).
+    releasing_for: str = "cancel"
+    #: Why a move failed, kept while what it booked is released.
+    move_failure: str = ""
 
     def waiting_for_the_human(self) -> bool:
         """True when the next move is the human's: a gate is open (R6)."""
@@ -109,9 +122,9 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
     """Sequences the saga: slots -> approval -> meeting -> room -> lunch.
 
     And the other direction: a cancellation releases the lunch, the room and
-    the meeting, in that order. There is no third thing - this system has no
-    way to *change* a plan, by decision. A meeting that is wrong is cancelled
-    and a new one is planned.
+    the meeting, in that order. Nothing is ever changed in place: a move books
+    the meeting again on its new day - the same saga, one question - and only
+    then releases the old bookings (design_move.md).
     """
 
     def on_start(self) -> None:
@@ -230,6 +243,24 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
             logger.warning("[%s] no slot question open for %s", self.config.name, plan.plan_id)
             return
 
+        if self.state.moving is not None:
+            # A move asks only this (M4): the lunch wish is kept, so the new
+            # meeting is booked straight away. A "no" ends the move, not the
+            # meeting.
+            if not message.approved or message.slot is None:
+                self._move_failed("the new time was not approved")
+                return
+            moved = self.state.moving.model_copy(
+                update={
+                    "proposed_start": message.slot.start,
+                    "proposed_end": message.slot.end,
+                    "approved": True,
+                }
+            )
+            self._update(moving=moved, candidates=[])
+            self._book_the_meeting(moved)
+            return
+
         if not message.approved or message.slot is None:
             self._fail(plan, "the proposed time slot was not approved")
             return
@@ -294,13 +325,87 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
             self._report_cancelled(plan)
             return
         if self.state.cancelling:
+            if self.state.releasing_for != "cancel":
+                # A move is releasing either the old booking or what a failed
+                # move booked. The meeting as it now stands joins the queue,
+                # and the end of it is a cancellation (M11).
+                self._update(releasing_for="cancel", move_failure="")
+                self._release(plan.compensations())
+                return
             logger.info("[%s] plan %s is already being cancelled", self.config.name, plan.plan_id)
             return
 
         steps = plan.compensations()
+        if self.state.moving is not None:
+            # Called off during a move (M11): what was booked for the new day
+            # goes too, before the old meeting.
+            steps = [*self.state.moving.compensations(), *steps]
         logger.info("[%s] cancelling plan %s: %d step(s)", self.config.name, plan.plan_id, len(steps))
-        self._update(candidates=[], awaiting_lunch=False, cancel_failures=[])
+        self._update(candidates=[], awaiting_lunch=False, cancel_failures=[], releasing_for="cancel")
         self._release(steps)
+
+    def receiveMsg_MovePlanRequest(  # noqa: N802
+        self, message: MovePlanRequest, sender: ActorAddress
+    ) -> None:
+        """Move the meeting to another day: book it again, then release the old one.
+
+        The new booking is the same meeting with the new day (M2); the time is
+        asked again, nothing else is. Only a booked meeting moves (M10).
+        """
+        plan = self._plan(message.plan_id)
+        if plan is None:
+            return
+
+        refusal = self._why_it_cannot_move(plan)
+        if refusal:
+            human = self._member(self.config.human_name)
+            if human is not None:
+                self.send(human, MoveFailed(plan=plan, reason=refusal))
+            return
+
+        moved = plan.moved_to(message.day)
+        logger.info("[%s] moving plan %s to %s", self.config.name, plan.plan_id, message.day)
+        self._update(moving=moved, cancel_failures=[])
+        self._find_slots(moved)
+
+    def _why_it_cannot_move(self, plan: MeetingPlan) -> str:
+        """Empty when the meeting can move; otherwise the reason, in words."""
+        if plan.cancelled:
+            return "the meeting is cancelled"
+        if self.state.cancelling:
+            return "the meeting is releasing a booking; try again in a moment"
+        if self.state.moving is not None:
+            return "the meeting is already being moved"
+        if self.state.failure:
+            return "the meeting could not be arranged, so there is nothing to move"
+        if not plan.is_complete:
+            return "the meeting is not booked yet"
+        return ""
+
+    def _move_failed(self, reason: str) -> None:
+        """The move is off; the meeting stays as it was (M3).
+
+        Whatever was already booked for the new day is released first, and the
+        report waits for that. With nothing booked, it is reported at once.
+        """
+        plan = self.state.plan
+        assert plan is not None, "a move always belongs to a plan"
+        steps = self.state.moving.compensations() if self.state.moving is not None else []
+        logger.warning("[%s] move of %s failed: %s", self.config.name, plan.plan_id, reason)
+        if steps:
+            self._update(
+                moving=None,
+                candidates=[],
+                releasing_for="move_failed",
+                move_failure=reason,
+                cancel_failures=[],
+            )
+            self._release(steps)
+            return
+        self._update(moving=None, candidates=[])
+        human = self._member(self.config.human_name)
+        if human is not None:
+            self.send(human, MoveFailed(plan=plan, reason=reason))
 
     # -- saga steps -------------------------------------------------------
 
@@ -422,8 +527,28 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
         """
         plan = self.state.plan
         assert plan is not None, "a release always belongs to a plan"
+        human = self._member(self.config.human_name)
+        if self.state.releasing_for == "move":
+            # The old booking is released: the move is done.
+            self._update(releasing_for="cancel")
+            if human is not None:
+                self.send(
+                    human,
+                    PlanMoved(plan=plan, previous=plan.moved_from[-1], failures=self.state.cancel_failures),
+                )
+            return
+        if self.state.releasing_for == "move_failed":
+            # What the failed move booked is released; the meeting stays.
+            reason = self.state.move_failure
+            self._update(releasing_for="cancel", move_failure="")
+            if human is not None:
+                self.send(
+                    human,
+                    MoveFailed(plan=plan, reason=reason, released=True, failures=self.state.cancel_failures),
+                )
+            return
         plan = plan.model_copy(update={"cancelled": True})
-        self._update(plan=plan)
+        self._update(plan=plan, moving=None)
         self._report_cancelled(plan)
 
     def _report_cancelled(self, plan: MeetingPlan) -> None:
@@ -487,22 +612,30 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
         if plan is None or self._being_cancelled(plan):
             return
 
+        moving = self.state.moving
         if not message.candidates:
+            if moving is not None:
+                self._move_failed(f"no time on {moving.day.isoformat()} works for all participants")
+                return
             self._fail(plan, "no time slot works for all participants")
             return
 
         human = self._member(self.config.human_name)
         if human is None:
+            if moving is not None:
+                self._move_failed(f"no {self.config.human_name} to approve the new time")
+                return
             self._fail(plan, f"no {self.config.human_name} to approve the slot")
             return
 
-        plan = plan.model_copy(
-            update={
-                "proposed_start": message.candidates[0].start,
-                "proposed_end": message.candidates[0].end,
-            }
-        )
-        self._update(plan=plan, candidates=message.candidates)
+        first = {"proposed_start": message.candidates[0].start, "proposed_end": message.candidates[0].end}
+        if moving is not None:
+            # The question is about the new day; the old booking is untouched.
+            plan = moving.model_copy(update=first)
+            self._update(moving=plan, candidates=message.candidates)
+        else:
+            plan = plan.model_copy(update=first)
+            self._update(plan=plan, candidates=message.candidates)
 
         self.send(
             human,
@@ -525,6 +658,19 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
         if plan is None:
             return
 
+        if self.state.moving is not None:
+            moved = self.state.moving.model_copy(update={"meeting_id": message.meeting_id})
+            if self._being_cancelled(plan):
+                # Booked for the new day after a cancel went out (R5, M11).
+                self._update(plan=plan.model_copy(update={"cancelled": False}), moving=moved)
+                self._release(
+                    [Compensation(step=CompensationStep.CANCEL_MEETING, reference=str(message.meeting_id))]
+                )
+                return
+            self._update(moving=moved)
+            self._book_facilities(moved)
+            return
+
         plan = plan.model_copy(update={"meeting_id": message.meeting_id})
         if self._being_cancelled(plan):
             # Booked after the cancel went out (R5). Record it - it is real -
@@ -536,13 +682,23 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
             return
 
         self._update(plan=plan)
+        self._book_facilities(plan)
 
+    def _book_facilities(self, plan: MeetingPlan) -> None:
+        """Ask @FacilityManager for the room, and lunch with it (D2)."""
+        moving = self.state.moving is not None
         if plan.proposed_start is None or plan.proposed_end is None:
+            if moving:
+                self._move_failed("no approved slot recorded for the new day")
+                return
             self._fail(plan, "no approved slot recorded for this plan")
             return
 
         facility = self._member(self.config.facility_name)
         if facility is None:
+            if moving:
+                self._move_failed(f"no {self.config.facility_name} on the team")
+                return
             self._fail(plan, f"no {self.config.facility_name} on the team")
             return
 
@@ -568,6 +724,10 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
         if plan is None:
             return
 
+        if self.state.moving is not None:
+            self._finish_the_new_booking(plan, message)
+            return
+
         plan = plan.model_copy(
             update={
                 "room_code": message.room_code,
@@ -591,6 +751,30 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
         if human is not None:
             self.send(human, PlanCompleted(plan=plan))
 
+    def _finish_the_new_booking(self, plan: MeetingPlan, message: FacilitiesBooked) -> None:
+        """The new day is fully booked: it becomes the meeting, then the old one goes (M3)."""
+        assert self.state.moving is not None
+        moved = self.state.moving.model_copy(
+            update={
+                "room_code": message.room_code,
+                "booking_id": message.booking_id,
+                "order_id": message.order_id,
+                "lunch_summary": message.lunch_summary,
+            }
+        )
+        if self._being_cancelled(plan):
+            # The new room and lunch landed after a cancel (R5, M11).
+            late = [c for c in moved.compensations() if c.step is not CompensationStep.CANCEL_MEETING]
+            self._update(plan=plan.model_copy(update={"cancelled": False}), moving=moved)
+            self._release(late)
+            return
+
+        old = plan.compensations()
+        moved = moved.model_copy(update={"moved_from": [*plan.moved_from, plan.booking()]})
+        # State first (R8): the record says the new booking before anything is released.
+        self._update(plan=moved, moving=None, releasing_for="move", cancel_failures=[])
+        self._release(old)
+
     def receiveMsg_AssignmentFailed(  # noqa: N802
         self, message: AssignmentFailed, sender: ActorAddress
     ) -> None:
@@ -602,6 +786,24 @@ class Coordinator(Akgent[CoordinatorConfig, CoordinatorState]):
         """
         plan = self._plan(message.plan_id)
         if plan is None:
+            return
+        if self.state.moving is not None:
+            moved = self.state.moving
+            if message.booking_id is not None:
+                moved = moved.model_copy(
+                    update={"room_code": message.room_code, "booking_id": message.booking_id}
+                )
+            if self._being_cancelled(plan):
+                if message.booking_id is not None:
+                    late = [
+                        c for c in moved.compensations() if c.step is CompensationStep.CANCEL_ROOM_BOOKING
+                    ]
+                    self._update(plan=plan.model_copy(update={"cancelled": False}), moving=moved)
+                    self._release(late)
+                return
+            # Recorded first, so the room booked before a failed lunch is released (M3).
+            self._update(moving=moved)
+            self._move_failed(message.reason)
             return
         if message.booking_id is not None:
             plan = plan.model_copy(update={"room_code": message.room_code, "booking_id": message.booking_id})
