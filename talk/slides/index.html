@@ -622,7 +622,7 @@ print(result.output)
       <p class="ak-powered">powered by <img src="img/yuma-logo-black.svg" alt="Yuma"></p>
     </div>
     <div class="ak-grid">
-      <div class="ak-tile"><b>Actors</b><span>every agent has its own mailbox and state; agents talk in typed messages</span><em>in the sample: 26 message types</em></div>
+      <div class="ak-tile"><b>Actors</b><span>every agent has its own mailbox and state; agents talk in typed messages</span><em>in the sample: 29 message types</em></div>
       <div class="ak-tile"><b>Teams</b><span>a tree of who creates whom; hire and fire members by role while it runs</span><em>in the sample: the crew</em></div>
       <div class="ak-tile"><b>Catalog</b><span>assemble a team from YAML - no code changes; YAML, MongoDB or PostgreSQL</span><em>in the sample: 30 cards</em></div>
       <div class="ak-tile"><b>Any model</b><span>pydantic-ai underneath: OpenAI, Azure, Anthropic, Google, Mistral, NVIDIA</span><em>in the sample: gpt-6-luna</em></div>
@@ -657,7 +657,7 @@ print(result.output)
             </li></ul>
           </li>
         </ul>
-        <p class="small">+ the 26 message types the team may send</p>
+        <p class="small">+ the 29 message types the team may send</p>
       </div>
       <div class="cfg-card">
         <div class="card main step"><p class="file">facility_manager.yaml</p><b>@FacilityManager</b><span>agent_class: FacilityManager</span></div>
@@ -932,8 +932,8 @@ def receiveMsg_BookMeetingAssignment(self, message, sender):
         <div class="box code step">@Coordinator <span>the same team, unchanged</span></div>
       </div>
       <div class="tools step">
-        <p class="lead">Five tools, and nothing else</p>
-        <code>look_up_people</code><code>look_up_place</code><code>plan_meeting</code><code>cancel_meeting</code><code>remember</code>
+        <p class="lead">Six tools, and nothing else</p>
+        <code>look_up_people</code><code>look_up_place</code><code>plan_meeting</code><code>cancel_meeting</code><code>move_meeting</code><code>remember</code>
         <p class="none">No tool to book. No tool to approve.</p>
       </div>
     </div>
@@ -943,7 +943,8 @@ def receiveMsg_BookMeetingAssignment(self, message, sender):
       typed request the form would have sent: it looks every name up and never guesses an email, it
       describes a place in words and leaves choosing to the facility manager, and it sends the
       request once. Then it relays the team's questions to you. Typing "just book the ten o'clock"
-      is understood - and authorises nothing: there is no tool for it.
+      is understood - and authorises nothing: there is no tool for it. And move_meeting sends only
+      a new day: the coordinator copies the rest from its record and asks you the time again.
     </aside>
   </section>
 

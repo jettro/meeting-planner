@@ -7,8 +7,8 @@
 > planner's **Move…** dialog - the form run that was to test it hung at the scheduler's slot call,
 > before any move code, as one measurement run did on 2026-11-24.
 >
-> **If it is merged:** the deck counts "26 message types" (slides 28, 29) - now 29 - and "Five
-> tools" on slide 40 - now six. The work stays on the branch
+> **The deck, on this branch too:** "29 message types" (slides 28, 29), and "Six tools" on slide 40
+> with `move_meeting`, which its notes mention. The work stays on the branch
 > `claude/reschedule-meeting` until it has been tried, so the talk's demo on `main` cannot break.
 >
 > **Revisits:** `design_cancel.md`, which decided *"There is no update. If something about a
