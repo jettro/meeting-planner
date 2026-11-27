@@ -1,6 +1,6 @@
 # Moving a meeting to another day — design
 
-> **Status:** draft, 2026-11-27, for review. Nothing is built. The work stays on the branch
+> **Status:** reviewed 2026-11-27: Q1-Q3 answered by the human, Q4 on the recommendation. Nothing is built. The work stays on the branch
 > `claude/reschedule-meeting` until it has been tried, so the talk's demo on `main` cannot break.
 >
 > **Revisits:** `design_cancel.md`, which decided *"There is no update. If something about a
@@ -181,6 +181,16 @@ best example: the record is what makes a move possible, and make-before-break is
 halfway looks like when it is designed for. Nothing in the deck changes until it has been tried.
 
 ## Open questions
+
+*Answered 2026-11-27:* **Q1** the day only - keep the slot question as it is, change as little
+as possible. **Q2** fail: a specific day was asked for, and if it is not possible, the meeting
+stays. **Q3** build the planner's **Move…**. **Q4** not answered; built as recommended.
+
+**Found while answering "how do I open an older meeting?":** today a finished meeting can only be
+looked at. The meeting dialog offers **Resume** only while a question is waiting, and otherwise
+says *"A meeting cannot be changed, only called off and planned again."* A conversation, once its
+meeting is booked, can not be reopened at all. So **Move…** and **Continue the conversation**
+(M13) are the way back to an older meeting, and that sentence in the dialog changes.
 
 - **Q1 - A time in the request?** "Move it to Thursday at ten" could narrow the slot question to
   that time when it is free. *Recommendation:* the day only, for now; the slot question already
