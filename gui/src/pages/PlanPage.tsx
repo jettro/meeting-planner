@@ -16,10 +16,8 @@ import { useState } from "react";
 import {
   CHAT_NAMESPACE,
   isBooked,
-  isDomainEvent,
   MOVE_FAILED,
   PLAN_MOVED,
-  shortName,
   type MeetingPlan,
 } from "../api/client";
 import { GatePrompt } from "../components/GatePrompt";
@@ -68,7 +66,9 @@ export default function PlanPage() {
   // The provider holds one team at a time; a conversation belongs on its own
   // page, so here it reads as "nothing planned from the form yet".
   const watching = team.teamId !== null && team.namespace !== CHAT_NAMESPACE;
-  const working = watching && !team.pending && !team.outcome;
+  // Working from the request, and again after every answer - also the second
+  // time round, when a moved meeting already has an outcome (team.working).
+  const working = watching && !team.pending && (team.working !== null || !team.outcome);
 
   return (
     <Box>
@@ -166,7 +166,9 @@ export default function PlanPage() {
           {working && (
             <Card variant="outlined">
               <CardContent>
-                <Typography gutterBottom>{lastStep(team.events)}</Typography>
+                <Typography gutterBottom>
+                  The team is working… {team.working ?? "starting the team"}
+                </Typography>
                 <LinearProgress />
               </CardContent>
             </Card>
@@ -176,7 +178,7 @@ export default function PlanPage() {
             <GatePrompt question={team.pending} onAnswer={team.answer} />
           )}
 
-          {team.outcome && !team.pending && (
+          {team.outcome && !team.pending && !team.working && (
             <Alert severity={kind === MOVE_FAILED ? "warning" : succeeded ? "success" : "error"}>
               {kind === MOVE_FAILED
                 ? `Not moved: ${String(team.outcome.reason)}. The meeting stays as it was.`
@@ -188,7 +190,7 @@ export default function PlanPage() {
             </Alert>
           )}
 
-          {plan && succeeded && !team.pending && <PlanSummary plan={plan} />}
+          {plan && succeeded && !team.pending && !team.working && <PlanSummary plan={plan} />}
 
           <Box>
             <Button onClick={team.reset}>Plan another</Button>
@@ -199,15 +201,6 @@ export default function PlanPage() {
   );
 }
 
-/** What the team is doing right now, in the team's own vocabulary. */
-function lastStep(events: ReturnType<typeof useTeam>["events"]): string {
-  const domain = events.filter(isDomainEvent);
-  const latest = domain[domain.length - 1];
-  if (!latest) return "Starting the team…";
-  const from = latest.sender?.name ?? "";
-  const to = latest.recipient?.name ?? "";
-  return `${from} → ${to}: ${shortName(latest.message?.__model__)}`;
-}
 
 export function PlanSummary({ plan }: { plan: MeetingPlan }) {
   const rows: [string, string][] = [

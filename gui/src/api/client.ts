@@ -26,6 +26,7 @@ export const KEEPER = "@Keeper";
 export const HUMAN = "@Human";
 export const COORDINATOR = "@Coordinator";
 export const INTAKE = "@Intake";
+export const GUARD = "@Guard";
 /** The framework's free-text message - a conversation is made of these. */
 export const AGENT_MESSAGE = "akgentic.agent.messages.AgentMessage";
 
@@ -674,6 +675,31 @@ export function isDomainEvent(event: TeamEvent): boolean {
  * checked against what was approved (design_guardrails.md GR6). Kept apart
  * from `isDomainEvent`, whose callers rely on a message being there.
  */
+/**
+ * What the team is busy with, or null when it is waiting (the "working" line).
+ *
+ * The team is working while the last message of the meeting's own saga is
+ * not addressed to @Human: a request or an answer went in, and no question or
+ * outcome has come back yet. Messages are the whole story, so nothing has to
+ * be guessed - this reads the same stream the trace shows.
+ *
+ * In a conversation, @Intake's lookups and @Guard's checks are left out: they
+ * come and go around the conversation, not the meeting, and the coordinator's
+ * copy of a question to @Intake is followed by the relay to @Human.
+ */
+export function workingOn(events: TeamEvent[]): string | null {
+  const saga = events.filter(isDomainEvent).filter((event) => {
+    const from = event.sender?.name;
+    const to = event.recipient?.name;
+    if (from === GUARD || to === GUARD || to === INTAKE) return false;
+    if (from === INTAKE) return to === COORDINATOR || to === HUMAN;
+    return true;
+  });
+  const latest = saga[saga.length - 1];
+  if (!latest || latest.recipient?.name === HUMAN) return null;
+  return `${latest.sender?.name ?? ""} → ${latest.recipient?.name ?? ""}: ${shortName(latest.message?.__model__)}`;
+}
+
 export function isOurEvent(event: TeamEvent): boolean {
   return Boolean(event.event?.__model__?.startsWith("meeting_agents."));
 }

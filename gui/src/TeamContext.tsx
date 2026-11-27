@@ -21,6 +21,7 @@ import {
   type DomainMessage,
   type PlanRequest,
   type TeamEvent,
+  workingOn,
 } from "./api/client";
 import { useTeamStream } from "./hooks/useTeamStream";
 import { Context, type TeamState } from "./team";
@@ -88,6 +89,9 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     pendingRef.current = pending;
   }, [pending]);
+
+  // An open question means it is your turn, whatever the last message was.
+  const working = useMemo(() => (teamId && !pending ? workingOn(events) : null), [teamId, pending, events]);
 
   const start = useCallback(async (request: PlanRequest) => {
     setStarting(true);
@@ -168,6 +172,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     starting,
     error,
     pending,
+    working,
     outcome,
     start,
     attach,

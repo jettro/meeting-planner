@@ -19,6 +19,11 @@ export interface TeamState {
   error: string | null;
   /** The question the team is waiting on, or null if it is working. */
   pending: DomainMessage | null;
+  /**
+   * What the team is doing while you wait - "@Coordinator → @Scheduler:
+   * BookMeetingAssignment" - or null when it is waiting for you or done.
+   */
+  working: string | null;
   /** The latest of `PlanCompleted`, `PlanFailed`, `PlanMoved` or `MoveFailed`. */
   outcome: DomainMessage | null;
   start: (request: PlanRequest) => Promise<void>;

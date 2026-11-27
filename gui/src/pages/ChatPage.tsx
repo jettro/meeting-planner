@@ -131,6 +131,15 @@ export default function ChatPage() {
               </Stack>
             )}
 
+            {mine && !thinking && team.working && (
+              <Stack direction="row" spacing={1} sx={{ alignItems: "center", color: "text.secondary" }}>
+                <CircularProgress size={14} />
+                <Typography variant="body2">
+                  The team is working… <Box component="span" sx={{ fontFamily: "monospace" }}>{team.working}</Box>
+                </Typography>
+              </Stack>
+            )}
+
             {mine && team.pending && <GatePrompt question={team.pending} onAnswer={team.answer} />}
 
             {mine && notMoved && (
@@ -138,7 +147,7 @@ export default function ChatPage() {
                 Not moved: {String(team.outcome?.reason)}. The meeting stays as it was.
               </Alert>
             )}
-            {mine && booked && plan && !team.pending && <PlanSummary plan={plan} />}
+            {mine && booked && plan && !team.pending && !team.working && <PlanSummary plan={plan} />}
             {mine && team.outcome && !booked && !notMoved && (
               <Alert severity="error">{String(team.outcome.reason ?? "The meeting could not be arranged.")}</Alert>
             )}
